@@ -1,0 +1,1 @@
+/usr/bin/c++ -Wl,--dependency-file=CMakeFiles/Nytro.dir/link.d CMakeFiles/Nytro.dir/src/main.cpp.o CMakeFiles/Nytro.dir/src/lexer.cpp.o CMakeFiles/Nytro.dir/src/parser.cpp.o -o Nytro

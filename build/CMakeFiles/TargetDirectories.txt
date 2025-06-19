@@ -1,0 +1,3 @@
+/run/media/mohamed/a7mody/nytrogen/build/CMakeFiles/Nytro.dir
+/run/media/mohamed/a7mody/nytrogen/build/CMakeFiles/edit_cache.dir
+/run/media/mohamed/a7mody/nytrogen/build/CMakeFiles/rebuild_cache.dir
