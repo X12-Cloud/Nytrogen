@@ -1,0 +1,6 @@
+# Build artifacts
+/build/
+/out/
+*.o
+*.asm
+Nytro
