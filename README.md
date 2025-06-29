@@ -4,7 +4,7 @@
 [![Build Status](https://github.com/X12-Cloud/Nytrogen/actions/workflows/build.yml/badge.svg)](https://github.com/X12-Cloud/Nytrogen/actions)
 [![GitHub Issues](https://img.shields.io/github/issues/X12-Cloud/Nytrogen)](https://github.com/X12-Cloud/Nytrogen/issues)
 
-Nytrogen is an experimental compiler for a minimalistic programming language, designed to explore the core concepts of compiler design and implementation. It transforms Nytrogen source code (.ny files) into optimized x86-64 assembly, ready for compilation on Linux systems.
+Nytrogen is an experimental compiler for a minimalistic programming language, designed to explore the core concepts of compiler design and implementation. It transforms Nytrogen source code (.ny/.nyt files) into optimized x86-64 assembly, ready for compilation on Linux systems.
 
 ## 🚀 Quick Start - Build from source
 
@@ -38,6 +38,11 @@ ld out.o -o out
   - Variable declarations (`let x = 0;`)
   - Variable assignments (`x = 10;`)
   - Return statements (`return 42;`)
+  - Arithmetic Operations
+    - Addition (`+`)
+    - Subtraction (`-`)
+    - Multiplication (`*`)
+    - Division (`/`)
 
 ### Planned Features
 - Control flow (if/else, while)
@@ -45,11 +50,6 @@ ld out.o -o out
 - Advanced data types
 - Standard library integration
 - Error handling and debugging tools
-- Arithmetic Operations
-  - Addition (`+`)
-  - Subtraction (`-`)
-  - Multiplication (`*`)
-  - Division (`/`)
 
 ## 🛠️ Installation
 
@@ -77,7 +77,7 @@ sudo pacman -S base-devel cmake nasm
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/X12-Cloud/nytrogen.git
+git clone https://github.com/X12-Cloud/Nytrogen.git
 cd nytrogen
 ```
 
@@ -135,9 +135,9 @@ ld out.o -o out
 
 ### Example Program
 ```nyt
-let a = 10;
-let b = 5;
-let c = a + b;
+int a = 10;
+int b = 5;
+int c = a + b;
 c = c * 2;
 return c;  // Returns 30
 ```
