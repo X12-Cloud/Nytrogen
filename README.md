@@ -6,12 +6,12 @@
 
 Nytrogen is an experimental compiler for a minimalistic programming language, designed to explore the core concepts of compiler design and implementation. It transforms Nytrogen source code (.ny files) into optimized x86-64 assembly, ready for compilation on Linux systems.
 
-## 🚀 Quick Start
+## 🚀 Quick Start - Build from source
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/nytrogen.git
-cd nytrogen
+git clone https://github.com/X12-Cloud/Nytrogen.git
+cd Nytrogen
 
 # Build the compiler
 mkdir build
