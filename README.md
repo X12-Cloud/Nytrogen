@@ -1,8 +1,8 @@
 # Nytrogen Compiler
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Build Status](https://github.com/yourusername/nytrogen/actions/workflows/build.yml/badge.svg)](https://github.com/yourusername/nytrogen/actions)
-[![GitHub Issues](https://img.shields.io/github/issues/yourusername/nytrogen)](https://github.com/yourusername/nytrogen/issues)
+[![Build Status](https://github.com/X12-Cloud/Nytrogen/actions/workflows/build.yml/badge.svg)](https://github.com/X12-Cloud/Nytrogen/actions)
+[![GitHub Issues](https://img.shields.io/github/issues/X12-Cloud/Nytrogen)](https://github.com/X12-Cloud/Nytrogen/issues)
 
 Nytrogen is an experimental compiler for a minimalistic programming language, designed to explore the core concepts of compiler design and implementation. It transforms Nytrogen source code (.ny files) into optimized x86-64 assembly, ready for compilation on Linux systems.
 
