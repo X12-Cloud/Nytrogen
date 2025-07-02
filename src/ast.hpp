@@ -17,6 +17,8 @@ struct ASTNode {
         VARIABLE_REFERENCE = 5,
         FUNCTION_DEFINITION = 6,
 	BINARY_OPERATION_EXPRESSION = 7,
+	PRINT_STATEMENT = 8,
+	STRING_LITERAL_EXPRESSION = 9,
     };
 
     NodeType node_type;
@@ -35,6 +37,14 @@ struct IntegerLiteralExpressionNode : public ASTNode {
 
     IntegerLiteralExpressionNode(int val, int line = -1, int column = -1)
         : ASTNode(NodeType::INTEGER_LITERAL_EXPRESSION, line, column), value(val) {}
+};
+
+// Node representing string literals (e.g., "Hello World")
+struct StringLiteralExpressionNode : public ASTNode {
+    std::string value;
+
+    StringLiteralExpressionNode(std::string val, int line = -1, int column = -1)
+        : ASTNode(NodeType::STRING_LITERAL_EXPRESSION, line, column), value(std::move(val)) {}
 };
 
 // Node for return statements (e.g., return x;)
@@ -96,6 +106,15 @@ struct BinaryOperationExpressionNode : public ASTNode {
           left(std::move(left_expr)),
           op_type(op),
           right(std::move(right_expr)) {}
+};
+
+// Node for print statements (e.g., 'print x;')
+struct PrintStatementNode : public ASTNode {
+    std::unique_ptr<ASTNode> expression; // The expression whose value will be printed
+
+    PrintStatementNode(std::unique_ptr<ASTNode> expr, int line = -1, int column = -1)
+        : ASTNode(NodeType::PRINT_STATEMENT, line, column),
+          expression(std::move(expr)) {}
 };
 
 // Root node that contains all program statements

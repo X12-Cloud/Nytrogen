@@ -16,7 +16,7 @@ nasm -f elf64 -o out.o out.asm
 
 # Step 4: Link the assembled object file into an executable
 echo "--- Linking out.o ---"
-ld -e _start out.o -o out
+ld -dynamic-linker /lib64/ld-linux-x86-64.so.2 out.o -lc -o out
 
 # Step 5: Run the compiled program and display its exit code
 echo "--- Running compiled program ---"

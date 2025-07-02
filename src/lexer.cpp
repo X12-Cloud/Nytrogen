@@ -6,7 +6,9 @@
 std::string Token::typeToString() const {
     switch (type) {
         case KEYWORD_RETURN: return "KEYWORD_RETURN";
+	case KEYWORD_PRINT: return "KEYWORD_PRINT";
         case INTEGER_LITERAL: return "INTEGER_LITERAL";
+	case STRING_LITERAL: return "STRING_LITERAL";
         case KEYWORD_INT: return "KEYWORD_INT";
         case IDENTIFIER: return "IDENTIFIER";
         case EQ: return "EQ";
@@ -87,6 +89,28 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
             continue;
         }
 
+	if (currentChar == '"') {
+            std::string value;
+            int startColumn = column;
+            currentPos++; // Consume the opening '"'
+            column++;
+
+            while (currentPos < sourceCode.length() && sourceCode[currentPos] != '"') {
+                value += sourceCode[currentPos];
+                currentPos++;
+                column++;
+            }
+
+            if (currentPos >= sourceCode.length()) {
+                std::cerr << "Lexer Error: Unclosed string literal starting at line " << line << ", column " << startColumn << std::endl;
+            } else {
+                currentPos++; // Consume the closing '"'
+                column++;
+            }
+            tokens.push_back({Token::STRING_LITERAL, value, line, startColumn});
+            continue;
+        }
+
         if (std::isalpha(currentChar) || currentChar == '_') {
             std::string value;
             int startColumn = column;
@@ -101,7 +125,9 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
                 tokens.push_back({Token::KEYWORD_RETURN, value, line, startColumn});
             } else if (value == "int") {
                 tokens.push_back({Token::KEYWORD_INT, value, line, startColumn});
-            } else {
+            } else if (value == "print") { 
+		tokens.push_back({Token::KEYWORD_PRINT, value, line, startColumn});
+	    } else {
                 tokens.push_back({Token::IDENTIFIER, value, line, startColumn});
             }
             continue;

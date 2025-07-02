@@ -8,6 +8,7 @@
 struct Token {
     enum Type {
         KEYWORD_RETURN,
+	KEYWORD_PRINT,
 	KEYWORD_INT,
         IDENTIFIER,
         EQ,
@@ -16,6 +17,7 @@ struct Token {
 	STAR, // Multiply
 	SLASH, // Divide
         INTEGER_LITERAL,
+	STRING_LITERAL,
 	LPAREN,
 	RPAREN,
 	LBRACE,

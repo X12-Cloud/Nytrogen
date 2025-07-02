@@ -51,6 +51,13 @@ std::unique_ptr<IntegerLiteralExpressionNode> Parser::parseIntegerLiteralExpress
     return std::make_unique<IntegerLiteralExpressionNode>(value, int_token.line, int_token.column);
 }
 
+// Parse string literals
+std::unique_ptr<StringLiteralExpressionNode> Parser::parseStringLiteralExpression() {
+    const Token& str_token = peek();
+    expect(Token::STRING_LITERAL, "Expected a string literal.");
+    return std::make_unique<StringLiteralExpressionNode>(str_token.value, str_token.line, str_token.column);
+}
+
 // Parse return statements
 std::unique_ptr<ReturnStatementNode> Parser::parseReturnStatement() {
     const Token& return_token = peek();
@@ -58,6 +65,15 @@ std::unique_ptr<ReturnStatementNode> Parser::parseReturnStatement() {
     auto expr_node = parseExpression();
     expect(Token::SEMICOLON, "Expected ';' after return expression.");
     return std::make_unique<ReturnStatementNode>(std::move(expr_node), return_token.line, return_token.column);
+}
+
+// Parse print statements
+std::unique_ptr<PrintStatementNode> Parser::parsePrintStatement() {
+    const Token& print_token = peek();
+    expect(Token::KEYWORD_PRINT, "Expected 'print' keyword.");
+    auto expr_node = parseExpression();
+    expect(Token::SEMICOLON, "Expected ';' after return expression.");
+    return std::make_unique<PrintStatementNode>(std::move(expr_node), print_token.line, print_token.column);
 }
 
 // Parse variable declarations
@@ -99,6 +115,8 @@ std::unique_ptr<ASTNode> Parser::parseFactor() {
         auto expr = parseExpression(); // Recursively parse the expression inside
         expect(Token::RPAREN, "Expected ')' after expression in parentheses.");
         return expr;
+    } else if (current_token.type == Token::STRING_LITERAL) {
+    return parseStringLiteralExpression();
     }
     throw std::runtime_error("Parser Error: Expected an integer literal, identifier, or '(' for an expression factor. Got '" +
                              current_token.value + "' at line " + std::to_string(current_token.line) +
@@ -164,6 +182,9 @@ std::unique_ptr<FunctionDefinitionNode> Parser::parseFunctionDefinition() {
         } else if (peek().type == Token::IDENTIFIER) {
             auto var_assign = parseVariableAssignment();
             func_def_node->body_statements.push_back(std::move(var_assign));
+        } else if (peek().type == Token::KEYWORD_PRINT) {
+            auto print_stmt = parsePrintStatement();
+            func_def_node->body_statements.push_back(std::move(print_stmt));
         } else {
             throw std::runtime_error("Parser Error: Expected statement inside function body. Got '" +
                                      peek().value + "' at line " + std::to_string(peek().line) +

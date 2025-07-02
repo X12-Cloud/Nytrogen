@@ -1,9 +1,4 @@
 int main() {
-    int a;
-    a = 20;
-    int b;
-    b = 3;
-    int c;
-    c = (a + 10) / b - 2 * 4;
-    return c;
+    print 4;
+    return (2);
 }

@@ -46,7 +46,6 @@ int main(int argc, char* argv[]) {
         std::cerr << "Error: Input file must have .ny or .nyt extension (found: ." << ext << ")" << std::endl;
         return 3;
     }
-    input_filepath = argv[1];
 
     std::string sourceCode = readFileContent(input_filepath);
     if (sourceCode.empty()) {
@@ -70,8 +69,14 @@ int main(int argc, char* argv[]) {
         return 2;
     }
 
+    // NEW ADDITION: Data section for printf format string
+    asm_file << "section .data\n";
+    asm_file << "  _print_int_format db \"%d\", 10, 0 ; Format string for printing integers, including newline\n";
+    asm_file << "\n"; // Add a newline for separation
+
     asm_file << "section .text\n";
     asm_file << "global _start\n";
+    asm_file << "extern printf ; NEW ADDITION: Declare printf as an external function\n";
 
     for (const auto& func : ast_root->functions) {
         asm_file << generateFunctionCode(func.get());
@@ -130,39 +135,44 @@ std::string generateCode(const ASTNode* node) {
         case ASTNode::NodeType::BINARY_OPERATION_EXPRESSION: {
             const BinaryOperationExpressionNode* bin_op_node = static_cast<const BinaryOperationExpressionNode*>(node);
 
-            assembly += generateCode(bin_op_node->left.get());  // Evaluate left operand, result in RAX (this is A)
-            assembly += "  push rax\n";                       // Save left operand on stack
+            assembly += generateCode(bin_op_node->left.get());
+            assembly += "  push rax\n";
 
-            assembly += generateCode(bin_op_node->right.get()); // Evaluate right operand, result in RAX (this is B)
+            assembly += generateCode(bin_op_node->right.get());
 
-            assembly += "  pop rbx\n";                        // Restore left operand into RBX (RBX now has A)
-
-            // At this point: RBX has Left Operand (A), RAX has Right Operand (B)
+            assembly += "  pop rbx\n";
 
             switch (bin_op_node->op_type) {
                 case Token::PLUS:
-                    assembly += "  add rbx, rax\n"; // RBX = A + B
-                    assembly += "  mov rax, rbx\n"; // RAX = A + B
+                    assembly += "  add rbx, rax\n";
+                    assembly += "  mov rax, rbx\n";
                     break;
                 case Token::MINUS:
-                    assembly += "  sub rbx, rax\n"; // RBX = A - B
-                    assembly += "  mov rax, rbx\n"; // RAX = A - B
+                    assembly += "  sub rbx, rax\n";
+                    assembly += "  mov rax, rbx\n";
                     break;
                 case Token::STAR:
-                    assembly += "  imul rbx\n";     // RAX = RAX * RBX (i.e., B * A, which is A * B). This is fine.
+                    assembly += "  imul rbx\n";
                     break;
                 case Token::SLASH:
-                    // For A / B, we need A (left operand) in RAX and B (right operand) in RBX.
-                    // Currently, RBX has A, RAX has B. So we must swap them.
-                    assembly += "  mov rcx, rax\n"; // Temp store B (right operand)
-                    assembly += "  mov rax, rbx\n"; // Move A (left operand) into RAX (dividend)
-                    assembly += "  mov rbx, rcx\n"; // Move B (right operand) into RBX (divisor)
-                    assembly += "  xor rdx, rdx\n"; // Clear RDX for division
-                    assembly += "  idiv rbx\n";     // RAX = RDX:RAX / RBX (now A / B)
+                    assembly += "  mov rcx, rax\n";
+                    assembly += "  mov rax, rbx\n";
+                    assembly += "  mov rbx, rcx\n";
+                    assembly += "  xor rdx, rdx\n";
+                    assembly += "  idiv rbx\n";
                     break;
                 default:
                     throw std::runtime_error("Code generation error: Unhandled binary operator type.");
             }
+            break;
+        }
+        case ASTNode::NodeType::PRINT_STATEMENT: {
+            const PrintStatementNode* print_node = static_cast<const PrintStatementNode*>(node);
+            assembly += generateCode(print_node->expression.get());
+            assembly += "  mov rsi, rax\n";
+            assembly += "  lea rdi, [rel _print_int_format]\n";
+            assembly += "  xor rax, rax\n";
+            assembly += "  call printf\n";
             break;
         }
         case ASTNode::NodeType::FUNCTION_DEFINITION: {
@@ -234,3 +244,4 @@ std::string generateFunctionCode(const FunctionDefinitionNode* func_node) {
 
     return assembly;
 }
+
