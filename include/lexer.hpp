@@ -10,6 +10,7 @@ struct Token {
         KEYWORD_RETURN,
 	KEYWORD_PRINT,
 	KEYWORD_INT,
+	KEYWORD_STRING,
         IDENTIFIER,
         EQ,
 	PLUS,

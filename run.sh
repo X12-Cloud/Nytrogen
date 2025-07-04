@@ -1,17 +1,17 @@
 #!/bin/bash
 
-echo ""
 ./build/Nytro test.nyt
 
 echo ""
-echo "🔧 Assembling out.asm..."
-nasm -f elf64 -o out.o out.asm
-
-echo "🔗 Linking..."
-ld -o out out.o -lc -I/lib/x86_64-linux-gnu --dynamic-linker /lib64/ld-linux-x86-64.so.2 -e _start
+echo "--- Assembling out.asm ---"
+nasm -f elf64 out/out.asm -o out/out.o
 
 echo ""
-echo "🚀 Running output program:"
-./out
+echo "--- Linking ---"
+ld -o out/out out/out.o -lc --dynamic-linker /usr/lib64/ld-linux-x86-64.so.2
+
+echo ""
+echo "--- Running output program ---"
+./out/out
 echo "Exit Code: $?"
 

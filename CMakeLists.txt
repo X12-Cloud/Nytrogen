@@ -1,11 +1,13 @@
-cmake_minimum_required(VERSION 3.20)
-project(Nytrogen VERSION 0.1.0 LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.10)
+project(NytrogenCompiler)
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 17)
 
-add_executable(Nytro
-    src/main.cpp
-    src/lexer.cpp
-    src/parser.cpp
-)
+# Source files
+file(GLOB SOURCES "src/*.cpp")
+
+# Include headers
+include_directories(include)
+
+add_executable(Nytro ${SOURCES})
+

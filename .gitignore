@@ -1,4 +1,3 @@
-# Build artifacts
 /build/
 /out/
 *.o

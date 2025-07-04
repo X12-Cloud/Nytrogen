@@ -5,6 +5,7 @@ echo "--- Performing a clean build of Nytrogen ---"
 
 
 echo "Removing existing 'build' directory..."
+rm -rf out/*
 rm -rf build
 
 

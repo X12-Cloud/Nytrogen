@@ -35,19 +35,17 @@ ld out.o -o out
 ### Current Implementation
 - **Basic Syntax**
   - Integer literals (e.g., `42`)
-  - Variable declarations (`let x = 0;`)
+  - String literals
+  - Variable declarations (`int x; //also works with string x;`)
   - Variable assignments (`x = 10;`)
   - Return statements (`return 42;`)
+  - Print statements
   - Arithmetic Operations
-    - Addition (`+`)
-    - Subtraction (`-`)
-    - Multiplication (`*`)
-    - Division (`/`)
 
 ### Planned Features
 - Control flow (if/else, while)
 - Functions and procedures
-- Advanced data types
+- More data types
 - Standard library integration
 - Error handling and debugging tools
 

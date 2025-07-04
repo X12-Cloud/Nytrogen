@@ -10,6 +10,7 @@ std::string Token::typeToString() const {
         case INTEGER_LITERAL: return "INTEGER_LITERAL";
 	case STRING_LITERAL: return "STRING_LITERAL";
         case KEYWORD_INT: return "KEYWORD_INT";
+	case KEYWORD_STRING: return "KEYWORD_STRING";
         case IDENTIFIER: return "IDENTIFIER";
         case EQ: return "EQ";
 	case PLUS: return "PLUS";
@@ -38,33 +39,18 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
     while (currentPos < sourceCode.length()) {
         char currentChar = sourceCode[currentPos];
 
-        // if (currentChar == '/') {
-        //     if (currentPos + 1 < sourceCode.length() && sourceCode[currentPos + 1] == '/') {
-        //         inComment = true;
-        //         currentPos += 2;
-        //         column += 2;
-        //         continue;
-        //     }
-        //     // Single '/' is an unknown character
-        //     tokens.push_back({Token::UNKNOWN, std::string(1, currentChar), line, column});
-        //     std::cerr << "Lexer Error: Unrecognized character '" << currentChar << "' at line " << line << ", column " << column << std::endl;
-        //     currentPos++;
-        //     column++;
-        //     continue;
-        // }
-        //
-        // if (inComment) {
-        //         if (currentChar == '\n') {
-        //             inComment = false;
-        //             line++;
-        //             column = 1;
-        //             currentPos++;
-        //             continue;
-        //         }
-        //         currentPos++;
-        //         column++;
-        //         continue;
-        //     }
+        // --- Single-line comment detection ---
+	if (currentChar == '/' && currentPos + 1 < sourceCode.length() && sourceCode[currentPos + 1] == '/') {
+    	// Skip everything until newline
+    	currentPos += 2;
+    	column += 2;
+    	while (currentPos < sourceCode.length() && sourceCode[currentPos] != '\n') {
+        	currentPos++;
+        	column++;
+    	}
+    	continue;
+	}
+
 
         if (std::isspace(currentChar)) {
             if (currentChar == '\n') {
@@ -125,7 +111,9 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
                 tokens.push_back({Token::KEYWORD_RETURN, value, line, startColumn});
             } else if (value == "int") {
                 tokens.push_back({Token::KEYWORD_INT, value, line, startColumn});
-            } else if (value == "print") { 
+            } else if (value == "string") {
+                tokens.push_back({Token::KEYWORD_STRING, value, line, startColumn});
+	    } else if (value == "print") { 
 		tokens.push_back({Token::KEYWORD_PRINT, value, line, startColumn});
 	    } else {
                 tokens.push_back({Token::IDENTIFIER, value, line, startColumn});

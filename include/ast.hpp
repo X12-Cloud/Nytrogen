@@ -52,16 +52,18 @@ struct ReturnStatementNode : public ASTNode {
     std::unique_ptr<ASTNode> expression;
 
     ReturnStatementNode(std::unique_ptr<ASTNode> expr, int line = -1, int column = -1)
-        : ASTNode(NodeType::RETURN_STATEMENT, line, column), expression(std::move(expr)) {}
+	: ASTNode(NodeType::RETURN_STATEMENT, line, column), expression(std::move(expr)) {}
 };
 
-// Node for variable declarations (e.g., var x;)
+// Node for variable declarations (e.g., int/string x;)
 struct VariableDeclarationNode : public ASTNode {
     std::string name;
+    Token::Type type; // either KEYWORD_INT or KEYWORD_STRING
 
-    VariableDeclarationNode(std::string var_name, int line = -1, int column = -1)
-        : ASTNode(NodeType::VARIABLE_DECLARATION, line, column), name(std::move(var_name)) {}
+    VariableDeclarationNode(std::string name, Token::Type type, int line, int column)
+	: ASTNode(NodeType::VARIABLE_DECLARATION, line, column), name(std::move(name)), type(type) {}
 };
+
 
 // Node for variable assignments (e.g., x = 5;)
 struct VariableAssignmentNode : public ASTNode {

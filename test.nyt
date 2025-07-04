@@ -1,4 +1,12 @@
 int main() {
-    print 4;
-    return (2);
+    int no1;
+    int no2;
+
+    no1 = 3;
+    no2 = 2;
+    
+    print "output is";
+    print (no1 + no2);
+
+    return 0;
 }

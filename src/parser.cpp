@@ -78,20 +78,36 @@ std::unique_ptr<PrintStatementNode> Parser::parsePrintStatement() {
 
 // Parse variable declarations
 std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
-    const Token& int_token = peek();
-    expect(Token::KEYWORD_INT, "Expected 'int' keyword.");
+    const Token& type_token = peek();
+
+    // Accept either int or string
+    if (type_token.type != Token::KEYWORD_INT && type_token.type != Token::KEYWORD_STRING) {
+        throw std::runtime_error("Expected 'int' or 'string' keyword for variable declaration.");
+    }
+
+    consume();  // consume 'int' or 'string'
+
     const Token& id_token = peek();
-    expect(Token::IDENTIFIER, "Expected variable name after 'int'.");
+    expect(Token::IDENTIFIER, "Expected variable name after type.");
+
     expect(Token::SEMICOLON, "Expected ';' after variable declaration.");
-    return std::make_unique<VariableDeclarationNode>(id_token.value, id_token.line, id_token.column);
+
+    return std::make_unique<VariableDeclarationNode>(id_token.value, type_token.type, id_token.line, id_token.column);
 }
+
 
 // Parse variable assignments
 std::unique_ptr<VariableAssignmentNode> Parser::parseVariableAssignment() {
     const Token& id_token = peek();
     expect(Token::IDENTIFIER, "Expected variable name.");
     expect(Token::EQ, "Expected '=' after variable name.");
-    auto expr_node = parseExpression();
+    std::unique_ptr<ASTNode> expr_node;
+
+    if (peek().type == Token::STRING_LITERAL) {
+        expr_node = parseStringLiteralExpression();
+    } else {
+        expr_node = parseExpression();
+    }
     expect(Token::SEMICOLON, "Expected ';' after assignment.");
     return std::make_unique<VariableAssignmentNode>(id_token.value, std::move(expr_node), id_token.line, id_token.column);
 }
@@ -177,6 +193,9 @@ std::unique_ptr<FunctionDefinitionNode> Parser::parseFunctionDefinition() {
             auto return_stmt = parseReturnStatement();
             func_def_node->body_statements.push_back(std::move(return_stmt));
         } else if (peek().type == Token::KEYWORD_INT) {
+            auto var_decl = parseVariableDeclaration();
+            func_def_node->body_statements.push_back(std::move(var_decl));
+        } else if (peek().type == Token::KEYWORD_STRING) {
             auto var_decl = parseVariableDeclaration();
             func_def_node->body_statements.push_back(std::move(var_decl));
         } else if (peek().type == Token::IDENTIFIER) {
