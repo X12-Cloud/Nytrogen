@@ -19,6 +19,8 @@ struct ASTNode {
 	BINARY_OPERATION_EXPRESSION = 7,
 	PRINT_STATEMENT = 8,
 	STRING_LITERAL_EXPRESSION = 9,
+	IF_STATEMENT = 10,
+	ELSE_STATEMENT = 11,
     };
 
     NodeType node_type;
@@ -117,6 +119,20 @@ struct PrintStatementNode : public ASTNode {
     PrintStatementNode(std::unique_ptr<ASTNode> expr, int line = -1, int column = -1)
         : ASTNode(NodeType::PRINT_STATEMENT, line, column),
           expression(std::move(expr)) {}
+};
+
+struct IfStatementNode : public ASTNode {
+    std::unique_ptr<ASTNode> condition;
+    std::vector<std::unique_ptr<ASTNode>> true_block;
+    std::vector<std::unique_ptr<ASTNode>> false_block;
+
+    IfStatementNode(std::unique_ptr<ASTNode> cond, std::vector<std::unique_ptr<ASTNode>> t_block,
+                    std::vector<std::unique_ptr<ASTNode>> f_block = {},
+                    int line = -1, int column = -1)
+        : ASTNode(NodeType::IF_STATEMENT, line, column),
+          condition(std::move(cond)),
+          true_block(std::move(t_block)),
+          false_block(std::move(f_block)) {}
 };
 
 // Root node that contains all program statements

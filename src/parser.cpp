@@ -1,35 +1,31 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
-#include <utility> // For std::move
-#include <map>     // For std::map (declared_variables)
-#include <cctype>  // For std::isdigit, std::isalpha, etc.
+#include <utility>
+#include <map>
+#include <cctype>
 
 #include "parser.hpp"
 #include "lexer.hpp"
 #include "ast.hpp"
 
-// Initialize parser with token stream
 Parser::Parser(std::vector<Token> tokens) : tokens(std::move(tokens)), current_token_index(0) {}
 
-// Look ahead in token stream without consuming
 const Token& Parser::peek(size_t offset) const {
     size_t index = current_token_index + offset;
     if (index >= tokens.size()) {
-        return tokens.back(); // Should always be END_OF_FILE
+        return tokens.back();
     }
     return tokens[current_token_index + offset];
 }
 
-// Consume and return current token
 const Token& Parser::consume() {
-    if(current_token_index >= tokens.size()) {
+    if (current_token_index >= tokens.size()) {
         throw std::runtime_error("Parser Error: Cannot consume token after end of file.");
     }
     return tokens[current_token_index++];
 }
 
-// Verify token type matches expected or throw error
 void Parser::expect(Token::Type expected_type, const std::string& error_msg) {
     const Token& current_token = peek();
     if (current_token.type != expected_type) {
@@ -43,7 +39,6 @@ void Parser::expect(Token::Type expected_type, const std::string& error_msg) {
     }
 }
 
-// Parse integer literals
 std::unique_ptr<IntegerLiteralExpressionNode> Parser::parseIntegerLiteralExpression() {
     const Token& int_token = peek();
     expect(Token::INTEGER_LITERAL, "Expected an integer literal.");
@@ -51,14 +46,12 @@ std::unique_ptr<IntegerLiteralExpressionNode> Parser::parseIntegerLiteralExpress
     return std::make_unique<IntegerLiteralExpressionNode>(value, int_token.line, int_token.column);
 }
 
-// Parse string literals
 std::unique_ptr<StringLiteralExpressionNode> Parser::parseStringLiteralExpression() {
     const Token& str_token = peek();
     expect(Token::STRING_LITERAL, "Expected a string literal.");
     return std::make_unique<StringLiteralExpressionNode>(str_token.value, str_token.line, str_token.column);
 }
 
-// Parse return statements
 std::unique_ptr<ReturnStatementNode> Parser::parseReturnStatement() {
     const Token& return_token = peek();
     expect(Token::KEYWORD_RETURN, "Expected 'return' keyword.");
@@ -67,7 +60,6 @@ std::unique_ptr<ReturnStatementNode> Parser::parseReturnStatement() {
     return std::make_unique<ReturnStatementNode>(std::move(expr_node), return_token.line, return_token.column);
 }
 
-// Parse print statements
 std::unique_ptr<PrintStatementNode> Parser::parsePrintStatement() {
     const Token& print_token = peek();
     expect(Token::KEYWORD_PRINT, "Expected 'print' keyword.");
@@ -76,16 +68,50 @@ std::unique_ptr<PrintStatementNode> Parser::parsePrintStatement() {
     return std::make_unique<PrintStatementNode>(std::move(expr_node), print_token.line, print_token.column);
 }
 
-// Parse variable declarations
+std::unique_ptr<IfStatementNode> Parser::parseIfStatement() {
+    const Token& if_token = peek();
+    expect(Token::KEYWORD_IF, "Expected 'if' keyword.");
+    expect(Token::LPAREN, "Expected '(' after 'if'.");
+
+    auto condition = parseExpression();
+
+    expect(Token::RPAREN, "Expected ')' after if condition.");
+    expect(Token::LBRACE, "Expected '{' to begin 'if' block.");
+
+    std::vector<std::unique_ptr<ASTNode>> true_block;
+
+    while (peek().type != Token::RBRACE && peek().type != Token::END_OF_FILE) {
+        true_block.push_back(parseStatement());
+    }
+
+    expect(Token::RBRACE, "Expected '}' to close 'if' block.");
+
+    std::vector<std::unique_ptr<ASTNode>> false_block;
+
+    if (peek().type == Token::KEYWORD_ELSE) {
+        consume();
+        expect(Token::LBRACE, "Expected '{' to begin 'else' block.");
+        while (peek().type != Token::RBRACE && peek().type != Token::END_OF_FILE) {
+            false_block.push_back(parseStatement());
+        }
+        expect(Token::RBRACE, "Expected '}' to close 'else' block.");
+    }
+
+    return std::make_unique<IfStatementNode>(
+        std::move(condition),
+        std::move(true_block),
+        std::move(false_block),
+        if_token.line, if_token.column
+    );
+}
+
 std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
     const Token& type_token = peek();
-
-    // Accept either int or string
     if (type_token.type != Token::KEYWORD_INT && type_token.type != Token::KEYWORD_STRING) {
         throw std::runtime_error("Expected 'int' or 'string' keyword for variable declaration.");
     }
 
-    consume();  // consume 'int' or 'string'
+    consume();
 
     const Token& id_token = peek();
     expect(Token::IDENTIFIER, "Expected variable name after type.");
@@ -95,8 +121,6 @@ std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
     return std::make_unique<VariableDeclarationNode>(id_token.value, type_token.type, id_token.line, id_token.column);
 }
 
-
-// Parse variable assignments
 std::unique_ptr<VariableAssignmentNode> Parser::parseVariableAssignment() {
     const Token& id_token = peek();
     expect(Token::IDENTIFIER, "Expected variable name.");
@@ -112,14 +136,12 @@ std::unique_ptr<VariableAssignmentNode> Parser::parseVariableAssignment() {
     return std::make_unique<VariableAssignmentNode>(id_token.value, std::move(expr_node), id_token.line, id_token.column);
 }
 
-// Parse variable references
 std::unique_ptr<VariableReferenceNode> Parser::parseVariableReference() {
     const Token& id_token = peek();
     expect(Token::IDENTIFIER, "Expected variable name.");
     return std::make_unique<VariableReferenceNode>(id_token.value, id_token.line, id_token.column);
 }
 
-// Parses the most basic parts of an expression: literals, variables, or parenthesized expressions.
 std::unique_ptr<ASTNode> Parser::parseFactor() {
     const Token& current_token = peek();
     if (current_token.type == Token::INTEGER_LITERAL) {
@@ -127,25 +149,24 @@ std::unique_ptr<ASTNode> Parser::parseFactor() {
     } else if (current_token.type == Token::IDENTIFIER) {
         return parseVariableReference();
     } else if (current_token.type == Token::LPAREN) {
-        consume(); // Consume '('
-        auto expr = parseExpression(); // Recursively parse the expression inside
+        consume();
+        auto expr = parseExpression();
         expect(Token::RPAREN, "Expected ')' after expression in parentheses.");
         return expr;
     } else if (current_token.type == Token::STRING_LITERAL) {
-    return parseStringLiteralExpression();
+        return parseStringLiteralExpression();
     }
     throw std::runtime_error("Parser Error: Expected an integer literal, identifier, or '(' for an expression factor. Got '" +
                              current_token.value + "' at line " + std::to_string(current_token.line) +
                              ", column " + std::to_string(current_token.column) + ".");
 }
 
-// Parses multiplication and division operations.
 std::unique_ptr<ASTNode> Parser::parseTerm() {
-    auto left_expr = parseFactor(); // Start with a factor
+    auto left_expr = parseFactor();
 
     while (peek().type == Token::STAR || peek().type == Token::SLASH) {
-        const Token& op_token = consume(); // Consume '*' or '/'
-        auto right_expr = parseFactor();   // Parse the right-hand side factor
+        const Token& op_token = consume();
+        auto right_expr = parseFactor();
         left_expr = std::make_unique<BinaryOperationExpressionNode>(
             std::move(left_expr), op_token.type, std::move(right_expr),
             op_token.line, op_token.column
@@ -154,22 +175,62 @@ std::unique_ptr<ASTNode> Parser::parseTerm() {
     return left_expr;
 }
 
-// Parses addition and subtraction operations. This is the main expression parsing entry point.
-std::unique_ptr<ASTNode> Parser::parseExpression() {
-    auto left_expr = parseTerm(); // Start with a term
+std::unique_ptr<ASTNode> Parser::parseAdditiveExpression() {
+    auto left = parseTerm();
 
     while (peek().type == Token::PLUS || peek().type == Token::MINUS) {
-        const Token& op_token = consume(); // Consume '+' or '-'
-        auto right_expr = parseTerm();     // Parse the right-hand side term
-        left_expr = std::make_unique<BinaryOperationExpressionNode>(
-            std::move(left_expr), op_token.type, std::move(right_expr),
+        const Token& op_token = consume();
+        auto right = parseTerm();
+        left = std::make_unique<BinaryOperationExpressionNode>(
+            std::move(left), op_token.type, std::move(right),
             op_token.line, op_token.column
         );
     }
-    return left_expr;
+
+    return left;
 }
 
-// Parse a function definition (e.g., 'int main() { ... }')
+std::unique_ptr<ASTNode> Parser::parseComparisonExpression() {
+    auto left = parseAdditiveExpression();
+
+    while (peek().type == Token::EQUAL_EQUAL || peek().type == Token::BANG_EQUAL ||
+           peek().type == Token::LESS || peek().type == Token::LESS_EQUAL ||
+           peek().type == Token::GREATER || peek().type == Token::GREATER_EQUAL) {
+        const Token& op_token = consume();
+        auto right = parseAdditiveExpression();
+        left = std::make_unique<BinaryOperationExpressionNode>(
+            std::move(left), op_token.type, std::move(right),
+            op_token.line, op_token.column
+        );
+    }
+
+    return left;
+}
+
+std::unique_ptr<ASTNode> Parser::parseExpression() {
+    return parseComparisonExpression();
+}
+
+std::unique_ptr<ASTNode> Parser::parseStatement() {
+    switch (peek().type) {
+        case Token::KEYWORD_RETURN:
+            return parseReturnStatement();
+        case Token::KEYWORD_INT:
+        case Token::KEYWORD_STRING:
+            return parseVariableDeclaration();
+        case Token::IDENTIFIER:
+            return parseVariableAssignment();
+        case Token::KEYWORD_PRINT:
+            return parsePrintStatement();
+        case Token::KEYWORD_IF:
+            return parseIfStatement();
+        default:
+            throw std::runtime_error("Parser Error: Unexpected token in statement: '" +
+                                     peek().value + "' at line " + std::to_string(peek().line) +
+                                     ", column " + std::to_string(peek().column));
+    }
+}
+
 std::unique_ptr<FunctionDefinitionNode> Parser::parseFunctionDefinition() {
     const Token& return_type_token = peek();
     expect(Token::KEYWORD_INT, "Expected function return type (e.g., 'int').");
@@ -187,28 +248,8 @@ std::unique_ptr<FunctionDefinitionNode> Parser::parseFunctionDefinition() {
         return_type_token.line, return_type_token.column
     );
 
-    // Parse statements within the function body until '}'
     while (peek().type != Token::RBRACE && peek().type != Token::END_OF_FILE) {
-        if (peek().type == Token::KEYWORD_RETURN) {
-            auto return_stmt = parseReturnStatement();
-            func_def_node->body_statements.push_back(std::move(return_stmt));
-        } else if (peek().type == Token::KEYWORD_INT) {
-            auto var_decl = parseVariableDeclaration();
-            func_def_node->body_statements.push_back(std::move(var_decl));
-        } else if (peek().type == Token::KEYWORD_STRING) {
-            auto var_decl = parseVariableDeclaration();
-            func_def_node->body_statements.push_back(std::move(var_decl));
-        } else if (peek().type == Token::IDENTIFIER) {
-            auto var_assign = parseVariableAssignment();
-            func_def_node->body_statements.push_back(std::move(var_assign));
-        } else if (peek().type == Token::KEYWORD_PRINT) {
-            auto print_stmt = parsePrintStatement();
-            func_def_node->body_statements.push_back(std::move(print_stmt));
-        } else {
-            throw std::runtime_error("Parser Error: Expected statement inside function body. Got '" +
-                                     peek().value + "' at line " + std::to_string(peek().line) +
-                                     ", column " + std::to_string(peek().column) + ".");
-        }
+        func_def_node->body_statements.push_back(parseStatement());
     }
 
     expect(Token::RBRACE, "Expected '}' to end function body.");
@@ -216,14 +257,11 @@ std::unique_ptr<FunctionDefinitionNode> Parser::parseFunctionDefinition() {
     return func_def_node;
 }
 
-// Main parsing function
 std::unique_ptr<ProgramNode> Parser::parse() {
     auto program_node = std::make_unique<ProgramNode>();
 
-    // A Nytrogen program now consists of one or more function definitions
     while (peek().type != Token::END_OF_FILE) {
         try {
-            // Assume top-level constructs are always function definitions for now
             auto func_def = parseFunctionDefinition();
             program_node->functions.push_back(std::move(func_def));
         } catch (const std::runtime_error& e) {
@@ -241,3 +279,4 @@ std::unique_ptr<ProgramNode> Parser::parse() {
 
     return program_node;
 }
+

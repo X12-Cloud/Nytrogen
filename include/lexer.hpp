@@ -1,30 +1,41 @@
-#ifndef NYTROGEN_LEXER_HPP
-#define NYTROGEN_LEXER_HPP
+#ifndef LEXER_HPP
+#define LEXER_HPP
 
 #include <string>
 #include <vector>
 
-// Represents a single token in the source code
 struct Token {
     enum Type {
         KEYWORD_RETURN,
-	KEYWORD_PRINT,
-	KEYWORD_INT,
-	KEYWORD_STRING,
+        KEYWORD_PRINT,
+        KEYWORD_INT,
+        KEYWORD_STRING,
+        KEYWORD_IF,
+        KEYWORD_ELSE,
+
         IDENTIFIER,
-        EQ,
-	PLUS,
-	MINUS,
-	STAR, // Multiply
-	SLASH, // Divide
         INTEGER_LITERAL,
-	STRING_LITERAL,
-	LPAREN,
-	RPAREN,
-	LBRACE,
-	RBRACE,
-        SEMICOLON,
-        WHITESPACE,
+        STRING_LITERAL,
+
+        EQ,             // =
+        EQUAL_EQUAL,    // ==
+        BANG_EQUAL,     // !=
+        LESS,           // <
+        GREATER,        // >
+        LESS_EQUAL,     // <=
+        GREATER_EQUAL,  // >=
+
+        PLUS,           // +
+        MINUS,          // -
+        STAR,           // *
+        SLASH,          // /
+
+        SEMICOLON,      // ;
+        LPAREN,         // (
+        RPAREN,         // )
+        LBRACE,         // {
+        RBRACE,         // }
+
         END_OF_FILE,
         UNKNOWN
     };
@@ -37,7 +48,7 @@ struct Token {
     std::string typeToString() const;
 };
 
-// Converts source code into a sequence of tokens
 std::vector<Token> tokenize(const std::string& sourceCode);
 
-#endif
+#endif // LEXER_HPP
+

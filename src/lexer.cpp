@@ -6,22 +6,30 @@
 std::string Token::typeToString() const {
     switch (type) {
         case KEYWORD_RETURN: return "KEYWORD_RETURN";
-	case KEYWORD_PRINT: return "KEYWORD_PRINT";
+        case KEYWORD_PRINT: return "KEYWORD_PRINT";
         case INTEGER_LITERAL: return "INTEGER_LITERAL";
-	case STRING_LITERAL: return "STRING_LITERAL";
+        case STRING_LITERAL: return "STRING_LITERAL";
         case KEYWORD_INT: return "KEYWORD_INT";
-	case KEYWORD_STRING: return "KEYWORD_STRING";
+        case KEYWORD_STRING: return "KEYWORD_STRING";
+        case KEYWORD_IF: return "KEYWORD_IF";
+        case KEYWORD_ELSE: return "KEYWORD_ELSE";
         case IDENTIFIER: return "IDENTIFIER";
         case EQ: return "EQ";
-	case PLUS: return "PLUS";
-	case MINUS: return "MINUS";
- 	case STAR: return "STAR";
-	case SLASH: return "SLASH";
+        case PLUS: return "PLUS";
+        case MINUS: return "MINUS";
+        case STAR: return "STAR";
+        case SLASH: return "SLASH";
+        case EQUAL_EQUAL: return "EQUAL_EQUAL";
+        case BANG_EQUAL: return "BANG_EQUAL";
+        case LESS: return "LESS";
+        case GREATER: return "GREATER";
+        case LESS_EQUAL: return "LESS_EQUAL";
+        case GREATER_EQUAL: return "GREATER_EQUAL";
         case SEMICOLON: return "SEMICOLON";
-	case LPAREN: return "LPAREN";
+        case LPAREN: return "LPAREN";
 	case RPAREN: return "RPAREN";
-	case LBRACE: return "LBRACE";
-	case RBRACE: return "RBRACE";
+        case LBRACE: return "LBRACE";
+        case RBRACE: return "RBRACE";
         case END_OF_FILE: return "END_OF_FILE";
         case UNKNOWN: return "UNKNOWN";
     }
@@ -35,23 +43,21 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
     int line = 1;
     int column = 1;
 
-    bool inComment = false;
     while (currentPos < sourceCode.length()) {
         char currentChar = sourceCode[currentPos];
 
-        // --- Single-line comment detection ---
-	if (currentChar == '/' && currentPos + 1 < sourceCode.length() && sourceCode[currentPos + 1] == '/') {
-    	// Skip everything until newline
-    	currentPos += 2;
-    	column += 2;
-    	while (currentPos < sourceCode.length() && sourceCode[currentPos] != '\n') {
-        	currentPos++;
-        	column++;
-    	}
-    	continue;
-	}
+        // Single-line comment
+        if (currentChar == '/' && currentPos + 1 < sourceCode.length() && sourceCode[currentPos + 1] == '/') {
+            currentPos += 2;
+            column += 2;
+            while (currentPos < sourceCode.length() && sourceCode[currentPos] != '\n') {
+                currentPos++;
+                column++;
+            }
+            continue;
+        }
 
-
+        // Whitespace
         if (std::isspace(currentChar)) {
             if (currentChar == '\n') {
                 line++;
@@ -63,136 +69,155 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
             continue;
         }
 
+        // Integer literal
         if (std::isdigit(currentChar)) {
             std::string value;
             int startColumn = column;
             while (currentPos < sourceCode.length() && std::isdigit(sourceCode[currentPos])) {
-                value += sourceCode[currentPos];
-                currentPos++;
+                value += sourceCode[currentPos++];
                 column++;
             }
             tokens.push_back({Token::INTEGER_LITERAL, value, line, startColumn});
             continue;
         }
 
-	if (currentChar == '"') {
+        // String literal
+        if (currentChar == '"') {
             std::string value;
             int startColumn = column;
-            currentPos++; // Consume the opening '"'
-            column++;
-
+            currentPos++; column++; // Skip initial quote
             while (currentPos < sourceCode.length() && sourceCode[currentPos] != '"') {
-                value += sourceCode[currentPos];
-                currentPos++;
+                value += sourceCode[currentPos++];
                 column++;
             }
-
             if (currentPos >= sourceCode.length()) {
-                std::cerr << "Lexer Error: Unclosed string literal starting at line " << line << ", column " << startColumn << std::endl;
+                std::cerr << "Lexer Error: Unclosed string literal at line " << line << ", column " << startColumn << std::endl;
             } else {
-                currentPos++; // Consume the closing '"'
-                column++;
+                currentPos++; column++; // Skip closing quote
             }
             tokens.push_back({Token::STRING_LITERAL, value, line, startColumn});
             continue;
         }
 
+        // Identifier or keyword
         if (std::isalpha(currentChar) || currentChar == '_') {
             std::string value;
             int startColumn = column;
             while (currentPos < sourceCode.length() &&
                    (std::isalnum(sourceCode[currentPos]) || sourceCode[currentPos] == '_')) {
-                value += sourceCode[currentPos];
-                currentPos++;
+                value += sourceCode[currentPos++];
                 column++;
             }
+            if (value == "return") tokens.push_back({Token::KEYWORD_RETURN, value, line, startColumn});
+            else if (value == "int") tokens.push_back({Token::KEYWORD_INT, value, line, startColumn});
+            else if (value == "string") tokens.push_back({Token::KEYWORD_STRING, value, line, startColumn});
+            else if (value == "print") tokens.push_back({Token::KEYWORD_PRINT, value, line, startColumn});
+            else if (value == "if") tokens.push_back({Token::KEYWORD_IF, value, line, startColumn});
+            else if (value == "else") tokens.push_back({Token::KEYWORD_ELSE, value, line, startColumn});
+            else tokens.push_back({Token::IDENTIFIER, value, line, startColumn});
+            continue;
+        }
 
-            if (value == "return") {
-                tokens.push_back({Token::KEYWORD_RETURN, value, line, startColumn});
-            } else if (value == "int") {
-                tokens.push_back({Token::KEYWORD_INT, value, line, startColumn});
-            } else if (value == "string") {
-                tokens.push_back({Token::KEYWORD_STRING, value, line, startColumn});
-	    } else if (value == "print") { 
-		tokens.push_back({Token::KEYWORD_PRINT, value, line, startColumn});
-	    } else {
-                tokens.push_back({Token::IDENTIFIER, value, line, startColumn});
+        // == or =
+        if (currentChar == '=') {
+            if (currentPos + 1 < sourceCode.length() && sourceCode[currentPos + 1] == '=') {
+                tokens.push_back({Token::EQUAL_EQUAL, "==", line, column});
+                currentPos += 2; column += 2;
+            } else {
+                tokens.push_back({Token::EQ, "=", line, column});
+                currentPos++; column++;
             }
             continue;
         }
-        
-        if (currentChar == '=') {
-            tokens.push_back({Token::EQ, "=", line, column});
-            currentPos++;
-            column++;
+
+        // !=
+        if (currentChar == '!') {
+            if (currentPos + 1 < sourceCode.length() && sourceCode[currentPos + 1] == '=') {
+                tokens.push_back({Token::BANG_EQUAL, "!=", line, column});
+                currentPos += 2; column += 2;
+            } else {
+                std::cerr << "Lexer Error: Unexpected character '!' at line " << line << ", column " << column << std::endl;
+                currentPos++; column++;
+            }
             continue;
         }
 
+        // < or <=
+        if (currentChar == '<') {
+            if (currentPos + 1 < sourceCode.length() && sourceCode[currentPos + 1] == '=') {
+                tokens.push_back({Token::LESS_EQUAL, "<=", line, column});
+                currentPos += 2; column += 2;
+            } else {
+                tokens.push_back({Token::LESS, "<", line, column});
+                currentPos++; column++;
+            }
+            continue;
+        }
+
+        // > or >=
+        if (currentChar == '>') {
+            if (currentPos + 1 < sourceCode.length() && sourceCode[currentPos + 1] == '=') {
+                tokens.push_back({Token::GREATER_EQUAL, ">=", line, column});
+                currentPos += 2; column += 2;
+            } else {
+                tokens.push_back({Token::GREATER, ">", line, column});
+                currentPos++; column++;
+            }
+            continue;
+        }
+
+        // Other single-char tokens
         if (currentChar == ';') {
             tokens.push_back({Token::SEMICOLON, ";", line, column});
-            currentPos++;
-            column++;
-            continue;
+            currentPos++; column++; continue;
         }
 
- 	if (currentChar == '+') {
+        if (currentChar == '+') {
             tokens.push_back({Token::PLUS, "+", line, column});
-            currentPos++;
-            column++;
-            continue;
+            currentPos++; column++; continue;
         }
 
-	if (currentChar == '-') {
+        if (currentChar == '-') {
             tokens.push_back({Token::MINUS, "-", line, column});
-            currentPos++;
-            column++;
-            continue;
+            currentPos++; column++; continue;
         }
 
-	if (currentChar == '*') {
+        if (currentChar == '*') {
             tokens.push_back({Token::STAR, "*", line, column});
-            currentPos++;
-            column++;
-            continue;
+            currentPos++; column++; continue;
         }
 
-	if (currentChar == '/') {
+        if (currentChar == '/') {
             tokens.push_back({Token::SLASH, "/", line, column});
-            currentPos++;
-            column++;
-            continue;
+            currentPos++; column++; continue;
         }
 
-	if (currentChar == '(') {
+        if (currentChar == '(') {
             tokens.push_back({Token::LPAREN, "(", line, column});
-            currentPos++;
-	    column++;
-            continue;
-        
-	}
-
-	if (currentChar == ')') {
-            tokens.push_back({Token::RPAREN, ")", line, column});
-            currentPos++;
-	    column++;
-            continue;
-        } 
-
-	if (currentChar == '{') {
-            tokens.push_back({Token::LBRACE, "{", line, column});
-            currentPos++;
-	    column++;
-            continue;
-	}
-	
-	if (currentChar == '}') {
-            tokens.push_back({Token::RBRACE, "}", line, column});
-            currentPos++;
-	    column++;
-            continue;
+            currentPos++; column++; continue;
         }
+
+        if (currentChar == ')') {
+            tokens.push_back({Token::RPAREN, ")", line, column});
+            currentPos++; column++; continue;
+        }
+
+        if (currentChar == '{') {
+            tokens.push_back({Token::LBRACE, "{", line, column});
+            currentPos++; column++; continue;
+        }
+
+        if (currentChar == '}') {
+            tokens.push_back({Token::RBRACE, "}", line, column});
+            currentPos++; column++; continue;
+        }
+
+        // Unknown character
+        std::cerr << "Lexer Error: Unknown character '" << currentChar << "' at line " << line << ", column " << column << std::endl;
+        currentPos++; column++;
     }
 
     tokens.push_back({Token::END_OF_FILE, "", line, column});
     return tokens;
 }
+

@@ -6,7 +6,6 @@
 #include <map>
 #include <unordered_map>
 #include <stdexcept>
-#include <algorithm>
 
 #include "lexer.hpp"
 #include "parser.hpp"
@@ -70,13 +69,11 @@ int main(int argc, char* argv[]) {
         return 2;
     }
 
-    // === Generate all function code first ===
     std::string text_section;
     for (const auto& func : ast_root->functions) {
         text_section += generateFunctionCode(func.get());
     }
 
-    // === Now write .data section after collecting all string literals ===
     asm_file << "section .data\n";
     asm_file << "  _print_int_format db \"%d\", 10, 0\n";
     asm_file << "  _print_str_format db \"%s\", 10, 0\n";
@@ -84,7 +81,6 @@ int main(int argc, char* argv[]) {
         asm_file << "  " << pair.second << " db " << escapeString(pair.first) << ", 0\n";
     }
 
-    // === Write .text section ===
     asm_file << "\nsection .text\n";
     asm_file << "global _start\n";
     asm_file << "extern printf\n";
@@ -130,15 +126,21 @@ std::string generateCode(const ASTNode* node) {
 
         case ASTNode::NodeType::VARIABLE_REFERENCE: {
             const auto* ref_node = static_cast<const VariableReferenceNode*>(node);
-            int offset = stack_offsets.at(ref_node->name);
+            if (stack_offsets.find(ref_node->name) == stack_offsets.end()) {
+                throw std::runtime_error("Code generation error: variable '" + ref_node->name + "' used before declaration.");
+            }
+            int offset = stack_offsets[ref_node->name];
             assembly += "  mov rax, qword [rbp + " + std::to_string(offset) + "]\n";
             break;
         }
 
         case ASTNode::NodeType::VARIABLE_ASSIGNMENT: {
             const auto* assign_node = static_cast<const VariableAssignmentNode*>(node);
+            if (stack_offsets.find(assign_node->name) == stack_offsets.end()) {
+                throw std::runtime_error("Code generation error: variable '" + assign_node->name + "' assigned before declaration.");
+            }
             assembly += generateCode(assign_node->expression.get());
-            int offset = stack_offsets.at(assign_node->name);
+            int offset = stack_offsets[assign_node->name];
             assembly += "  mov qword [rbp + " + std::to_string(offset) + "], rax\n";
             break;
         }
@@ -153,13 +155,37 @@ std::string generateCode(const ASTNode* node) {
             switch (bin->op_type) {
                 case Token::PLUS: assembly += "  add rbx, rax\n  mov rax, rbx\n"; break;
                 case Token::MINUS: assembly += "  sub rbx, rax\n  mov rax, rbx\n"; break;
-                case Token::STAR: assembly += "  imul rbx\n"; break;
+                case Token::STAR: assembly += "  imul rax, rbx\n"; break;
                 case Token::SLASH:
                     assembly += "  mov rcx, rax\n";
                     assembly += "  mov rax, rbx\n";
                     assembly += "  mov rbx, rcx\n";
                     assembly += "  xor rdx, rdx\n";
                     assembly += "  idiv rbx\n";
+                    break;
+                case Token::EQUAL_EQUAL:
+                    assembly += "  cmp rbx, rax\n";
+                    assembly += "  sete al\n  movzx rax, al\n";
+                    break;
+                case Token::BANG_EQUAL:
+                    assembly += "  cmp rbx, rax\n";
+                    assembly += "  setne al\n  movzx rax, al\n";
+                    break;
+                case Token::LESS:
+                    assembly += "  cmp rbx, rax\n";
+                    assembly += "  setl al\n  movzx rax, al\n";
+                    break;
+                case Token::GREATER:
+                    assembly += "  cmp rbx, rax\n";
+                    assembly += "  setg al\n  movzx rax, al\n";
+                    break;
+                case Token::LESS_EQUAL:
+                    assembly += "  cmp rbx, rax\n";
+                    assembly += "  setle al\n  movzx rax, al\n";
+                    break;
+                case Token::GREATER_EQUAL:
+                    assembly += "  cmp rbx, rax\n";
+                    assembly += "  setge al\n  movzx rax, al\n";
                     break;
                 default:
                     throw std::runtime_error("Unknown binary operator.");
@@ -170,21 +196,46 @@ std::string generateCode(const ASTNode* node) {
         case ASTNode::NodeType::RETURN_STATEMENT: {
             const auto* ret = static_cast<const ReturnStatementNode*>(node);
             assembly += generateCode(ret->expression.get());
-            assembly += "  jmp .main_epilogue\n";
+            //assembly += "  jmp .main_epilogue\n";
             break;
         }
 
-        case ASTNode::NodeType::VARIABLE_DECLARATION: {
-            // Handled in function prologue
+        case ASTNode::NodeType::IF_STATEMENT: {
+            const auto* if_node = static_cast<const IfStatementNode*>(node);
+            static int if_counter = 0;
+            int label_id = if_counter++;
+
+            std::string true_label = ".if_true_" + std::to_string(label_id);
+            std::string false_label = ".if_false_" + std::to_string(label_id);
+            std::string end_label = ".if_end_" + std::to_string(label_id);
+
+            assembly += generateCode(if_node->condition.get());
+            assembly += "  cmp rax, 0\n";
+            assembly += "  je " + false_label + "\n";
+
+            assembly += true_label + ":\n";
+            for (const auto& stmt : if_node->true_block) {
+                assembly += generateCode(stmt.get());
+            }
+            assembly += "  jmp " + end_label + "\n";
+
+            assembly += false_label + ":\n";
+            for (const auto& stmt : if_node->false_block) {
+                assembly += generateCode(stmt.get());
+            }
+
+            assembly += end_label + ":\n";
             break;
         }
+
+        case ASTNode::NodeType::VARIABLE_DECLARATION:
+            break;
 
         case ASTNode::NodeType::PRINT_STATEMENT: {
             const auto* print_node = static_cast<const PrintStatementNode*>(node);
             assembly += generateCode(print_node->expression.get());
 
-            if (print_node->expression->node_type == ASTNode::NodeType::STRING_LITERAL_EXPRESSION ||
-                print_node->expression->node_type == ASTNode::NodeType::VARIABLE_REFERENCE) {
+            if (print_node->expression->node_type == ASTNode::NodeType::STRING_LITERAL_EXPRESSION) {
                 assembly += "  mov rsi, rax\n";
                 assembly += "  lea rdi, [rel _print_str_format]\n";
             } else {
@@ -242,6 +293,7 @@ std::string generateFunctionCode(const FunctionDefinitionNode* func_node) {
 
     if (func_node->name == "main") {
         assembly += ".main_epilogue:\n";
+        // assembly += "  mov rax, 0\n";
     }
 
     assembly += "  mov rsp, rbp\n";

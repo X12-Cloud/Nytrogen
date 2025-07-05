@@ -32,11 +32,14 @@ private:
     std::unique_ptr<VariableReferenceNode> parseVariableReference();
     std::unique_ptr<ReturnStatementNode> parseReturnStatement();
     std::unique_ptr<PrintStatementNode> parsePrintStatement();
+    std::unique_ptr<IfStatementNode> parseIfStatement();
 
     // Expression parsing methods (now hierarchical for precedence)
-    std::unique_ptr<ASTNode> parseExpression(); // Handles + and - (lowest precedence)
-    std::unique_ptr<ASTNode> parseTerm();       // Handles * and / (medium precedence)
-    std::unique_ptr<ASTNode> parseFactor();     // Handles literals, variables, and parentheses (highest precedence)
+    std::unique_ptr<ASTNode> parseExpression(); 		// Handles + and - (lowest precedence)
+    std::unique_ptr<ASTNode> parseComparisonExpression(); 	// Handles == and > or < and <= or >=
+    std::unique_ptr<ASTNode> parseTerm();       		// Handles * and / (medium precedence)
+    std::unique_ptr<ASTNode> parseFactor();     		// Handles literals, variables, and parentheses (highest precedence)
+    std::unique_ptr<ASTNode> parseAdditiveExpression();
 
     std::unique_ptr<IntegerLiteralExpressionNode> parseIntegerLiteralExpression(); // Specific helper for int literals
     std::unique_ptr<StringLiteralExpressionNode> parseStringLiteralExpression();
