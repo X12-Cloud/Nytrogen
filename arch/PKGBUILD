@@ -1,0 +1,23 @@
+pkgname=nytrogen
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="A custom compiler built with C++ and CMake by X12-Cloud"
+arch=('x86_64')
+url="https://github.com/X12-Cloud/Nytrogen"
+license=('MIT')
+depends=('gcc' 'cmake' 'make')
+makedepends=('git')
+source=("git+$url.git")
+md5sums=('SKIP')
+
+build() {
+  cd "$srcdir/Nytrogen"
+  chmod +x build.sh
+  ./build.sh
+}
+
+package() {
+  cd "$srcdir/Nytrogen"
+  install -Dm755 build/Nytro "$pkgdir/usr/bin/nytro"
+}
+
