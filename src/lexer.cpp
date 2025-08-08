@@ -9,12 +9,19 @@ std::string Token::typeToString() const {
         case KEYWORD_PRINT: return "KEYWORD_PRINT";
         case INTEGER_LITERAL: return "INTEGER_LITERAL";
         case STRING_LITERAL: return "STRING_LITERAL";
+	case TRUE: return "TRUE";
+	case FALSE: return "FALSE";
+	case CHARACTER_LITERAL: return "CHARACTER_LITERAL";
         case KEYWORD_INT: return "KEYWORD_INT";
         case KEYWORD_VOID: return "KEYWORD_VOID";
         case KEYWORD_STRING: return "KEYWORD_STRING";
         case KEYWORD_IF: return "KEYWORD_IF";
+	case KEYWORD_WHILE: return "KEYWORD_WHILE";
         case KEYWORD_ELSE: return "KEYWORD_ELSE";
-        case IDENTIFIER: return "IDENTIFIER";
+	case KEYWORD_BOOL: return "KEYWORD_BOOL";
+        case KEYWORD_CHAR: return "KEYWORD_CHAR";
+        case KEYWORD_FOR: return "KEYWORD_FOR";
+	case IDENTIFIER: return "IDENTIFIER";
         case EQ: return "EQ";
         case PLUS: return "PLUS";
         case MINUS: return "MINUS";
@@ -83,6 +90,24 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
             continue;
         }
 
+        // Character literal
+        if (currentChar == '\'') {
+            std::string value;
+            int startColumn = column;
+            currentPos++; column++; // Skip initial quote
+            if (currentPos < sourceCode.length()) {
+                value += sourceCode[currentPos++];
+                column++;
+            }
+            if (currentPos >= sourceCode.length() || sourceCode[currentPos] != '\'') {
+                std::cerr << "Lexer Error: Unclosed or invalid character literal at line " << line << ", column " << startColumn << std::endl;
+            } else {
+                currentPos++; column++; // Skip closing quote
+            }
+            tokens.push_back({Token::CHARACTER_LITERAL, value, line, startColumn});
+            continue;
+        }
+
         // String literal
         if (currentChar == '"') {
             std::string value;
@@ -116,7 +141,13 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
             else if (value == "print") tokens.push_back({Token::KEYWORD_PRINT, value, line, startColumn});
             else if (value == "if") tokens.push_back({Token::KEYWORD_IF, value, line, startColumn});
             else if (value == "else") tokens.push_back({Token::KEYWORD_ELSE, value, line, startColumn});
-            else tokens.push_back({Token::IDENTIFIER, value, line, startColumn});
+	    else if (value == "while") tokens.push_back({Token::KEYWORD_WHILE, value, line, startColumn});
+	    else if (value == "bool") tokens.push_back({Token::KEYWORD_BOOL, value, line, startColumn});
+	    else if (value == "char") tokens.push_back({Token::KEYWORD_CHAR, value, line, startColumn});		
+	    else if (value == "true") tokens.push_back({Token::TRUE, value, line, startColumn});
+	    else if (value == "false") tokens.push_back({Token::FALSE, value, line, startColumn});
+	    else if (value == "for") tokens.push_back({Token::KEYWORD_FOR, value, line, startColumn});
+	    else tokens.push_back({Token::IDENTIFIER, value, line, startColumn});
             continue;
         }
 
@@ -227,4 +258,3 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
     tokens.push_back({Token::END_OF_FILE, "", line, column});
     return tokens;
 }
-

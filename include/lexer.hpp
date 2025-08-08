@@ -13,10 +13,17 @@ struct Token {
         KEYWORD_IF,
         KEYWORD_ELSE,
         KEYWORD_VOID,
+	KEYWORD_WHILE,
+	KEYWORD_BOOL,
+	KEYWORD_CHAR,
+	KEYWORD_FOR,
 
         IDENTIFIER,
         INTEGER_LITERAL,
         STRING_LITERAL,
+	TRUE,
+	FALSE,
+	CHARACTER_LITERAL,
 
         EQ,             // =
         EQUAL_EQUAL,    // ==

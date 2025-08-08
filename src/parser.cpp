@@ -52,6 +52,24 @@ std::unique_ptr<StringLiteralExpressionNode> Parser::parseStringLiteralExpressio
     return std::make_unique<StringLiteralExpressionNode>(str_token.value, str_token.line, str_token.column);
 }
 
+std::unique_ptr<BooleanLiteralExpressionNode> Parser::parseBooleanLiteralExpression() {
+    const Token& bool_token = peek();
+    if (bool_token.type == Token::TRUE) {
+        consume();
+        return std::make_unique<BooleanLiteralExpressionNode>(true, bool_token.line, bool_token.column);
+    } else if (bool_token.type == Token::FALSE) {
+        consume();
+        return std::make_unique<BooleanLiteralExpressionNode>(false, bool_token.line, bool_token.column);
+    }
+    throw std::runtime_error("Expected 'true' or 'false' literal.");
+}
+
+std::unique_ptr<CharacterLiteralExpressionNode> Parser::parseCharacterLiteralExpression() {
+    const Token& char_token = peek();
+    expect(Token::CHARACTER_LITERAL, "Expected a character literal.");
+    return std::make_unique<CharacterLiteralExpressionNode>(char_token.value[0], char_token.line, char_token.column);
+}
+
 std::unique_ptr<ReturnStatementNode> Parser::parseReturnStatement() {
     const Token& return_token = peek();
     expect(Token::KEYWORD_RETURN, "Expected 'return' keyword.");
@@ -105,20 +123,104 @@ std::unique_ptr<IfStatementNode> Parser::parseIfStatement() {
     );
 }
 
-std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
-    const Token& type_token = peek();
-    if (type_token.type != Token::KEYWORD_INT && type_token.type != Token::KEYWORD_STRING) {
-        throw std::runtime_error("Expected 'int' or 'string' keyword for variable declaration.");
+std::unique_ptr<WhileStatementNode> Parser::parseWhileStatement() {
+    const Token& while_token = peek();
+    expect(Token::KEYWORD_WHILE, "Expected 'while' keyword.");
+    expect(Token::LPAREN, "Expected '(' after 'while'.");
+
+    auto condition = parseExpression();
+
+    expect(Token::RPAREN, "Expected ')' after while condition.");
+    expect(Token::LBRACE, "Expected '{' to begin 'while' block.");
+
+    std::vector<std::unique_ptr<ASTNode>> body;
+    while (peek().type != Token::RBRACE && peek().type != Token::END_OF_FILE) {
+        body.push_back(parseStatement());
     }
 
+    expect(Token::RBRACE, "Expected '}' to close 'while' block.");
+
+    return std::make_unique<WhileStatementNode>(
+        std::move(condition),
+        std::move(body),
+        while_token.line, while_token.column
+    );
+}
+
+    std::unique_ptr<ForStatementNode> Parser::parseForStatement() {
+    const Token& for_token = peek();
+    expect(Token::KEYWORD_FOR, "Expected 'for' keyword.");
+    expect(Token::LPAREN, "Expected '(' after 'for'.");
+
+    std::unique_ptr<ASTNode> initializer = nullptr;
+    // Parse initializer (optional)
+    if (peek().type != Token::SEMICOLON) {
+        // If it starts with a type keyword, it's a declaration
+        if (peek().type == Token::KEYWORD_INT || peek().type == Token::KEYWORD_STRING ||
+            peek().type == Token::KEYWORD_BOOL || peek().type == Token::KEYWORD_CHAR) {
+            initializer = parseVariableDeclaration();
+        } else {
+            // Otherwise, it's an expression (assignment or function call)
+            initializer = parseExpression();
+        }
+    }
+    expect(Token::SEMICOLON, "Expected ';' after for loop initializer.");
+
+    std::unique_ptr<ASTNode> condition = nullptr;
+    // Parse condition (optional)
+    if (peek().type != Token::SEMICOLON) {
+        condition = parseExpression();
+    }
+    expect(Token::SEMICOLON, "Expected ';' after for loop condition.");
+
+    std::unique_ptr<ASTNode> increment = nullptr;
+    // Parse increment (optional)
+    if (peek().type != Token::RPAREN) {
+        // The increment part can be an expression or an assignment
+        if (peek().type == Token::IDENTIFIER && peek(1).type == Token::EQ) {
+            increment = parseVariableAssignment();
+        } else {
+            increment = parseExpression();
+        }
+    }
+    expect(Token::RPAREN, "Expected ')' after for loop increment.");
+
+    expect(Token::LBRACE, "Expected '{' to begin 'for' block.");
+
+    std::vector<std::unique_ptr<ASTNode>> body;
+    while (peek().type != Token::RBRACE && peek().type != Token::END_OF_FILE) {
+        body.push_back(parseStatement());
+    }
+
+    expect(Token::RBRACE, "Expected '}' to close 'for' block.");
+
+    return std::make_unique<ForStatementNode>(
+        std::move(initializer),
+        std::move(condition),
+        std::move(increment),
+        std::move(body),
+        for_token.line, for_token.column
+    );
+}
+
+std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
+    const Token& type_token = peek();
+    if (type_token.type != Token::KEYWORD_INT && type_token.type != Token::KEYWORD_STRING &&
+        type_token.type != Token::KEYWORD_BOOL && type_token.type != Token::KEYWORD_CHAR) {
+        throw std::runtime_error("Expected 'int', 'string', 'bool', or 'char' keyword for variable declaration.");
+    }
     consume();
 
     const Token& id_token = peek();
     expect(Token::IDENTIFIER, "Expected variable name after type.");
 
-    expect(Token::SEMICOLON, "Expected ';' after variable declaration.");
+    std::unique_ptr<ASTNode> initial_value = nullptr;
+    if (peek().type == Token::EQ) {
+        consume(); // Consume '='
+        initial_value = parseExpression();
+    }
 
-    return std::make_unique<VariableDeclarationNode>(id_token.value, type_token.type, id_token.line, id_token.column);
+    return std::make_unique<VariableDeclarationNode>(id_token.value, type_token.type, std::move(initial_value), id_token.line, id_token.column);
 }
 
 std::unique_ptr<VariableAssignmentNode> Parser::parseVariableAssignment() {
@@ -132,7 +234,6 @@ std::unique_ptr<VariableAssignmentNode> Parser::parseVariableAssignment() {
     } else {
         expr_node = parseExpression();
     }
-    expect(Token::SEMICOLON, "Expected ';' after assignment.");
     return std::make_unique<VariableAssignmentNode>(id_token.value, std::move(expr_node), id_token.line, id_token.column);
 }
 
@@ -178,6 +279,10 @@ std::unique_ptr<ASTNode> Parser::parseFactor() {
         return expr;
     } else if (current_token.type == Token::STRING_LITERAL) {
         return parseStringLiteralExpression();
+    } else if (current_token.type == Token::TRUE || current_token.type == Token::FALSE) {
+        return parseBooleanLiteralExpression();
+    } else if (current_token.type == Token::CHARACTER_LITERAL) {
+        return parseCharacterLiteralExpression();
     }
     throw std::runtime_error("Parser Error: Expected an integer literal, identifier, or '(' for an expression factor. Got '" +
                              current_token.value + "' at line " + std::to_string(current_token.line) +
@@ -240,19 +345,30 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
             return parseReturnStatement();
         case Token::KEYWORD_INT:
         case Token::KEYWORD_STRING:
-            return parseVariableDeclaration();
+        case Token::KEYWORD_BOOL:
+        case Token::KEYWORD_CHAR: {
+            auto decl_node = parseVariableDeclaration();
+            expect(Token::SEMICOLON, "Expected ';' after variable declaration.");
+            return decl_node;
+        }
         case Token::IDENTIFIER:
             if (peek(1).type == Token::LPAREN) {
                 auto functionCall = parseFunctionCall();
                 expect(Token::SEMICOLON, "Expected ';' after function call statement.");
                 return functionCall;
             } else {
-                return parseVariableAssignment();
+                auto assign_node = parseVariableAssignment();
+                expect(Token::SEMICOLON, "Expected ';' after variable assignment.");
+                return assign_node;
             }
         case Token::KEYWORD_PRINT:
             return parsePrintStatement();
         case Token::KEYWORD_IF:
             return parseIfStatement();
+        case Token::KEYWORD_WHILE:
+            return parseWhileStatement();
+        case Token::KEYWORD_FOR:
+            return parseForStatement();
         default:
             throw std::runtime_error("Parser Error: Unexpected token in statement: '" +
                                      peek().value + "' at line " + std::to_string(peek().line) +

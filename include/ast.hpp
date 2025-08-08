@@ -22,6 +22,10 @@ struct ASTNode {
         IF_STATEMENT = 10,
         ELSE_STATEMENT = 11,
         FUNCTION_CALL = 12,
+	WHILE_STATEMENT = 13,
+	BOOLEAN_LITERAL_EXPRESSION = 14,
+	CHARACTER_LITERAL_EXPRESSION = 15,
+	FOR_STATEMENT = 16,
     };
 
     NodeType node_type;
@@ -50,6 +54,22 @@ struct StringLiteralExpressionNode : public ASTNode {
         : ASTNode(NodeType::STRING_LITERAL_EXPRESSION, line, column), value(std::move(val)) {}
 };
 
+// Node representing boolean literals (e.g., true)
+struct BooleanLiteralExpressionNode : public ASTNode {
+    bool value;
+
+    BooleanLiteralExpressionNode(int val, int line = -1, int column = -1)
+        : ASTNode(NodeType::BOOLEAN_LITERAL_EXPRESSION, line, column), value(val) {}
+};
+
+// Node representing character literals (e.g., 'x')
+struct CharacterLiteralExpressionNode : public ASTNode {
+    char value;
+
+    CharacterLiteralExpressionNode(int val, int line = -1, int column = -1)
+        : ASTNode(NodeType::CHARACTER_LITERAL_EXPRESSION, line, column), value(val) {}
+};
+
 // Node for return statements (e.g., return x;)
 struct ReturnStatementNode : public ASTNode {
     std::unique_ptr<ASTNode> expression;
@@ -61,10 +81,11 @@ struct ReturnStatementNode : public ASTNode {
 // Node for variable declarations (e.g., int/string x;)
 struct VariableDeclarationNode : public ASTNode {
     std::string name;
-    Token::Type type; // either KEYWORD_INT or KEYWORD_STRING
+    Token::Type type; // either KEYWORD_INT, KEYWORD_STRING, KEYWORD_BOOL, or KEYWORD_CHAR
+    std::unique_ptr<ASTNode> initial_value;
 
-    VariableDeclarationNode(std::string name, Token::Type type, int line, int column)
-	: ASTNode(NodeType::VARIABLE_DECLARATION, line, column), name(std::move(name)), type(type) {}
+    VariableDeclarationNode(std::string name, Token::Type type, std::unique_ptr<ASTNode> initial_val = nullptr, int line = -1, int column = -1)
+	: ASTNode(NodeType::VARIABLE_DECLARATION, line, column), name(std::move(name)), type(type), initial_value(std::move(initial_val)) {}
 };
 
 
@@ -114,6 +135,33 @@ struct FunctionCallNode : public ASTNode {
         : ASTNode(NodeType::FUNCTION_CALL, line, column),
           function_name(std::move(name)),
           arguments(std::move(args)) {}
+};
+
+// Node for while statements
+struct WhileStatementNode : public ASTNode {
+    std::unique_ptr<ASTNode> condition;
+    std::vector<std::unique_ptr<ASTNode>> body;
+
+    WhileStatementNode(std::unique_ptr<ASTNode> cond, std::vector<std::unique_ptr<ASTNode>> body_stmts, int line = -1, int column = -1)
+        : ASTNode(NodeType::WHILE_STATEMENT, line, column),
+          condition(std::move(cond)),
+          body(std::move(body_stmts)) {}
+};
+
+// Node for for statements
+struct ForStatementNode : public ASTNode {
+    std::unique_ptr<ASTNode> initializer;
+    std::unique_ptr<ASTNode> condition;
+    std::unique_ptr<ASTNode> increment;
+    std::vector<std::unique_ptr<ASTNode>> body;
+
+    ForStatementNode(std::unique_ptr<ASTNode> init, std::unique_ptr<ASTNode> cond, std::unique_ptr<ASTNode> incr, std::vector<std::unique_ptr<ASTNode>> body_stmts,
+                     int line = -1, int column = -1)
+        : ASTNode(NodeType::FOR_STATEMENT, line, column),
+          initializer(std::move(init)),
+          condition(std::move(cond)),
+          increment(std::move(incr)),
+          body(std::move(body_stmts)) {}
 };
 
 // Node for Arthemetic expression

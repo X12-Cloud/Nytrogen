@@ -77,6 +77,7 @@ int main(int argc, char* argv[]) {
     asm_file << "section .data\n";
     asm_file << "  _print_int_format db \"%d\", 10, 0\n";
     asm_file << "  _print_str_format db \"%s\", 10, 0\n";
+    asm_file << "  _print_char_format db \"%c\", 10, 0\n";
     for (const auto& pair : string_literals) {
         asm_file << "  " << pair.second << " db " << escapeString(pair.first) << ", 0\n";
     }
@@ -121,6 +122,18 @@ std::string generateCode(const ASTNode* node) {
         case ASTNode::NodeType::INTEGER_LITERAL_EXPRESSION: {
             const auto* int_node = static_cast<const IntegerLiteralExpressionNode*>(node);
             assembly += "  mov rax, " + std::to_string(int_node->value) + "\n";
+            break;
+        }
+
+        case ASTNode::NodeType::BOOLEAN_LITERAL_EXPRESSION: {
+            const auto* bool_node = static_cast<const BooleanLiteralExpressionNode*>(node);
+            assembly += "  mov rax, " + std::to_string(bool_node->value) + "\n";
+            break;
+        }
+
+        case ASTNode::NodeType::CHARACTER_LITERAL_EXPRESSION: {
+            const auto* char_node = static_cast<const CharacterLiteralExpressionNode*>(node);
+            assembly += "  mov rax, " + std::to_string(static_cast<int>(char_node->value)) + "\n";
             break;
         }
 
@@ -228,8 +241,77 @@ std::string generateCode(const ASTNode* node) {
             break;
         }
 
-        case ASTNode::NodeType::VARIABLE_DECLARATION:
+        case ASTNode::NodeType::WHILE_STATEMENT: {
+            const auto* while_node = static_cast<const WhileStatementNode*>(node);
+            static int while_counter = 0;
+            int label_id = while_counter++;
+
+            std::string start_label = ".while_start_" + std::to_string(label_id);
+            std::string end_label = ".while_end_" + std::to_string(label_id);
+
+            assembly += start_label + ":\n";
+            assembly += generateCode(while_node->condition.get());
+            assembly += "  cmp rax, 0\n";
+            assembly += "  je " + end_label + "\n";
+
+            for (const auto& stmt : while_node->body) {
+                assembly += generateCode(stmt.get());
+            }
+
+            assembly += "  jmp " + start_label + "\n";
+            assembly += end_label + ":\n";
             break;
+        }
+
+        case ASTNode::NodeType::FOR_STATEMENT: {
+            const auto* for_node = static_cast<const ForStatementNode*>(node);
+            static int for_counter = 0;
+            int label_id = for_counter++;
+
+            std::string loop_start_label = ".for_loop_start_" + std::to_string(label_id);
+            std::string loop_condition_label = ".for_loop_condition_" + std::to_string(label_id);
+            std::string loop_end_label = ".for_loop_end_" + std::to_string(label_id);
+
+            if (for_node->initializer) {
+                assembly += generateCode(for_node->initializer.get());
+            }
+            assembly += "  jmp " + loop_condition_label + "\n";
+
+            assembly += loop_start_label + ":\n";
+            for (const auto& stmt : for_node->body) {
+                assembly += generateCode(stmt.get());
+            }
+            if (for_node->increment) {
+                assembly += generateCode(for_node->increment.get());
+            }
+
+            assembly += loop_condition_label + ":\n";
+            if (for_node->condition) {
+                assembly += generateCode(for_node->condition.get());
+                assembly += "  cmp rax, 0\n";
+                assembly += "  jne " + loop_start_label + "\n";
+            } else { // No condition means infinite loop, jump directly to start
+                assembly += "  jmp " + loop_start_label + "\n";
+            }
+            assembly += loop_end_label + ":\n";
+            break;
+        }
+
+        case ASTNode::NodeType::VARIABLE_DECLARATION: {
+            const auto* decl_node = static_cast<const VariableDeclarationNode*>(node);
+            current_stack_offset -= 8; // Allocate space for the new variable
+            stack_offsets[decl_node->name] = current_stack_offset;
+            assembly += "  sub rsp, 8\n"; // Adjust stack pointer
+
+            if (decl_node->initial_value) {
+                assembly += generateCode(decl_node->initial_value.get());
+                assembly += "  mov qword [rbp + " + std::to_string(current_stack_offset) + "], rax\n";
+            } else {
+                // Initialize to 0 if no initial value is provided
+                assembly += "  mov qword [rbp + " + std::to_string(current_stack_offset) + "], 0\n";
+            }
+            break;
+        }
 
         case ASTNode::NodeType::PRINT_STATEMENT: {
             const auto* print_node = static_cast<const PrintStatementNode*>(node);
@@ -238,6 +320,9 @@ std::string generateCode(const ASTNode* node) {
             if (print_node->expression->node_type == ASTNode::NodeType::STRING_LITERAL_EXPRESSION) {
                 assembly += "  mov rsi, rax\n";
                 assembly += "  lea rdi, [rel _print_str_format]\n";
+            } else if (print_node->expression->node_type == ASTNode::NodeType::CHARACTER_LITERAL_EXPRESSION) {
+                assembly += "  mov rsi, rax\n";
+                assembly += "  lea rdi, [rel _print_char_format]\n";
             } else {
                 assembly += "  mov rsi, rax\n";
                 assembly += "  lea rdi, [rel _print_int_format]\n";
@@ -278,62 +363,39 @@ std::string generateFunctionCode(const FunctionDefinitionNode* func_node) {
     assembly += "  push rbp\n";
     assembly += "  mov rbp, rsp\n";
 
-    // Allocate space for local variables
-    int total_space = 0;
-    std::vector<std::string> locals;
-    for (const auto& stmt : func_node->body_statements) {
-        if (stmt->node_type == ASTNode::NodeType::VARIABLE_DECLARATION) {
-            const auto* decl = static_cast<const VariableDeclarationNode*>(stmt.get());
-            current_stack_offset -= 8;
-            stack_offsets[decl->name] = current_stack_offset;
-            locals.push_back(decl->name);
-            total_space += 8;
-        }
-    }
-
-    if (total_space > 0) {
-        if (total_space % 16 != 0) total_space = ((total_space + 15) / 16) * 16;
-        assembly += "  sub rsp, " + std::to_string(total_space) + "\n";
-    }
-
     // Assign offsets to parameters
-    int param_offset = 16; // Parameters start at rbp + 16
+    // Parameters are passed on the stack, starting at rbp + 16 (return address + old rbp)
+    int param_offset = 16;
     for (const auto& param : func_node->parameters) {
         stack_offsets[param->name] = param_offset;
-        param_offset += 8;
+        param_offset += 8; // Assuming 8-byte parameters (qword)
     }
 
-    for (const auto& name : locals) {
-        int offset = stack_offsets[name];
-        assembly += "  mov qword [rbp + " + std::to_string(offset) + "], 0\n";
-    }
-
+    // Process function body statements
     for (const auto& stmt : func_node->body_statements) {
-        if (stmt->node_type != ASTNode::NodeType::VARIABLE_DECLARATION) {
-            assembly += generateCode(stmt.get());
-        }
+        assembly += generateCode(stmt.get());
     }
 
+    // Function epilogue
     if (func_node->name == "main") {
         assembly += ".main_epilogue:\n";
-        // assembly += "  mov rax, 0\n";
+        // For main, the return value is in rax, which is moved to rdi for syscall 60 (exit)
     }
 
-    assembly += "  mov rsp, rbp\n";
-    assembly += "  pop rbp\n";
-    assembly += "  ret\n\n";
+    assembly += "  mov rsp, rbp\n"; // Restore stack pointer
+    assembly += "  pop rbp\n";      // Restore base pointer
+    assembly += "  ret\n\n";        // Return from function
     return assembly;
 }
 
 std::string escapeString(const std::string& raw) {
     std::string out = "\"";
     for (char c : raw) {
-        if (c == '\\') out += "\\\\";
-        else if (c == '"') out += "\\\"";
-        else if (c == '\n') out += "\\n";
+        if (c == '\\') out += "\\";
+        else if (c == '"') out += "\"";
+        else if (c == '\n') out += "\n";
         else out += c;
     }
     out += "\"";
     return out;
 }
-

@@ -32,6 +32,8 @@ private:
     std::unique_ptr<ReturnStatementNode> parseReturnStatement();
     std::unique_ptr<PrintStatementNode> parsePrintStatement();
     std::unique_ptr<IfStatementNode> parseIfStatement();
+    std::unique_ptr<WhileStatementNode> parseWhileStatement();
+    std::unique_ptr<ForStatementNode> parseForStatement();
     std::unique_ptr<FunctionCallNode> parseFunctionCall();
     std::vector<std::unique_ptr<ParameterNode>> parseParameters();
 
@@ -44,6 +46,8 @@ private:
 
     std::unique_ptr<IntegerLiteralExpressionNode> parseIntegerLiteralExpression(); // Specific helper for int literals
     std::unique_ptr<StringLiteralExpressionNode> parseStringLiteralExpression();
+    std::unique_ptr<BooleanLiteralExpressionNode> parseBooleanLiteralExpression();
+    std::unique_ptr<CharacterLiteralExpressionNode> parseCharacterLiteralExpression();
     std::unique_ptr<FunctionDefinitionNode> parseFunctionDefinition();
 };
 
