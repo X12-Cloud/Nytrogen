@@ -16,11 +16,12 @@ struct ASTNode {
         VARIABLE_ASSIGNMENT = 4,
         VARIABLE_REFERENCE = 5,
         FUNCTION_DEFINITION = 6,
-	BINARY_OPERATION_EXPRESSION = 7,
-	PRINT_STATEMENT = 8,
-	STRING_LITERAL_EXPRESSION = 9,
-	IF_STATEMENT = 10,
-	ELSE_STATEMENT = 11,
+        BINARY_OPERATION_EXPRESSION = 7,
+        PRINT_STATEMENT = 8,
+        STRING_LITERAL_EXPRESSION = 9,
+        IF_STATEMENT = 10,
+        ELSE_STATEMENT = 11,
+        FUNCTION_CALL = 12,
     };
 
     NodeType node_type;
@@ -86,17 +87,33 @@ struct VariableReferenceNode : public ASTNode {
         : ASTNode(NodeType::VARIABLE_REFERENCE, line, column), name(std::move(var_name)) {}
 };
 
-// Node for function definitions (e.g., int main()
+struct ParameterNode {
+    Token::Type type;
+    std::string name;
+};
+
+// Node for function definitions (e.g., int main() {})
 struct FunctionDefinitionNode : public ASTNode {
     Token::Type return_type_token;
     std::string name;
-
+    std::vector<std::unique_ptr<ParameterNode>> parameters;
     std::vector<std::unique_ptr<ASTNode>> body_statements;
 
     FunctionDefinitionNode(Token::Type ret_type, const std::string& func_name, int line = -1, int column = -1)
         : ASTNode(NodeType::FUNCTION_DEFINITION, line, column),
           return_type_token(ret_type),
 	            name(func_name) {}
+};
+
+// Node for function calls
+struct FunctionCallNode : public ASTNode {
+    std::string function_name;
+    std::vector<std::unique_ptr<ASTNode>> arguments;
+
+    FunctionCallNode(std::string name, std::vector<std::unique_ptr<ASTNode>> args, int line = -1, int column = -1)
+        : ASTNode(NodeType::FUNCTION_CALL, line, column),
+          function_name(std::move(name)),
+          arguments(std::move(args)) {}
 };
 
 // Node for Arthemetic expression

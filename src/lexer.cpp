@@ -10,6 +10,7 @@ std::string Token::typeToString() const {
         case INTEGER_LITERAL: return "INTEGER_LITERAL";
         case STRING_LITERAL: return "STRING_LITERAL";
         case KEYWORD_INT: return "KEYWORD_INT";
+        case KEYWORD_VOID: return "KEYWORD_VOID";
         case KEYWORD_STRING: return "KEYWORD_STRING";
         case KEYWORD_IF: return "KEYWORD_IF";
         case KEYWORD_ELSE: return "KEYWORD_ELSE";
@@ -30,6 +31,7 @@ std::string Token::typeToString() const {
 	case RPAREN: return "RPAREN";
         case LBRACE: return "LBRACE";
         case RBRACE: return "RBRACE";
+        case COMMA: return "COMMA";
         case END_OF_FILE: return "END_OF_FILE";
         case UNKNOWN: return "UNKNOWN";
     }
@@ -209,6 +211,11 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
 
         if (currentChar == '}') {
             tokens.push_back({Token::RBRACE, "}", line, column});
+            currentPos++; column++; continue;
+        }
+
+        if (currentChar == ',') {
+            tokens.push_back({Token::COMMA, ",", line, column});
             currentPos++; column++; continue;
         }
 

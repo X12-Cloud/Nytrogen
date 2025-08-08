@@ -12,6 +12,7 @@ struct Token {
         KEYWORD_STRING,
         KEYWORD_IF,
         KEYWORD_ELSE,
+        KEYWORD_VOID,
 
         IDENTIFIER,
         INTEGER_LITERAL,
@@ -35,6 +36,8 @@ struct Token {
         RPAREN,         // )
         LBRACE,         // {
         RBRACE,         // }
+
+        COMMA,          // ,
 
         END_OF_FILE,
         UNKNOWN

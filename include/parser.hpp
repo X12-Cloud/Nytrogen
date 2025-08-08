@@ -25,7 +25,6 @@ private:
     const Token& consume();
     void expect(Token::Type expected_type, const std::string& error_msg);
 
-    // AST node parsing methods
     std::unique_ptr<ASTNode> parseStatement(); // General statement parsing (e.g., return, var decl, assignment)
     std::unique_ptr<VariableDeclarationNode> parseVariableDeclaration();
     std::unique_ptr<VariableAssignmentNode> parseVariableAssignment();
@@ -33,10 +32,12 @@ private:
     std::unique_ptr<ReturnStatementNode> parseReturnStatement();
     std::unique_ptr<PrintStatementNode> parsePrintStatement();
     std::unique_ptr<IfStatementNode> parseIfStatement();
+    std::unique_ptr<FunctionCallNode> parseFunctionCall();
+    std::vector<std::unique_ptr<ParameterNode>> parseParameters();
 
     // Expression parsing methods (now hierarchical for precedence)
     std::unique_ptr<ASTNode> parseExpression(); 		// Handles + and - (lowest precedence)
-    std::unique_ptr<ASTNode> parseComparisonExpression(); 	// Handles == and > or < and <= or >=
+    std::unique_ptr<ASTNode> parseComparisonExpression(); 	// Handles == and > or < and <= or >= 
     std::unique_ptr<ASTNode> parseTerm();       		// Handles * and / (medium precedence)
     std::unique_ptr<ASTNode> parseFactor();     		// Handles literals, variables, and parentheses (highest precedence)
     std::unique_ptr<ASTNode> parseAdditiveExpression();

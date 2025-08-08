@@ -1,57 +1,30 @@
+int add(int a, int b) {
+    return a + b;
+}
+
 int main() {
+    int x;
+    x = 10;
+    int y;
+    y = 5;
 
-int a;
-int b;
-int result;
+    if (x > y) {
+        print("x is greater than y");
+    } else {
+        print("x is not greater than y");
+    }
 
-a = 10;
-b = 3;
+    int sum;
+    sum = add(x, y);
+    print(sum);
 
-print("Initial values:");
-print(a);
-print(b);
+    int product;
+    product = x * y;
+    print(product);
 
-result = a + b;
-print("Sum:");
-print(result);
+    if (x == 10) {
+        print("x is ten");
+    }
 
-result = a - b;
-print("Difference:");
-print(result);
-
-result = a * b;
-print("Product:");
-print(result);
-
-result = a / b;
-print("Quotient:");
-print(result);
-
-if (a > b) {
-    print("a is greater than b");
-} else {
-    print("a is NOT greater than b");
-}
-
-if (a == 10) {
-    print("a equals 10");
-} else {
-    print("a does not equal 10");
-}
-
-if (b != 5) {
-    print("b is not 5");
-} else {
-    print("b is 5");
-}
-
-if (a <= 10) {
-    print("a is less than or equal to 10");
-}
-
-if (b >= 3) {
-    print("b is at least 3");
-}
-
-return a;
+    return 0;
 }

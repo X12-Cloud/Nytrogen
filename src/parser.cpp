@@ -142,12 +142,35 @@ std::unique_ptr<VariableReferenceNode> Parser::parseVariableReference() {
     return std::make_unique<VariableReferenceNode>(id_token.value, id_token.line, id_token.column);
 }
 
+std::unique_ptr<FunctionCallNode> Parser::parseFunctionCall() {
+    const Token& id_token = consume(); // Consume the function name identifier
+
+    expect(Token::LPAREN, "Expected '(' after function name for a function call.");
+
+    std::vector<std::unique_ptr<ASTNode>> arguments;
+    if (peek().type != Token::RPAREN) {
+        arguments.push_back(parseExpression());
+        while (peek().type == Token::COMMA) {
+            consume(); // Consume the comma
+            arguments.push_back(parseExpression());
+        }
+    }
+
+    expect(Token::RPAREN, "Expected ')' after function call arguments.");
+
+    return std::make_unique<FunctionCallNode>(id_token.value, std::move(arguments), id_token.line, id_token.column);
+}
+
 std::unique_ptr<ASTNode> Parser::parseFactor() {
     const Token& current_token = peek();
     if (current_token.type == Token::INTEGER_LITERAL) {
         return parseIntegerLiteralExpression();
     } else if (current_token.type == Token::IDENTIFIER) {
-        return parseVariableReference();
+        if (peek(1).type == Token::LPAREN) {
+            return parseFunctionCall();
+        } else {
+            return parseVariableReference();
+        }
     } else if (current_token.type == Token::LPAREN) {
         consume();
         auto expr = parseExpression();
@@ -219,7 +242,13 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
         case Token::KEYWORD_STRING:
             return parseVariableDeclaration();
         case Token::IDENTIFIER:
-            return parseVariableAssignment();
+            if (peek(1).type == Token::LPAREN) {
+                auto functionCall = parseFunctionCall();
+                expect(Token::SEMICOLON, "Expected ';' after function call statement.");
+                return functionCall;
+            } else {
+                return parseVariableAssignment();
+            }
         case Token::KEYWORD_PRINT:
             return parsePrintStatement();
         case Token::KEYWORD_IF:
@@ -231,22 +260,52 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
     }
 }
 
+std::vector<std::unique_ptr<ParameterNode>> Parser::parseParameters() {
+    std::vector<std::unique_ptr<ParameterNode>> parameters;
+    expect(Token::LPAREN, "Expected '(' after function name.");
+
+    if (peek().type != Token::RPAREN) {
+        do {
+            auto param = std::make_unique<ParameterNode>();
+            const Token& type_token = consume();
+            if (type_token.type != Token::KEYWORD_INT && type_token.type != Token::KEYWORD_STRING) {
+                throw std::runtime_error("Expected 'int' or 'string' for parameter type.");
+            }
+            param->type = type_token.type;
+
+            const Token& name_token = consume();
+            if (name_token.type != Token::IDENTIFIER) {
+                throw std::runtime_error("Expected identifier for parameter name.");
+            }
+            param->name = name_token.value;
+            parameters.push_back(std::move(param));
+
+        } while (consume().type == Token::COMMA);
+         current_token_index--;
+    }
+
+    expect(Token::RPAREN, "Expected ')' after function parameters.");
+    return parameters;
+}
+
 std::unique_ptr<FunctionDefinitionNode> Parser::parseFunctionDefinition() {
     const Token& return_type_token = peek();
-    expect(Token::KEYWORD_INT, "Expected function return type (e.g., 'int').");
+    if (return_type_token.type != Token::KEYWORD_INT && return_type_token.type != Token::KEYWORD_VOID) {
+        throw std::runtime_error("Expected function return type (e.g., 'int' or 'void').");
+    }
+    consume();
 
     const Token& function_name_token = peek();
     expect(Token::IDENTIFIER, "Expected function name.");
-
-    expect(Token::LPAREN, "Expected '(' after function name.");
-    expect(Token::RPAREN, "Expected ')' after function parameters.");
-
-    expect(Token::LBRACE, "Expected '{' to begin function body.");
 
     auto func_def_node = std::make_unique<FunctionDefinitionNode>(
         return_type_token.type, function_name_token.value,
         return_type_token.line, return_type_token.column
     );
+
+    func_def_node->parameters = parseParameters();
+
+    expect(Token::LBRACE, "Expected '{' to begin function body.");
 
     while (peek().type != Token::RBRACE && peek().type != Token::END_OF_FILE) {
         func_def_node->body_statements.push_back(parseStatement());

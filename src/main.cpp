@@ -248,6 +248,19 @@ std::string generateCode(const ASTNode* node) {
             break;
         }
 
+        case ASTNode::NodeType::FUNCTION_CALL: {
+            const auto* call_node = static_cast<const FunctionCallNode*>(node);
+            for (int i = call_node->arguments.size() - 1; i >= 0; --i) {
+                assembly += generateCode(call_node->arguments[i].get());
+                assembly += "  push rax\n";
+            }
+            assembly += "  call " + call_node->function_name + "\n";
+            if (!call_node->arguments.empty()) {
+                assembly += "  add rsp, " + std::to_string(call_node->arguments.size() * 8) + "\n";
+            }
+            break;
+        }
+
         case ASTNode::NodeType::FUNCTION_DEFINITION:
         case ASTNode::NodeType::PROGRAM:
             throw std::runtime_error("Unexpected node in generateCode.");
@@ -265,6 +278,7 @@ std::string generateFunctionCode(const FunctionDefinitionNode* func_node) {
     assembly += "  push rbp\n";
     assembly += "  mov rbp, rsp\n";
 
+    // Allocate space for local variables
     int total_space = 0;
     std::vector<std::string> locals;
     for (const auto& stmt : func_node->body_statements) {
@@ -277,8 +291,17 @@ std::string generateFunctionCode(const FunctionDefinitionNode* func_node) {
         }
     }
 
-    if (total_space % 16 != 0) total_space = ((total_space + 15) / 16) * 16;
-    if (total_space > 0) assembly += "  sub rsp, " + std::to_string(total_space) + "\n";
+    if (total_space > 0) {
+        if (total_space % 16 != 0) total_space = ((total_space + 15) / 16) * 16;
+        assembly += "  sub rsp, " + std::to_string(total_space) + "\n";
+    }
+
+    // Assign offsets to parameters
+    int param_offset = 16; // Parameters start at rbp + 16
+    for (const auto& param : func_node->parameters) {
+        stack_offsets[param->name] = param_offset;
+        param_offset += 8;
+    }
 
     for (const auto& name : locals) {
         int offset = stack_offsets[name];
