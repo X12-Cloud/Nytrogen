@@ -33,20 +33,24 @@ ld out.o -o out
 ## 📚 Language Features
 
 ### Current Implementation
-- **Basic Syntax**
-  - Integer literals (e.g., `42`)
-  - String literals
-  - Variable declarations (`int x; //also works with string x;`)
-  - Variable assignments (`x = 10;`)
-  - Return statements (`return 42;`)
-  - Print statements
-  - Arithmetic Operations
+Nytrogen supports a growing set of features, focusing on core programming constructs:
+
+*   **Data Types:** `int`, `bool`, `char`, and basic `string` literals.
+*   **Variables:** Declarations and assignments for all supported types.
+*   **Arithmetic Operations:** Standard integer operations (`+`, `-`, `*`, `/`).
+*   **Control Flow:**
+    *   Conditional statements (`if`/`else`).
+    *   Looping constructs (`while` loops, `for` loops).
+*   **Functions:**
+    *   User-defined functions with parameters and return values.
+    *   Function calls.
+*   **Basic I/O:** `print` statement for integers, booleans, characters, and strings.
+*   **Memory Operations:** Address-of (`&`) and Dereference (`*`) operators (initial support for pointers).
+*   **Arrays:** Basic array declarations and indexing (`arr[index]`).
 
 ### Planned Features
-- Control flow (if/else, while)
-- Functions and procedures
-- More data types
-- Standard library integration
+- Standard library integration (e.g., file I/O, advanced string manipulation)
+- More complex data structures (e.g., structs)
 - Error handling and debugging tools
 
 ## 🛠️ Installation
@@ -55,10 +59,10 @@ ld out.o -o out
 
 Nytrogen requires the following dependencies:
 
-- **C++ Compiler** (g++ recommended)
-- **CMake** (version 3.20 or higher)
-- **NASM** (Netwide Assembler)
-- **GNU Binutils** (for ld)
+-   **C++ Compiler** (g++ recommended)
+-   **CMake** (version 3.20 or higher)
+-   **NASM** (Netwide Assembler)
+-   **GNU Binutils** (for ld)
 
 #### Installation on Ubuntu/Debian
 ```bash
@@ -73,19 +77,19 @@ sudo pacman -S base-devel cmake nasm
 
 ### Building from Source
 
-1. **Clone the repository**
-```bash
-git clone https://github.com/X12-Cloud/Nytrogen.git
-cd nytrogen
-```
+1.  **Clone the repository**
+    ```bash
+    git clone https://github.com/X12-Cloud/Nytrogen.git
+    cd nytrogen
+    ```
 
-2. **Build the compiler**
-```bash
-mkdir build
-cd build
-cmake ..
-cmake --build .
-```
+2.  **Build the compiler**
+    ```bash
+    mkdir build
+    cd build
+    cmake ..
+    cmake --build .
+    ```
 
 The compiler executable will be located at `build/Nytro`.
 
@@ -114,39 +118,72 @@ nytrogen/
 
 ### Compiling Programs
 
-1. **Compile a Nytrogen program**
-```bash
-./build/Nytro path/to/program.nyt
-```
-This generates `out.asm` in the current directory.
+1.  **Compile a Nytrogen program**
+    ```bash
+    ./build/Nytro path/to/program.nyt
+    ```
+    This generates `out.asm` in the current directory.
 
-2. **Assemble and link**
-```bash
-nasm -f elf64 out.asm -o out.o
-ld out.o -o out
-```
+2.  **Assemble and link**
+    ```bash
+    nasm -f elf64 out.asm -o out.o
+    ld out.o -o out
+    ```
 
-3. **Run the program**
-```bash
-./out
-```
+3.  **Run the program**
+    ```bash
+    ./out
+    ```
 
 ### Example Program
 ```nyt
-int a = 10;
-int b = 5;
-int c = a + b;
-c = c * 2;
-return c;  // Returns 30
+// Example demonstrating various features
+int add(int a, int b) {
+    return a + b;
+}
+
+int main() {
+    int x = 10;
+    int y = 5;
+    bool flag = true;
+    char initial = 'A';
+
+    print("Hello from Nytrogen!");
+    print(x + y); // Prints 15
+
+    if (flag) {
+        print("Flag is true!");
+    }
+
+    for (int i = 0; i < 3; i = i + 1) {
+        print(i);
+    }
+
+    int sum = add(x, y);
+    print(sum); // Prints 15
+
+    int arr[2];
+    arr[0] = 100;
+    arr[1] = 200;
+    print(arr[0]); // Prints 100
+
+    int* ptr = &x;
+    print(*ptr); // Prints 10
+
+    *ptr = 50;
+    print(x); // Prints 50
+
+    return 0;
+}
 ```
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'feat: Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+1.  Fork the repository
+2.  Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3.  Commit your changes (`git commit -m 'feat: Add some AmazingFeature'`)
+4.  Push to the branch (`git push origin feature/AmazingFeature`)
+5.  Open a Pull Request
 
 ## 📄 License
 
@@ -154,21 +191,21 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- Inspired by compiler design courses and projects
-- Built with C++ and modern development tools
-- Thanks to the open-source community for inspiration and resources
+-   Inspired by compiler design courses and projects
+-   Built with C++ and modern development tools
+-   Thanks to the open-source community for inspiration and resources
 
 ## 📞 Support
 
 For support, please:
-- Open an issue on GitHub
-- Check existing issues for similar problems
-- Provide detailed information about your issue
+-   Open an issue on GitHub
+-   Check existing issues for similar problems
+-   Provide detailed information about your issue
 
 ## 📮 Contact
 
-- GitHub: [X12-Cloud](https://github.com/X12-Cloud)
-- Email: X12Cloud@gmail.com
+-   GitHub: [X12-Cloud](https://github.com/X12-Cloud)
+-   Email: X12Cloud@gmail.com
 
 ## 📜 Documentation
 
