@@ -36,6 +36,7 @@ private:
     std::unique_ptr<ForStatementNode> parseForStatement();
     std::unique_ptr<FunctionCallNode> parseFunctionCall();
     std::vector<std::unique_ptr<ParameterNode>> parseParameters();
+    std::unique_ptr<TypeNode> parseType();
 
     // Expression parsing methods (now hierarchical for precedence)
     std::unique_ptr<ASTNode> parseExpression(); 		// Handles + and - (lowest precedence)
@@ -43,6 +44,7 @@ private:
     std::unique_ptr<ASTNode> parseTerm();       		// Handles * and / (medium precedence)
     std::unique_ptr<ASTNode> parseFactor();     		// Handles literals, variables, and parentheses (highest precedence)
     std::unique_ptr<ASTNode> parseAdditiveExpression();
+    std::unique_ptr<ASTNode> parseUnaryExpression();
 
     std::unique_ptr<IntegerLiteralExpressionNode> parseIntegerLiteralExpression(); // Specific helper for int literals
     std::unique_ptr<StringLiteralExpressionNode> parseStringLiteralExpression();

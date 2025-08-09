@@ -6,6 +6,11 @@
 #include <memory> // Smart pointers
 #include "lexer.hpp"
 
+// Forward declarations for type nodes
+struct TypeNode;
+struct PointerTypeNode;
+struct ArrayTypeNode;
+
 // Base node class for all AST elements
 struct ASTNode {
     enum class NodeType {
@@ -22,10 +27,12 @@ struct ASTNode {
         IF_STATEMENT = 10,
         ELSE_STATEMENT = 11,
         FUNCTION_CALL = 12,
-	WHILE_STATEMENT = 13,
-	BOOLEAN_LITERAL_EXPRESSION = 14,
-	CHARACTER_LITERAL_EXPRESSION = 15,
-	FOR_STATEMENT = 16,
+        WHILE_STATEMENT = 13,
+        BOOLEAN_LITERAL_EXPRESSION = 14,
+        CHARACTER_LITERAL_EXPRESSION = 15,
+        FOR_STATEMENT = 16,
+        UNARY_OP_EXPRESSION = 17,
+        ARRAY_ACCESS_EXPRESSION = 18,
     };
 
     NodeType node_type;
@@ -78,14 +85,42 @@ struct ReturnStatementNode : public ASTNode {
 	: ASTNode(NodeType::RETURN_STATEMENT, line, column), expression(std::move(expr)) {}
 };
 
+// Base class for type representations
+struct TypeNode {
+    enum class TypeCategory {
+        PRIMITIVE,
+        POINTER,
+        ARRAY
+    };
+    TypeCategory category;
+    TypeNode(TypeCategory cat) : category(cat) {}
+    virtual ~TypeNode() = default;
+};
+
+struct PrimitiveTypeNode : public TypeNode {
+    Token::Type primitive_type;
+    PrimitiveTypeNode(Token::Type type) : TypeNode(TypeCategory::PRIMITIVE), primitive_type(type) {}
+};
+
+struct PointerTypeNode : public TypeNode {
+    std::unique_ptr<TypeNode> base_type;
+    PointerTypeNode(std::unique_ptr<TypeNode> base) : TypeNode(TypeCategory::POINTER), base_type(std::move(base)) {}
+};
+
+struct ArrayTypeNode : public TypeNode {
+    std::unique_ptr<TypeNode> base_type;
+    int size;
+    ArrayTypeNode(std::unique_ptr<TypeNode> base, int sz) : TypeNode(TypeCategory::ARRAY), base_type(std::move(base)), size(sz) {}
+};
+
 // Node for variable declarations (e.g., int/string x;)
 struct VariableDeclarationNode : public ASTNode {
     std::string name;
-    Token::Type type; // either KEYWORD_INT, KEYWORD_STRING, KEYWORD_BOOL, or KEYWORD_CHAR
+    std::unique_ptr<TypeNode> type;
     std::unique_ptr<ASTNode> initial_value;
 
-    VariableDeclarationNode(std::string name, Token::Type type, std::unique_ptr<ASTNode> initial_val = nullptr, int line = -1, int column = -1)
-	: ASTNode(NodeType::VARIABLE_DECLARATION, line, column), name(std::move(name)), type(type), initial_value(std::move(initial_val)) {}
+    VariableDeclarationNode(std::string name, std::unique_ptr<TypeNode> type, std::unique_ptr<ASTNode> initial_val = nullptr, int line = -1, int column = -1)
+	: ASTNode(NodeType::VARIABLE_DECLARATION, line, column), name(std::move(name)), type(std::move(type)), initial_value(std::move(initial_val)) {}
 };
 
 
@@ -108,10 +143,27 @@ struct VariableReferenceNode : public ASTNode {
         : ASTNode(NodeType::VARIABLE_REFERENCE, line, column), name(std::move(var_name)) {}
 };
 
+struct UnaryOpExpressionNode : public ASTNode {
+    Token::Type op_type;
+    std::unique_ptr<ASTNode> operand;
+
+    UnaryOpExpressionNode(Token::Type op, std::unique_ptr<ASTNode> operand_node, int line = -1, int column = -1)
+        : ASTNode(NodeType::UNARY_OP_EXPRESSION, line, column), op_type(op), operand(std::move(operand_node)) {}
+};
+
+struct ArrayAccessNode : public ASTNode {
+    std::unique_ptr<ASTNode> array_expr;
+    std::unique_ptr<ASTNode> index_expr;
+
+    ArrayAccessNode(std::unique_ptr<ASTNode> array, std::unique_ptr<ASTNode> index, int line = -1, int column = -1)
+        : ASTNode(NodeType::ARRAY_ACCESS_EXPRESSION, line, column), array_expr(std::move(array)), index_expr(std::move(index)) {}
+};
+
 struct ParameterNode {
-    Token::Type type;
+    std::unique_ptr<TypeNode> type;
     std::string name;
 };
+
 
 // Node for function definitions (e.g., int main() {})
 struct FunctionDefinitionNode : public ASTNode {

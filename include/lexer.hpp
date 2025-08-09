@@ -37,15 +37,15 @@ struct Token {
         MINUS,          // -
         STAR,           // *
         SLASH,          // /
-	ADDRESSOF	// &
+	ADDRESSOF,	// &
 
         SEMICOLON,      // ;
         LPAREN,         // (
         RPAREN,         // )
         LBRACE,         // {
         RBRACE,         // }
-	LBRACKET	// [
-	RBRACKET	// ]
+	LBRACKET,	// [
+	RBRACKET,	// ]
 
         COMMA,          // ,
 
@@ -64,4 +64,3 @@ struct Token {
 std::vector<Token> tokenize(const std::string& sourceCode);
 
 #endif // LEXER_HPP
-

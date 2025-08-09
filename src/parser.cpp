@@ -203,16 +203,38 @@ std::unique_ptr<WhileStatementNode> Parser::parseWhileStatement() {
     );
 }
 
-std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
+std::unique_ptr<TypeNode> Parser::parseType() {
     const Token& type_token = peek();
     if (type_token.type != Token::KEYWORD_INT && type_token.type != Token::KEYWORD_STRING &&
         type_token.type != Token::KEYWORD_BOOL && type_token.type != Token::KEYWORD_CHAR) {
-        throw std::runtime_error("Expected 'int', 'string', 'bool', or 'char' keyword for variable declaration.");
+        throw std::runtime_error("Expected 'int', 'string', 'bool', or 'char' keyword for type.");
     }
     consume();
 
+    std::unique_ptr<TypeNode> type = std::make_unique<PrimitiveTypeNode>(type_token.type);
+
+    while (peek().type == Token::STAR) {
+        consume();
+        type = std::make_unique<PointerTypeNode>(std::move(type));
+    }
+
+    return type;
+}
+
+std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
+    auto type = parseType();
+
     const Token& id_token = peek();
     expect(Token::IDENTIFIER, "Expected variable name after type.");
+
+    if (peek().type == Token::LBRACKET) {
+        consume(); // Consume '['
+        const Token& size_token = peek();
+        expect(Token::INTEGER_LITERAL, "Expected integer literal for array size.");
+        int size = std::stoi(size_token.value);
+        expect(Token::RBRACKET, "Expected ']' after array size.");
+        type = std::make_unique<ArrayTypeNode>(std::move(type), size);
+    }
 
     std::unique_ptr<ASTNode> initial_value = nullptr;
     if (peek().type == Token::EQ) {
@@ -220,12 +242,24 @@ std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
         initial_value = parseExpression();
     }
 
-    return std::make_unique<VariableDeclarationNode>(id_token.value, type_token.type, std::move(initial_value), id_token.line, id_token.column);
+    return std::make_unique<VariableDeclarationNode>(id_token.value, std::move(type), std::move(initial_value), id_token.line, id_token.column);
 }
 
 std::unique_ptr<VariableAssignmentNode> Parser::parseVariableAssignment() {
     const Token& id_token = peek();
     expect(Token::IDENTIFIER, "Expected variable name.");
+
+    if (peek().type == Token::LBRACKET) {
+        consume();
+        auto index_expr = parseExpression();
+        expect(Token::RBRACKET, "Expected ']' after array index.");
+        expect(Token::EQ, "Expected '=' after array access.");
+        auto expr_node = parseExpression();
+        auto array_ref = std::make_unique<VariableReferenceNode>(id_token.value, id_token.line, id_token.column);
+        auto array_access = std::make_unique<ArrayAccessNode>(std::move(array_ref), std::move(index_expr));
+        return std::make_unique<VariableAssignmentNode>(id_token.value, std::move(expr_node), id_token.line, id_token.column);
+    }
+
     expect(Token::EQ, "Expected '=' after variable name.");
     std::unique_ptr<ASTNode> expr_node;
 
@@ -269,6 +303,12 @@ std::unique_ptr<ASTNode> Parser::parseFactor() {
     } else if (current_token.type == Token::IDENTIFIER) {
         if (peek(1).type == Token::LPAREN) {
             return parseFunctionCall();
+        } else if (peek(1).type == Token::LBRACKET) {
+            auto var_ref = parseVariableReference();
+            consume(); // consume '['
+            auto index_expr = parseExpression();
+            expect(Token::RBRACKET, "Expected ']' after array index.");
+            return std::make_unique<ArrayAccessNode>(std::move(var_ref), std::move(index_expr));
         } else {
             return parseVariableReference();
         }
@@ -289,12 +329,21 @@ std::unique_ptr<ASTNode> Parser::parseFactor() {
                              ", column " + std::to_string(current_token.column) + ".");
 }
 
+std::unique_ptr<ASTNode> Parser::parseUnaryExpression() {
+    if (peek().type == Token::STAR || peek().type == Token::ADDRESSOF) {
+        const Token& op_token = consume();
+        auto operand = parseUnaryExpression();
+        return std::make_unique<UnaryOpExpressionNode>(op_token.type, std::move(operand), op_token.line, op_token.column);
+    }
+    return parseFactor();
+}
+
 std::unique_ptr<ASTNode> Parser::parseTerm() {
-    auto left_expr = parseFactor();
+    auto left_expr = parseUnaryExpression();
 
     while (peek().type == Token::STAR || peek().type == Token::SLASH) {
         const Token& op_token = consume();
-        auto right_expr = parseFactor();
+        auto right_expr = parseUnaryExpression();
         left_expr = std::make_unique<BinaryOperationExpressionNode>(
             std::move(left_expr), op_token.type, std::move(right_expr),
             op_token.line, op_token.column
@@ -372,7 +421,7 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
         default:
             throw std::runtime_error("Parser Error: Unexpected token in statement: '" +
                                      peek().value + "' at line " + std::to_string(peek().line) +
-                                     ", column " + std::to_string(peek().column));
+                                     ", column " + std::to_string(peek().column) + ".");
     }
 }
 
@@ -383,11 +432,7 @@ std::vector<std::unique_ptr<ParameterNode>> Parser::parseParameters() {
     if (peek().type != Token::RPAREN) {
         do {
             auto param = std::make_unique<ParameterNode>();
-            const Token& type_token = consume();
-            if (type_token.type != Token::KEYWORD_INT && type_token.type != Token::KEYWORD_STRING) {
-                throw std::runtime_error("Expected 'int' or 'string' for parameter type.");
-            }
-            param->type = type_token.type;
+            param->type = parseType();
 
             const Token& name_token = consume();
             if (name_token.type != Token::IDENTIFIER) {
@@ -396,8 +441,7 @@ std::vector<std::unique_ptr<ParameterNode>> Parser::parseParameters() {
             param->name = name_token.value;
             parameters.push_back(std::move(param));
 
-        } while (consume().type == Token::COMMA);
-         current_token_index--;
+        } while (peek().type == Token::COMMA && consume().type == Token::COMMA);
     }
 
     expect(Token::RPAREN, "Expected ')' after function parameters.");
@@ -454,4 +498,3 @@ std::unique_ptr<ProgramNode> Parser::parse() {
 
     return program_node;
 }
-

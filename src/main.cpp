@@ -299,9 +299,17 @@ std::string generateCode(const ASTNode* node) {
 
         case ASTNode::NodeType::VARIABLE_DECLARATION: {
             const auto* decl_node = static_cast<const VariableDeclarationNode*>(node);
-            current_stack_offset -= 8; // Allocate space for the new variable
-            stack_offsets[decl_node->name] = current_stack_offset;
-            assembly += "  sub rsp, 8\n"; // Adjust stack pointer
+            if (decl_node->type->category == TypeNode::TypeCategory::ARRAY) {
+                const auto* array_type = static_cast<const ArrayTypeNode*>(decl_node->type.get());
+                int size = array_type->size;
+                current_stack_offset -= 8 * size;
+                stack_offsets[decl_node->name] = current_stack_offset;
+                assembly += "  sub rsp, " + std::to_string(8 * size) + "\n";
+            } else {
+                current_stack_offset -= 8; // Allocate space for the new variable
+                stack_offsets[decl_node->name] = current_stack_offset;
+                assembly += "  sub rsp, 8\n"; // Adjust stack pointer
+            }
 
             if (decl_node->initial_value) {
                 assembly += generateCode(decl_node->initial_value.get());
@@ -343,6 +351,34 @@ std::string generateCode(const ASTNode* node) {
             if (!call_node->arguments.empty()) {
                 assembly += "  add rsp, " + std::to_string(call_node->arguments.size() * 8) + "\n";
             }
+            break;
+        }
+
+        case ASTNode::NodeType::UNARY_OP_EXPRESSION: {
+            const auto* unary_node = static_cast<const UnaryOpExpressionNode*>(node);
+            assembly += generateCode(unary_node->operand.get());
+            if (unary_node->op_type == Token::ADDRESSOF) {
+                // The operand should be a variable reference, get its address
+                const auto* ref_node = static_cast<const VariableReferenceNode*>(unary_node->operand.get());
+                int offset = stack_offsets[ref_node->name];
+                assembly += "  lea rax, [rbp + " + std::to_string(offset) + "]\n";
+            } else if (unary_node->op_type == Token::STAR) {
+                // The operand is a pointer, so rax holds the address. Dereference it.
+                assembly += "  mov rax, [rax]\n";
+            }
+            break;
+        }
+
+        case ASTNode::NodeType::ARRAY_ACCESS_EXPRESSION: {
+            const auto* access_node = static_cast<const ArrayAccessNode*>(node);
+            assembly += generateCode(access_node->index_expr.get());
+            assembly += "  mov rbx, rax\n";
+            const auto* ref_node = static_cast<const VariableReferenceNode*>(access_node->array_expr.get());
+            int offset = stack_offsets[ref_node->name];
+            assembly += "  lea rcx, [rbp + " + std::to_string(offset) + "]\n";
+            assembly += "  imul rbx, 8\n";
+            assembly += "  add rcx, rbx\n";
+            assembly += "  mov rax, [rcx]\n";
             break;
         }
 

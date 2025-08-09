@@ -122,7 +122,8 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
             }
             if (currentPos >= sourceCode.length()) {
                 std::cerr << "Lexer Error: Unclosed string literal at line " << line << ", column " << startColumn << std::endl;
-            } else {
+            }
+            else {
                 currentPos++; column++; // Skip closing quote
             }
             tokens.push_back({Token::STRING_LITERAL, value, line, startColumn});
@@ -260,6 +261,11 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
 
         if (currentChar == ',') {
             tokens.push_back({Token::COMMA, ",", line, column});
+            currentPos++; column++; continue;
+        }
+
+        if (currentChar == '&') {
+            tokens.push_back({Token::ADDRESSOF, "&", line, column});
             currentPos++; column++; continue;
         }
 
