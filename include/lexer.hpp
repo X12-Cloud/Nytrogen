@@ -37,12 +37,15 @@ struct Token {
         MINUS,          // -
         STAR,           // *
         SLASH,          // /
+	ADDRESSOF	// &
 
         SEMICOLON,      // ;
         LPAREN,         // (
         RPAREN,         // )
         LBRACE,         // {
         RBRACE,         // }
+	LBRACKET	// [
+	RBRACKET	// ]
 
         COMMA,          // ,
 

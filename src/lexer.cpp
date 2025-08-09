@@ -27,6 +27,7 @@ std::string Token::typeToString() const {
         case MINUS: return "MINUS";
         case STAR: return "STAR";
         case SLASH: return "SLASH";
+	case ADDRESSOF: return "ADDRESSOF";
         case EQUAL_EQUAL: return "EQUAL_EQUAL";
         case BANG_EQUAL: return "BANG_EQUAL";
         case LESS: return "LESS";
@@ -38,7 +39,9 @@ std::string Token::typeToString() const {
 	case RPAREN: return "RPAREN";
         case LBRACE: return "LBRACE";
         case RBRACE: return "RBRACE";
-        case COMMA: return "COMMA";
+	case LBRACKET: return "LBRACKET";
+        case RBRACKET: return "RBRACKET";
+	case COMMA: return "COMMA";
         case END_OF_FILE: return "END_OF_FILE";
         case UNKNOWN: return "UNKNOWN";
     }
@@ -242,6 +245,16 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
 
         if (currentChar == '}') {
             tokens.push_back({Token::RBRACE, "}", line, column});
+            currentPos++; column++; continue;
+        }
+
+	if (currentChar == '[') {
+            tokens.push_back({Token::LBRACKET, "[", line, column});
+            currentPos++; column++; continue;
+        }
+
+	if (currentChar == ']') {
+            tokens.push_back({Token::RBRACKET, "]", line, column});
             currentPos++; column++; continue;
         }
 
