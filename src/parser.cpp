@@ -250,25 +250,17 @@ std::unique_ptr<VariableAssignmentNode> Parser::parseVariableAssignment() {
     expect(Token::IDENTIFIER, "Expected variable name.");
 
     if (peek().type == Token::LBRACKET) {
-        consume();
+        consume(); // consume '['
         auto index_expr = parseExpression();
         expect(Token::RBRACKET, "Expected ']' after array index.");
         expect(Token::EQ, "Expected '=' after array access.");
         auto expr_node = parseExpression();
-        auto array_ref = std::make_unique<VariableReferenceNode>(id_token.value, id_token.line, id_token.column);
-        auto array_access = std::make_unique<ArrayAccessNode>(std::move(array_ref), std::move(index_expr));
-        return std::make_unique<VariableAssignmentNode>(id_token.value, std::move(expr_node), id_token.line, id_token.column);
+        return std::make_unique<VariableAssignmentNode>(id_token.value, std::move(expr_node), std::move(index_expr), id_token.line, id_token.column);
     }
 
     expect(Token::EQ, "Expected '=' after variable name.");
-    std::unique_ptr<ASTNode> expr_node;
-
-    if (peek().type == Token::STRING_LITERAL) {
-        expr_node = parseStringLiteralExpression();
-    } else {
-        expr_node = parseExpression();
-    }
-    return std::make_unique<VariableAssignmentNode>(id_token.value, std::move(expr_node), id_token.line, id_token.column);
+    auto expr_node = parseExpression();
+    return std::make_unique<VariableAssignmentNode>(id_token.value, std::move(expr_node), nullptr, id_token.line, id_token.column);
 }
 
 std::unique_ptr<VariableReferenceNode> Parser::parseVariableReference() {

@@ -1,0 +1,26 @@
+int add(int a, int b) {
+    return a + b;
+}
+
+int main() {
+    // Test function call with parameters
+    int result;
+    result = add(5, 3);
+    print(result);
+
+    // Test arrays
+    int my_array[5];
+    my_array[0] = 10;
+    my_array[1] = 20;
+    print(my_array[0]);
+    print(my_array[1]);
+
+    // Test pointers
+    int* my_ptr;
+    int my_var;
+    my_var = 50;
+    my_ptr = &my_var;
+    print(*my_ptr);
+
+    return 0;
+}

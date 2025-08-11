@@ -1,6 +1,6 @@
 #!/bin/bash
 
-./build/Nytro test.nyt
+./build/Nytro test_features.nyt
 
 echo ""
 echo "--- Assembling out.asm ---"

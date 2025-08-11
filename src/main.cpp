@@ -152,9 +152,25 @@ std::string generateCode(const ASTNode* node) {
             if (stack_offsets.find(assign_node->name) == stack_offsets.end()) {
                 throw std::runtime_error("Code generation error: variable '" + assign_node->name + "' assigned before declaration.");
             }
-            assembly += generateCode(assign_node->expression.get());
-            int offset = stack_offsets[assign_node->name];
-            assembly += "  mov qword [rbp + " + std::to_string(offset) + "], rax\n";
+
+            if (assign_node->index_expression) {
+                // Array assignment
+                assembly += generateCode(assign_node->expression.get());
+                assembly += "  push rax\n";
+                assembly += generateCode(assign_node->index_expression.get());
+                assembly += "  mov rbx, rax\n";
+                int offset = stack_offsets[assign_node->name];
+                assembly += "  lea rcx, [rbp + " + std::to_string(offset) + "]\n";
+                assembly += "  imul rbx, 8\n";
+                assembly += "  add rcx, rbx\n";
+                assembly += "  pop rax\n";
+                assembly += "  mov [rcx], rax\n";
+            } else {
+                // Simple variable assignment
+                assembly += generateCode(assign_node->expression.get());
+                int offset = stack_offsets[assign_node->name];
+                assembly += "  mov qword [rbp + " + std::to_string(offset) + "], rax\n";
+            }
             break;
         }
 
@@ -393,6 +409,7 @@ std::string generateCode(const ASTNode* node) {
 std::string generateFunctionCode(const FunctionDefinitionNode* func_node) {
     std::string assembly;
     stack_offsets.clear();
+    current_stack_offset = 0;
     current_stack_offset = 0;
 
     assembly += func_node->name + ":\n";
