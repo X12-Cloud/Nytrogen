@@ -34,17 +34,11 @@ int SemanticAnalyzer::getTypeSize(const TypeNode* type) {
         }
         case TypeNode::TypeCategory::STRUCT: {
             const StructTypeNode* struct_type = static_cast<const StructTypeNode*>(type);
-            StructDefinitionNode* struct_def = symbolTable.lookupStructDefinition(struct_type->struct_name);
-            if (!struct_def) {
+            Symbol* struct_def_symbol = symbolTable.lookup(struct_type->struct_name);
+            if (!struct_def_symbol || !struct_def_symbol->structDef) {
                 throw std::runtime_error("Semantic Error: Undefined struct '" + struct_type->struct_name + "'.");
             }
-            // Calculate total size of struct
-            int total_size = 0;
-            for (const auto& member : struct_def->members) {
-                total_size += getTypeSize(member.type.get());
-            }
-            // Align to 8 bytes for simplicity (padding)
-            return (total_size + 7) / 8 * 8;
+            return struct_def_symbol->structDef->size;
         }
         default:
             throw std::runtime_error("Semantic Error: Unknown type category for size calculation.");
@@ -96,36 +90,25 @@ void SemanticAnalyzer::analyze() {
     symbolTable.enterScope();
 
     // First pass: Process struct definitions to populate their sizes and member offsets
-    // This is crucial because struct types might be used before their full definition is parsed
-    for (const auto& struct_node : program_ast->structs) {
-        // Calculate size and member offsets for the struct
-        int current_offset = 0;
-        for (const auto& member : struct_node->members) {
-            int member_size = getTypeSize(member.type.get());
-            // For simplicity, assume 8-byte alignment for all members for now
-            // In a real compiler, this would involve more complex alignment rules
-            int padding = (8 - (current_offset % 8)) % 8;
-            current_offset += padding;
+    // ... (existing code for struct processing)
 
-            // Update the member's offset in the struct definition (if we stored it there)
-            // For now, we'll just calculate it and use it when looking up members
-            // in the symbol table.
-            // We need to store member offsets within the StructDefinitionNode itself
-            // or in the SymbolTable's representation of the struct.
-            // For now, let's assume we'll calculate it on demand or enhance StructDefinitionNode.
-            // For the purpose of populating the symbol table, we can add a Symbol for each member
-            // within the struct's entry in the symbol table.
-
-            // This part needs refinement: how to store member offsets within the struct definition
-            // in the symbol table. For now, let's just calculate the total size.
-            current_offset += member_size;
+    // Second pass: Add function declarations to the global scope
+    for (const auto& func_node : program_ast->functions) {
+        // Create a TypeNode for the return type
+        std::unique_ptr<TypeNode> return_type;
+        if (func_node->return_type_token == Token::KEYWORD_INT) {
+            return_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_INT);
+        } else if (func_node->return_type_token == Token::KEYWORD_VOID) {
+            return_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_VOID);
         }
-        // Store the total size of the struct in the symbol table's struct definition
-        // This requires enhancing StructDefinitionNode or SymbolTable's struct storage
-        // For now, we'll just ensure getTypeSize works.
+        // Add more cases for other return types (string, bool, char, structs)
+        // For simplicity, assuming only int and void for now.
+
+        Symbol func_symbol(Symbol::SymbolType::FUNCTION, std::string(func_node->name), static_cast<std::unique_ptr<TypeNode>>(std::move(return_type)));
+        symbolTable.addSymbol(std::move(func_symbol));
     }
 
-    // Second pass: Visit all top-level statements and function definitions
+    // Third pass: Visit all top-level statements and function definitions
     for (const auto& stmt : program_ast->statements) {
         visit(stmt.get());
     }
@@ -218,6 +201,9 @@ void SemanticAnalyzer::visit(FunctionDefinitionNode* node) {
         param_offset += size; // Increment offset by parameter size
     }
 
+    // Initialize currentOffset for local variables in this scope
+    symbolTable.scopes.back()->currentOffset = 0; // Local variables start from 0 (negative offsets from rbp)
+
     // Visit function body statements
     for (const auto& stmt : node->body_statements) {
         visit(stmt.get());
@@ -233,10 +219,14 @@ void SemanticAnalyzer::visit(VariableDeclarationNode* node) {
     }
 
     int var_size = getTypeSize(node->type.get());
+
     // Assign offset for local variable (relative to rbp)
-    // This needs to be managed by the current scope's currentOffset
-    // For now, let's just add the symbol. Offset calculation will be refined.
-    symbolTable.addSymbol(Symbol(Symbol::SymbolType::VARIABLE, node->name, node->type->clone(), 0, var_size));
+    // Offsets are negative from rbp for local variables
+    symbolTable.scopes.back()->currentOffset -= var_size;
+    int offset = symbolTable.scopes.back()->currentOffset;
+
+    Symbol symbol(Symbol::SymbolType::VARIABLE, node->name, node->type->clone(), offset, var_size);
+    node->resolved_symbol = symbolTable.addSymbol(std::move(symbol));
 
     if (node->initial_value) {
         std::unique_ptr<TypeNode> expr_type = visitExpression(node->initial_value.get());
@@ -252,6 +242,7 @@ void SemanticAnalyzer::visit(VariableAssignmentNode* node) {
     if (!var_symbol) {
         throw std::runtime_error("Semantic Error: Assignment to undeclared variable '" + node->name + "'.");
     }
+    node->resolved_symbol = var_symbol; // Store the resolved symbol
 
     std::unique_ptr<TypeNode> expr_type = visitExpression(node->expression.get());
 
@@ -286,8 +277,7 @@ void SemanticAnalyzer::visit(VariableReferenceNode* node) {
     if (!var_symbol) {
         throw std::runtime_error("Semantic Error: Use of undeclared variable '" + node->name + "'.");
     }
-    // Store the resolved type in the AST node if needed for later phases (e.g., code gen)
-    // For now, just return the type from visitExpression
+    node->resolved_symbol = var_symbol; // Store the resolved symbol
 }
 
 void SemanticAnalyzer::visit(BinaryOperationExpressionNode* node) {
@@ -360,6 +350,12 @@ void SemanticAnalyzer::visit(ForStatementNode* node) {
 void SemanticAnalyzer::visit(FunctionCallNode* node) {
     // For now, just visit arguments.
     // In a full compiler, would look up function in symbol table, check arity and argument types.
+    Symbol* func_symbol = symbolTable.lookup(node->function_name);
+    if (!func_symbol || func_symbol->type != Symbol::SymbolType::FUNCTION) {
+        throw std::runtime_error("Semantic Error: Call to undeclared function '" + node->function_name + "'.");
+    }
+    node->resolved_symbol = func_symbol; // Store the resolved symbol
+
     for (const auto& arg : node->arguments) {
         visitExpression(arg.get());
     }
@@ -373,19 +369,23 @@ void SemanticAnalyzer::visit(MemberAccessNode* node) {
     }
 
     const StructTypeNode* struct_type = static_cast<const StructTypeNode*>(base_type.get());
-    StructDefinitionNode* struct_def = symbolTable.lookupStructDefinition(struct_type->struct_name);
+    Symbol* struct_def_symbol = symbolTable.lookup(struct_type->struct_name);
 
-    if (!struct_def) {
+    if (!struct_def_symbol || !struct_def_symbol->structDef) {
         throw std::runtime_error("Semantic Error: Undefined struct '" + struct_type->struct_name + "'.");
     }
+
+    const auto& struct_def = struct_def_symbol->structDef;
 
     // Check if member exists in the struct
     bool member_found = false;
     for (const auto& member : struct_def->members) {
         if (member.name == node->member_name) {
             member_found = true;
-            // Here, you might want to store the member's type in the AST node
-            // or return it. For now, just validate existence.
+            // Create a temporary Symbol for the member and store it
+            // The offset is already stored in member.offset
+            node->resolved_symbol = new Symbol(Symbol::SymbolType::STRUCT_MEMBER, member.name, member.type->clone(), member.offset, getTypeSize(member.type.get()));
+            // The created symbol is owned by the AST node, so it will be deleted when the AST node is deleted.
             break;
         }
     }
@@ -403,13 +403,16 @@ void SemanticAnalyzer::visit(UnaryOpExpressionNode* node) {
         if (node->operand->node_type != ASTNode::NodeType::VARIABLE_REFERENCE) {
             throw std::runtime_error("Semantic Error: Address-of operator '&' can only be applied to variables.");
         }
-        // The result type is a pointer to the operand's type
+        // Store the resolved symbol (the variable itself)
+        node->resolved_symbol = static_cast<VariableReferenceNode*>(node->operand.get())->resolved_symbol;
     } else if (node->op_type == Token::STAR) {
         // Operand must be a pointer type
         if (operand_type->category != TypeNode::TypeCategory::POINTER) {
             throw std::runtime_error("Semantic Error: Dereference operator '*' can only be applied to pointer types.");
         }
-        // The result type is the base type of the pointer
+        // The resolved symbol is the base type of the pointer (dereferenced value)
+        node->resolved_symbol = new Symbol(Symbol::SymbolType::VARIABLE, "", static_cast<PointerTypeNode*>(operand_type.get())->base_type->clone(), 0, getTypeSize(static_cast<PointerTypeNode*>(operand_type.get())->base_type.get()));
+        // The created symbol is owned by the AST node, so it will be deleted when the AST node is deleted.
     } else {
         throw std::runtime_error("Semantic Error: Unknown unary operator.");
     }
@@ -428,6 +431,8 @@ void SemanticAnalyzer::visit(ArrayAccessNode* node) {
         throw std::runtime_error("Semantic Error: Array index must be an integer.");
     }
     // The result type is the base type of the array
+    node->resolved_symbol = new Symbol(Symbol::SymbolType::VARIABLE, "", static_cast<ArrayTypeNode*>(array_type.get())->base_type->clone(), 0, getTypeSize(static_cast<ArrayTypeNode*>(array_type.get())->base_type.get()));
+    // The created symbol is owned by the AST node, so it will be deleted when the AST node is deleted.
 }
 
 void SemanticAnalyzer::visit(StructDefinitionNode* node) {
@@ -475,7 +480,11 @@ std::unique_ptr<TypeNode> SemanticAnalyzer::visitExpression(ASTNode* expr) {
             // Need to return the type of the accessed member
             std::unique_ptr<TypeNode> base_type = visitExpression(static_cast<MemberAccessNode*>(expr)->struct_expr.get());
             const StructTypeNode* struct_type = static_cast<const StructTypeNode*>(base_type.get());
-            StructDefinitionNode* struct_def = symbolTable.lookupStructDefinition(struct_type->struct_name);
+            Symbol* struct_def_symbol = symbolTable.lookup(struct_type->struct_name);
+            if (!struct_def_symbol || !struct_def_symbol->structDef) {
+                throw std::runtime_error("Semantic Error: Undefined struct '" + struct_type->struct_name + "'.");
+            }
+            const auto& struct_def = struct_def_symbol->structDef;
             for (const auto& member : struct_def->members) {
                 if (member.name == static_cast<MemberAccessNode*>(expr)->member_name) {
                     return member.type->clone();

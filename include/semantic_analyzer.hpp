@@ -14,14 +14,13 @@ public:
         : program_ast(ast), symbolTable(symTable) {}
 
     void analyze();
+    SymbolTable& getSymbolTable() { return symbolTable; }
+    int getTypeSize(const TypeNode* type); // Helper to get size of a type
+    bool areTypesCompatible(const TypeNode* type1, const TypeNode* type2);
 
 private:
     std::unique_ptr<ProgramNode>& program_ast;
     SymbolTable& symbolTable;
-
-    // Helper to get size of a type
-    int getTypeSize(const TypeNode* type);
-    bool areTypesCompatible(const TypeNode* type1, const TypeNode* type2);
 
     // Visitor methods for AST nodes
     void visit(ASTNode* node);

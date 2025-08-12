@@ -5,6 +5,8 @@
 #include <vector>
 #include <map>
 #include <memory>
+#include <iostream> // For std::cerr and std::endl
+#include <ostream>  // For std::endl
 #include "ast.hpp" // For TypeNode and other AST types
 
 // Forward declaration for StructDefinitionNode if needed, though ast.hpp should include it
@@ -21,18 +23,17 @@ struct Symbol {
     SymbolType type;
     std::string name;
     std::unique_ptr<TypeNode> dataType; // The type of the symbol (e.g., int, string, Point)
+    std::unique_ptr<StructDefinitionNode> structDef; // For struct definitions
     int offset; // For variables: offset from base pointer; for struct members: offset within struct
     int size;   // Size in bytes (for variables or struct members)
 
     // Constructor for variables/members
     Symbol(SymbolType type, std::string name, std::unique_ptr<TypeNode> dataType, int offset = 0, int size = 0)
-        : type(type), name(std::move(name)), dataType(std::move(dataType)), offset(offset), size(size) {}
+        : type(type), name(std::move(name)), dataType(std::move(dataType)), structDef(nullptr), offset(offset), size(size) {}
 
-    // Constructor for functions (dataType would be return type)
-    // For functions, offset/size might not be directly applicable here, or could represent stack frame size etc.
-    // We can refine this as needed.
-    Symbol(SymbolType type, std::string name, std::unique_ptr<TypeNode> dataType)
-        : type(type), name(std::move(name)), dataType(std::move(dataType)), offset(0), size(0) {}
+    // Constructor for struct definitions
+    Symbol(SymbolType type, std::string name, std::unique_ptr<StructDefinitionNode> structDef)
+        : type(type), name(std::move(name)), dataType(nullptr), structDef(std::move(structDef)), offset(0), size(0) {}
 };
 
 // Represents a single scope in the symbol table (e.g., global, function body)
@@ -67,19 +68,25 @@ public:
 
     void enterScope() {
         scopes.push_back(std::make_unique<Scope>());
+        std::cerr << "Debug: Entered new scope. Total scopes: " << scopes.size() << std::endl;
     }
 
     void exitScope() {
         if (!scopes.empty()) {
             scopes.pop_back();
+            std::cerr << "Debug: Exited scope. Total scopes: " << scopes.size() << std::endl;
         }
     }
 
-    void addSymbol(Symbol symbol) {
+    Symbol* addSymbol(Symbol symbol) {
         if (!scopes.empty()) {
-            scopes.back()->addSymbol(std::move(symbol));
+            std::cerr << "Debug: Adding symbol '" << symbol.name << "' to scope " << scopes.size() << ". Offset: " << symbol.offset << std::endl;
+            auto result = scopes.back()->symbols.emplace(symbol.name, std::move(symbol));
+            return &(result.first->second);
         } else {
             // Handle error: no active scope
+            std::cerr << "Error: Attempted to add symbol '" << symbol.name << "' with no active scope." << std::endl;
+            return nullptr;
         }
     }
 
@@ -93,21 +100,9 @@ public:
         return nullptr; // Not found
     }
 
-    // Specific storage for struct definitions, accessible globally
-    std::map<std::string, std::unique_ptr<StructDefinitionNode>> definedStructs;
-
-    // Helper to add a struct definition to the global storage
-    void addStructDefinition(std::unique_ptr<StructDefinitionNode> structDef) {
-        definedStructs[structDef->name] = std::move(structDef);
-    }
-
-    // Helper to lookup a struct definition
-    StructDefinitionNode* lookupStructDefinition(const std::string& name) {
-        auto it = definedStructs.find(name);
-        if (it != definedStructs.end()) {
-            return it->second.get();
-        }
-        return nullptr;
+    bool isStructDefined(const std::string& name) {
+        Symbol* symbol = lookup(name);
+        return symbol && symbol->type == Symbol::SymbolType::STRUCT_DEFINITION;
     }
 };
 

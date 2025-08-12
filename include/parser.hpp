@@ -21,7 +21,6 @@ private:
     std::vector<Token> tokens;
     size_t current_token_index;
     std::map<std::string, int> declared_variables;
-    std::map<std::string, std::unique_ptr<StructDefinitionNode>> defined_structs;
     SymbolTable symbol_table; // Add SymbolTable member
 
     // Token handling methods

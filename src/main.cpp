@@ -12,14 +12,11 @@
 #include "ast.hpp"
 #include "semantic_analyzer.hpp"
 
-std::map<std::string, int> stack_offsets;
-int current_stack_offset = 0;
-
 std::unordered_map<std::string, std::string> string_literals;
 int string_label_counter = 0;
 
-std::string generateCode(const ASTNode* node);
-std::string generateFunctionCode(const FunctionDefinitionNode* func_node);
+std::string generateCode(const ASTNode* node, SemanticAnalyzer& semanticAnalyzer);
+std::string generateFunctionCode(const FunctionDefinitionNode* func_node, SemanticAnalyzer& semanticAnalyzer);
 std::string escapeString(const std::string& raw);
 
 std::string readFileContent(const std::string& filepath) {
@@ -68,6 +65,16 @@ int main(int argc, char* argv[]) {
     SemanticAnalyzer semanticAnalyzer(ast_root, parser.getSymbolTable());
     semanticAnalyzer.analyze();
 
+    // Debug: Print offsets of 'a' and 'b' in 'add' function
+    Symbol* a_sym = semanticAnalyzer.getSymbolTable().lookup("a");
+    if (a_sym) {
+        std::cout << "Debug: Offset of 'a': " << a_sym->offset << std::endl;
+    }
+    Symbol* b_sym = semanticAnalyzer.getSymbolTable().lookup("b");
+    if (b_sym) {
+        std::cout << "Debug: Offset of 'b': " << b_sym->offset << std::endl;
+    }
+
     std::ofstream asm_file(output_asm_filename);
     if (!asm_file.is_open()) {
         std::cerr << "Error: Could not create output assembly file: " << output_asm_filename << "\n";
@@ -76,7 +83,7 @@ int main(int argc, char* argv[]) {
 
     std::string text_section;
     for (const auto& func : ast_root->functions) {
-        text_section += generateFunctionCode(func.get());
+        text_section += generateFunctionCode(func.get(), semanticAnalyzer);
     }
 
     asm_file << "section .data\n";
@@ -102,7 +109,7 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
-std::string generateCode(const ASTNode* node) {
+std::string generateCode(const ASTNode* node, SemanticAnalyzer& semanticAnalyzer) {
     if (!node) throw std::runtime_error("Code generation error: null AST node");
 
     std::string assembly;
@@ -144,27 +151,30 @@ std::string generateCode(const ASTNode* node) {
 
         case ASTNode::NodeType::VARIABLE_REFERENCE: {
             const auto* ref_node = static_cast<const VariableReferenceNode*>(node);
-            if (stack_offsets.find(ref_node->name) == stack_offsets.end()) {
-                throw std::runtime_error("Code generation error: variable '" + ref_node->name + "' used before declaration.");
+            // Look up variable in symbol table to get its offset
+            Symbol* var_symbol = ref_node->resolved_symbol;
+            if (!var_symbol) {
+                throw std::runtime_error("Code generation error: variable '" + ref_node->name + "' used before declaration (resolved_symbol is null).");
             }
-            int offset = stack_offsets[ref_node->name];
+            int offset = var_symbol->offset;
             assembly += "  mov rax, qword [rbp + " + std::to_string(offset) + "]\n";
             break;
         }
 
         case ASTNode::NodeType::VARIABLE_ASSIGNMENT: {
             const auto* assign_node = static_cast<const VariableAssignmentNode*>(node);
-            if (stack_offsets.find(assign_node->name) == stack_offsets.end()) {
-                throw std::runtime_error("Code generation error: variable '" + assign_node->name + "' assigned before declaration.");
+            Symbol* var_symbol = assign_node->resolved_symbol;
+            if (!var_symbol) {
+                throw std::runtime_error("Code generation error: variable '" + assign_node->name + "' assigned before declaration (resolved_symbol is null).");
             }
 
             if (assign_node->index_expression) {
                 // Array assignment
-                assembly += generateCode(assign_node->expression.get());
+                assembly += generateCode(assign_node->expression.get(), semanticAnalyzer);
                 assembly += "  push rax\n";
-                assembly += generateCode(assign_node->index_expression.get());
+                assembly += generateCode(assign_node->index_expression.get(), semanticAnalyzer);
                 assembly += "  mov rbx, rax\n";
-                int offset = stack_offsets[assign_node->name];
+                int offset = var_symbol->offset; // Use offset from symbol table
                 assembly += "  lea rcx, [rbp + " + std::to_string(offset) + "]\n";
                 assembly += "  imul rbx, 8\n";
                 assembly += "  add rcx, rbx\n";
@@ -172,8 +182,8 @@ std::string generateCode(const ASTNode* node) {
                 assembly += "  mov [rcx], rax\n";
             } else {
                 // Simple variable assignment
-                assembly += generateCode(assign_node->expression.get());
-                int offset = stack_offsets[assign_node->name];
+                assembly += generateCode(assign_node->expression.get(), semanticAnalyzer);
+                int offset = var_symbol->offset; // Use offset from symbol table
                 assembly += "  mov qword [rbp + " + std::to_string(offset) + "], rax\n";
             }
             break;
@@ -181,9 +191,9 @@ std::string generateCode(const ASTNode* node) {
 
         case ASTNode::NodeType::BINARY_OPERATION_EXPRESSION: {
             const auto* bin = static_cast<const BinaryOperationExpressionNode*>(node);
-            assembly += generateCode(bin->left.get());
+            assembly += generateCode(bin->left.get(), semanticAnalyzer);
             assembly += "  push rax\n";
-            assembly += generateCode(bin->right.get());
+            assembly += generateCode(bin->right.get(), semanticAnalyzer);
             assembly += "  pop rbx\n";
 
             switch (bin->op_type) {
@@ -229,7 +239,7 @@ std::string generateCode(const ASTNode* node) {
 
         case ASTNode::NodeType::RETURN_STATEMENT: {
             const auto* ret = static_cast<const ReturnStatementNode*>(node);
-            assembly += generateCode(ret->expression.get());
+            assembly += generateCode(ret->expression.get(), semanticAnalyzer);
             //assembly += "  jmp .main_epilogue\n";
             break;
         }
@@ -243,19 +253,19 @@ std::string generateCode(const ASTNode* node) {
             std::string false_label = ".if_false_" + std::to_string(label_id);
             std::string end_label = ".if_end_" + std::to_string(label_id);
 
-            assembly += generateCode(if_node->condition.get());
+            assembly += generateCode(if_node->condition.get(), semanticAnalyzer);
             assembly += "  cmp rax, 0\n";
             assembly += "  je " + false_label + "\n";
 
             assembly += true_label + ":\n";
             for (const auto& stmt : if_node->true_block) {
-                assembly += generateCode(stmt.get());
+                assembly += generateCode(stmt.get(), semanticAnalyzer);
             }
             assembly += "  jmp " + end_label + "\n";
 
             assembly += false_label + ":\n";
             for (const auto& stmt : if_node->false_block) {
-                assembly += generateCode(stmt.get());
+                assembly += generateCode(stmt.get(), semanticAnalyzer);
             }
 
             assembly += end_label + ":\n";
@@ -271,12 +281,12 @@ std::string generateCode(const ASTNode* node) {
             std::string end_label = ".while_end_" + std::to_string(label_id);
 
             assembly += start_label + ":\n";
-            assembly += generateCode(while_node->condition.get());
+            assembly += generateCode(while_node->condition.get(), semanticAnalyzer);
             assembly += "  cmp rax, 0\n";
             assembly += "  je " + end_label + "\n";
 
             for (const auto& stmt : while_node->body) {
-                assembly += generateCode(stmt.get());
+                assembly += generateCode(stmt.get(), semanticAnalyzer);
             }
 
             assembly += "  jmp " + start_label + "\n";
@@ -294,21 +304,21 @@ std::string generateCode(const ASTNode* node) {
             std::string loop_end_label = ".for_loop_end_" + std::to_string(label_id);
 
             if (for_node->initializer) {
-                assembly += generateCode(for_node->initializer.get());
+                assembly += generateCode(for_node->initializer.get(), semanticAnalyzer);
             }
             assembly += "  jmp " + loop_condition_label + "\n";
 
             assembly += loop_start_label + ":\n";
             for (const auto& stmt : for_node->body) {
-                assembly += generateCode(stmt.get());
+                assembly += generateCode(stmt.get(), semanticAnalyzer);
             }
             if (for_node->increment) {
-                assembly += generateCode(for_node->increment.get());
+                assembly += generateCode(for_node->increment.get(), semanticAnalyzer);
             }
 
             assembly += loop_condition_label + ":\n";
             if (for_node->condition) {
-                assembly += generateCode(for_node->condition.get());
+                assembly += generateCode(for_node->condition.get(), semanticAnalyzer);
                 assembly += "  cmp rax, 0\n";
                 assembly += "  jne " + loop_start_label + "\n";
             } else { // No condition means infinite loop, jump directly to start
@@ -320,31 +330,34 @@ std::string generateCode(const ASTNode* node) {
 
         case ASTNode::NodeType::VARIABLE_DECLARATION: {
             const auto* decl_node = static_cast<const VariableDeclarationNode*>(node);
-            if (decl_node->type->category == TypeNode::TypeCategory::ARRAY) {
-                const auto* array_type = static_cast<const ArrayTypeNode*>(decl_node->type.get());
-                int size = array_type->size;
-                current_stack_offset -= 8 * size;
-                stack_offsets[decl_node->name] = current_stack_offset;
-                assembly += "  sub rsp, " + std::to_string(8 * size) + "\n";
-            } else {
-                current_stack_offset -= 8; // Allocate space for the new variable
-                stack_offsets[decl_node->name] = current_stack_offset;
-                assembly += "  sub rsp, 8\n"; // Adjust stack pointer
+            Symbol* var_symbol = decl_node->resolved_symbol;
+            if (!var_symbol) {
+                throw std::runtime_error("Code generation error: variable '" + decl_node->name + "' not found in symbol table during code generation.");
+            }
+            int var_size = var_symbol->size;
+
+            // Align stack to 8 bytes
+            if (var_size % 8 != 0) {
+                var_size = (var_size / 8 + 1) * 8;
             }
 
+            int offset = var_symbol->offset;
+
+            assembly += "  sub rsp, " + std::to_string(var_size) + "\n"; // Adjust stack pointer
+
             if (decl_node->initial_value) {
-                assembly += generateCode(decl_node->initial_value.get());
-                assembly += "  mov qword [rbp + " + std::to_string(current_stack_offset) + "], rax\n";
+                assembly += generateCode(decl_node->initial_value.get(), semanticAnalyzer);
+                assembly += "  mov qword [rbp + " + std::to_string(offset) + "], rax\n";
             } else {
                 // Initialize to 0 if no initial value is provided
-                assembly += "  mov qword [rbp + " + std::to_string(current_stack_offset) + "], 0\n";
+                assembly += "  mov qword [rbp + " + std::to_string(offset) + "], 0\n";
             }
             break;
         }
 
         case ASTNode::NodeType::PRINT_STATEMENT: {
             const auto* print_node = static_cast<const PrintStatementNode*>(node);
-            assembly += generateCode(print_node->expression.get());
+            assembly += generateCode(print_node->expression.get(), semanticAnalyzer);
 
             if (print_node->expression->node_type == ASTNode::NodeType::STRING_LITERAL_EXPRESSION) {
                 assembly += "  mov rsi, rax\n";
@@ -352,7 +365,8 @@ std::string generateCode(const ASTNode* node) {
             } else if (print_node->expression->node_type == ASTNode::NodeType::CHARACTER_LITERAL_EXPRESSION) {
                 assembly += "  mov rsi, rax\n";
                 assembly += "  lea rdi, [rel _print_char_format]\n";
-            } else {
+            }
+            else {
                 assembly += "  mov rsi, rax\n";
                 assembly += "  lea rdi, [rel _print_int_format]\n";
             }
@@ -365,7 +379,7 @@ std::string generateCode(const ASTNode* node) {
         case ASTNode::NodeType::FUNCTION_CALL: {
             const auto* call_node = static_cast<const FunctionCallNode*>(node);
             for (int i = call_node->arguments.size() - 1; i >= 0; --i) {
-                assembly += generateCode(call_node->arguments[i].get());
+                assembly += generateCode(call_node->arguments[i].get(), semanticAnalyzer);
                 assembly += "  push rax\n";
             }
             assembly += "  call " + call_node->function_name + "\n";
@@ -377,11 +391,15 @@ std::string generateCode(const ASTNode* node) {
 
         case ASTNode::NodeType::UNARY_OP_EXPRESSION: {
             const auto* unary_node = static_cast<const UnaryOpExpressionNode*>(node);
-            assembly += generateCode(unary_node->operand.get());
+            assembly += generateCode(unary_node->operand.get(), semanticAnalyzer);
             if (unary_node->op_type == Token::ADDRESSOF) {
                 // The operand should be a variable reference, get its address
                 const auto* ref_node = static_cast<const VariableReferenceNode*>(unary_node->operand.get());
-                int offset = stack_offsets[ref_node->name];
+                Symbol* var_symbol = ref_node->resolved_symbol;
+                if (!var_symbol) {
+                    throw std::runtime_error("Code generation error: variable '" + ref_node->name + "' used before declaration for address-of (resolved_symbol is null).");
+                }
+                int offset = var_symbol->offset;
                 assembly += "  lea rax, [rbp + " + std::to_string(offset) + "]\n";
             } else if (unary_node->op_type == Token::STAR) {
                 // The operand is a pointer, so rax holds the address. Dereference it.
@@ -392,10 +410,14 @@ std::string generateCode(const ASTNode* node) {
 
         case ASTNode::NodeType::ARRAY_ACCESS_EXPRESSION: {
             const auto* access_node = static_cast<const ArrayAccessNode*>(node);
-            assembly += generateCode(access_node->index_expr.get());
+            assembly += generateCode(access_node->index_expr.get(), semanticAnalyzer);
             assembly += "  mov rbx, rax\n";
             const auto* ref_node = static_cast<const VariableReferenceNode*>(access_node->array_expr.get());
-            int offset = stack_offsets[ref_node->name];
+            Symbol* var_symbol = ref_node->resolved_symbol;
+            if (!var_symbol) {
+                throw std::runtime_error("Code generation error: array variable '" + ref_node->name + "' not found for access (resolved_symbol is null).");
+            }
+            int offset = var_symbol->offset;
             assembly += "  lea rcx, [rbp + " + std::to_string(offset) + "]\n";
             assembly += "  imul rbx, 8\n";
             assembly += "  add rcx, rbx\n";
@@ -403,19 +425,56 @@ std::string generateCode(const ASTNode* node) {
             break;
         }
 
+        case ASTNode::NodeType::MEMBER_ACCESS_EXPRESSION: {
+            const auto* member_access_node = static_cast<const MemberAccessNode*>(node);
+            // Generate code to get the base address of the struct instance
+            assembly += generateCode(member_access_node->struct_expr.get(), semanticAnalyzer);
+            // rax now holds the base address of the struct
+
+            // Get the type of the struct instance to find the member's offset
+            // This requires semantic analysis to have stored the type in the AST node
+            // For now, we'll assume the base is a VariableReferenceNode and look up its type
+            // in the symbol table.
+            const VariableReferenceNode* var_ref_node = static_cast<const VariableReferenceNode*>(member_access_node->struct_expr.get());
+            Symbol* struct_symbol = var_ref_node->resolved_symbol;
+            if (!struct_symbol || struct_symbol->dataType->category != TypeNode::TypeCategory::STRUCT) {
+                throw std::runtime_error("Code generation error: Member access on non-struct variable '" + var_ref_node->name + "'.");
+            }
+            const StructTypeNode* struct_type = static_cast<const StructTypeNode*>(struct_symbol->dataType.get());
+            Symbol* struct_def_symbol = semanticAnalyzer.getSymbolTable().lookup(struct_type->struct_name);
+            if (!struct_def_symbol || !struct_def_symbol->structDef) {
+                throw std::runtime_error("Code generation error: Struct definition for '" + struct_type->struct_name + "' not found.");
+            }
+            const auto& struct_def = struct_def_symbol->structDef;
+
+            int member_offset = -1;
+            for (const auto& member : struct_def->members) {
+                if (member.name == member_access_node->member_name) {
+                    member_offset = member.offset;
+                    break;
+                }
+            }
+
+            if (member_offset == -1) {
+                throw std::runtime_error("Code generation error: Member '" + member_access_node->member_name + "' not found in struct '" + struct_type->struct_name + "'.");
+            }
+
+            assembly += "  add rax, " + std::to_string(member_offset) + "\n"; // Add member offset
+            assembly += "  mov rax, [rax]\n"; // Dereference to get member value
+            break;
+        }
+
         case ASTNode::NodeType::FUNCTION_DEFINITION:
         case ASTNode::NodeType::PROGRAM:
+        case ASTNode::NodeType::STRUCT_DEFINITION:
             throw std::runtime_error("Unexpected node in generateCode.");
     }
 
     return assembly;
 }
 
-std::string generateFunctionCode(const FunctionDefinitionNode* func_node) {
+std::string generateFunctionCode(const FunctionDefinitionNode* func_node, SemanticAnalyzer& semanticAnalyzer) {
     std::string assembly;
-    stack_offsets.clear();
-    current_stack_offset = 0;
-    current_stack_offset = 0;
 
     assembly += func_node->name + ":\n";
     assembly += "  push rbp\n";
@@ -423,15 +482,16 @@ std::string generateFunctionCode(const FunctionDefinitionNode* func_node) {
 
     // Assign offsets to parameters
     // Parameters are passed on the stack, starting at rbp + 16 (return address + old rbp)
-    int param_offset = 16;
-    for (const auto& param : func_node->parameters) {
-        stack_offsets[param->name] = param_offset;
-        param_offset += 8; // Assuming 8-byte parameters (qword)
-    }
+    // The offsets are already calculated and stored in param->offset during semantic analysis
+    // We just need to use them here.
+    // Note: x64 calling convention passes first few arguments in registers, then stack.
+    // For simplicity, we’re assuming all parameters are on the stack for now.
+    // This part needs to be aligned with the actual calling convention used.
+    // For now, we’ll just ensure the stack space is reserved.
 
     // Process function body statements
     for (const auto& stmt : func_node->body_statements) {
-        assembly += generateCode(stmt.get());
+        assembly += generateCode(stmt.get(), semanticAnalyzer);
     }
 
     // Function epilogue
@@ -443,6 +503,7 @@ std::string generateFunctionCode(const FunctionDefinitionNode* func_node) {
     assembly += "  mov rsp, rbp\n"; // Restore stack pointer
     assembly += "  pop rbp\n";      // Restore base pointer
     assembly += "  ret\n\n";        // Return from function
+
     return assembly;
 }
 

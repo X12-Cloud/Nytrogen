@@ -215,7 +215,7 @@ std::unique_ptr<TypeNode> Parser::parseType() {
         type = std::make_unique<PrimitiveTypeNode>(type_token.type);
     } else if (type_token.type == Token::IDENTIFIER) {
         // Check if it's a defined struct
-        if (defined_structs.count(type_token.value)) {
+        if (symbol_table.isStructDefined(type_token.value)) {
             consume();
             type = std::make_unique<StructTypeNode>(type_token.value);
         } else {
@@ -426,17 +426,44 @@ std::unique_ptr<StructDefinitionNode> Parser::parseStructDefinition() {
     expect(Token::LBRACE, "Expected '{' after struct name.");
 
     auto struct_node = std::make_unique<StructDefinitionNode>(struct_name);
+    int current_offset = 0;
 
     while (peek().type != Token::RBRACE && peek().type != Token::END_OF_FILE) {
         auto member_type = parseType();
         std::string member_name = consume().value;
         expect(Token::SEMICOLON, "Expected ';' after struct member declaration.");
-        struct_node->members.push_back({std::move(member_type), member_name});
+
+        int member_size = 0;
+        if (auto primitive_type = dynamic_cast<PrimitiveTypeNode*>(member_type.get())) {
+            switch (primitive_type->primitive_type) {
+                case Token::KEYWORD_INT: member_size = 4;
+                    break;
+                case Token::KEYWORD_CHAR: member_size = 1;
+                    break;
+                case Token::KEYWORD_BOOL: member_size = 1;
+                    break;
+                default: member_size = 0; // Should not happen
+            }
+        } else if (auto pointer_type = dynamic_cast<PointerTypeNode*>(member_type.get())) {
+            member_size = 8; // Size of a pointer
+        } else if (auto array_type = dynamic_cast<ArrayTypeNode*>(member_type.get())) {
+            // This is a simplification. A proper implementation would need to know the size of the base type.
+            member_size = 8; // Treat array as a pointer for now
+        } else if (auto struct_type = dynamic_cast<StructTypeNode*>(member_type.get())) {
+            Symbol* struct_symbol = symbol_table.lookup(struct_type->struct_name);
+            if (struct_symbol) {
+                member_size = struct_symbol->size;
+            }
+        }
+
+        struct_node->members.push_back({std::move(member_type), member_name, current_offset});
+        current_offset += member_size;
     }
 
+    struct_node->size = current_offset;
     expect(Token::RBRACE, "Expected '}' after struct definition.");
-    symbol_table.addStructDefinition(std::move(struct_node)); // Store the struct definition in symbol table
-    return std::move(struct_node); // Return the struct node
+    symbol_table.addSymbol(Symbol(Symbol::SymbolType::STRUCT_DEFINITION, struct_name, std::move(struct_node)));
+    return nullptr; // The struct definition is now owned by the symbol table
 }
 
 std::unique_ptr<ASTNode> Parser::parseStatement() {
@@ -451,13 +478,14 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
             expect(Token::SEMICOLON, "Expected ';' after variable declaration.");
             return decl_node;
         }
-        case Token::IDENTIFIER:
-            // Check if it's a struct type declaration
-            if (defined_structs.count(peek().value)) {
+        case Token::IDENTIFIER: {
+            // It could be a variable declaration with a struct type
+            if (symbol_table.isStructDefined(peek().value)) {
                 auto decl_node = parseVariableDeclaration();
                 expect(Token::SEMICOLON, "Expected ';' after variable declaration.");
                 return decl_node;
-            } else if (peek(1).type == Token::LPAREN) {
+            }
+            if (peek(1).type == Token::LPAREN) {
                 auto functionCall = parseFunctionCall();
                 expect(Token::SEMICOLON, "Expected ';' after function call statement.");
                 return functionCall;
@@ -466,6 +494,7 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
                 expect(Token::SEMICOLON, "Expected ';' after variable assignment.");
                 return assign_node;
             }
+        }
         case Token::KEYWORD_PRINT:
             return parsePrintStatement();
         case Token::KEYWORD_IF:
@@ -508,7 +537,7 @@ std::unique_ptr<FunctionDefinitionNode> Parser::parseFunctionDefinition() {
     const Token& return_type_token = peek();
     if (return_type_token.type != Token::KEYWORD_INT && return_type_token.type != Token::KEYWORD_VOID &&
         return_type_token.type != Token::KEYWORD_STRING && return_type_token.type != Token::KEYWORD_BOOL &&
-        return_type_token.type != Token::KEYWORD_CHAR && !defined_structs.count(return_type_token.value)) { // Allow struct return types
+        return_type_token.type != Token::KEYWORD_CHAR && !symbol_table.isStructDefined(return_type_token.value)) { // Allow struct return types
         throw std::runtime_error("Expected function return type (e.g., 'int', 'void', 'string', 'bool', 'char', or a defined struct).");
     }
     consume();
@@ -572,7 +601,7 @@ std::unique_ptr<ProgramNode> Parser::parse() {
                 program_node->statements.push_back(parseStatement());
             }
         } else if (peek().type == Token::KEYWORD_STRUCT) {
-            program_node->structs.push_back(parseStructDefinition());
+            parseStructDefinition();
             if (peek().type == Token::SEMICOLON) {
                 consume(); // Consume optional semicolon after struct definition
             }

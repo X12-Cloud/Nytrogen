@@ -6,6 +6,8 @@
 #include <memory> // Smart pointers
 #include "lexer.hpp"
 
+struct Symbol; // Forward declaration for Symbol
+
 // Forward declarations for type nodes
 struct TypeNode;
 struct PointerTypeNode;
@@ -137,24 +139,28 @@ struct StructTypeNode : public TypeNode {
 struct StructMember {
     std::unique_ptr<TypeNode> type;
     std::string name;
+    int offset; // Add offset for each member
 };
 
 struct StructDefinitionNode : public ASTNode {
     std::string name;
     std::vector<StructMember> members;
+    int size; // Add size for the struct
 
     StructDefinitionNode(std::string struct_name, int line = -1, int column = -1)
-        : ASTNode(NodeType::STRUCT_DEFINITION, line, column), name(std::move(struct_name)) {}
+        : ASTNode(NodeType::STRUCT_DEFINITION, line, column), name(std::move(struct_name)), size(0) {}
 };
 
 struct MemberAccessNode : public ASTNode {
     std::unique_ptr<ASTNode> struct_expr; // The expression representing the struct instance
     std::string member_name;
+    Symbol* resolved_symbol; // Add resolved_symbol
 
     MemberAccessNode(std::unique_ptr<ASTNode> expr, std::string member, int line = -1, int column = -1)
         : ASTNode(NodeType::MEMBER_ACCESS_EXPRESSION, line, column),
           struct_expr(std::move(expr)),
-          member_name(std::move(member)) {}
+          member_name(std::move(member)),
+          resolved_symbol(nullptr) {}
 };
 
 // Node for variable declarations (e.g., int/string x;)
@@ -162,9 +168,10 @@ struct VariableDeclarationNode : public ASTNode {
     std::string name;
     std::unique_ptr<TypeNode> type;
     std::unique_ptr<ASTNode> initial_value;
+    Symbol* resolved_symbol; // Add resolved_symbol
 
     VariableDeclarationNode(std::string name, std::unique_ptr<TypeNode> type, std::unique_ptr<ASTNode> initial_val = nullptr, int line = -1, int column = -1)
-	: ASTNode(NodeType::VARIABLE_DECLARATION, line, column), name(std::move(name)), type(std::move(type)), initial_value(std::move(initial_val)) {}
+	: ASTNode(NodeType::VARIABLE_DECLARATION, line, column), name(std::move(name)), type(std::move(type)), initial_value(std::move(initial_val)), resolved_symbol(nullptr) {}
 };
 
 
@@ -173,41 +180,47 @@ struct VariableAssignmentNode : public ASTNode {
     std::string name;
     std::unique_ptr<ASTNode> expression;
     std::unique_ptr<ASTNode> index_expression; // Added for array assignments
+    Symbol* resolved_symbol; // Add resolved_symbol
 
     VariableAssignmentNode(std::string var_name, std::unique_ptr<ASTNode> expr, std::unique_ptr<ASTNode> index_expr = nullptr, int line = -1, int column = -1)
         : ASTNode(NodeType::VARIABLE_ASSIGNMENT, line, column),
           name(std::move(var_name)),
           expression(std::move(expr)),
-          index_expression(std::move(index_expr)) {}
+          index_expression(std::move(index_expr)),
+          resolved_symbol(nullptr) {}
 };
 
 // Node for variable references in expressions (e.g., x in x + 1)
 struct VariableReferenceNode : public ASTNode {
     std::string name;
+    Symbol* resolved_symbol; // Add resolved_symbol
 
     VariableReferenceNode(std::string var_name, int line = -1, int column = -1)
-        : ASTNode(NodeType::VARIABLE_REFERENCE, line, column), name(std::move(var_name)) {}
+        : ASTNode(NodeType::VARIABLE_REFERENCE, line, column), name(std::move(var_name)), resolved_symbol(nullptr) {}
 };
 
 struct UnaryOpExpressionNode : public ASTNode {
     Token::Type op_type;
     std::unique_ptr<ASTNode> operand;
+    Symbol* resolved_symbol; // Add resolved_symbol
 
     UnaryOpExpressionNode(Token::Type op, std::unique_ptr<ASTNode> operand_node, int line = -1, int column = -1)
-        : ASTNode(NodeType::UNARY_OP_EXPRESSION, line, column), op_type(op), operand(std::move(operand_node)) {}
+        : ASTNode(NodeType::UNARY_OP_EXPRESSION, line, column), op_type(op), operand(std::move(operand_node)), resolved_symbol(nullptr) {}
 };
 
 struct ArrayAccessNode : public ASTNode {
     std::unique_ptr<ASTNode> array_expr;
     std::unique_ptr<ASTNode> index_expr;
+    Symbol* resolved_symbol; // Add resolved_symbol
 
     ArrayAccessNode(std::unique_ptr<ASTNode> array, std::unique_ptr<ASTNode> index, int line = -1, int column = -1)
-        : ASTNode(NodeType::ARRAY_ACCESS_EXPRESSION, line, column), array_expr(std::move(array)), index_expr(std::move(index)) {}
+        : ASTNode(NodeType::ARRAY_ACCESS_EXPRESSION, line, column), array_expr(std::move(array)), index_expr(std::move(index)), resolved_symbol(nullptr) {}
 };
 
 struct ParameterNode {
     std::unique_ptr<TypeNode> type;
     std::string name;
+    int offset; // Add offset for parameter
 };
 
 
@@ -228,11 +241,13 @@ struct FunctionDefinitionNode : public ASTNode {
 struct FunctionCallNode : public ASTNode {
     std::string function_name;
     std::vector<std::unique_ptr<ASTNode>> arguments;
+    Symbol* resolved_symbol; // Add resolved_symbol
 
     FunctionCallNode(std::string name, std::vector<std::unique_ptr<ASTNode>> args, int line = -1, int column = -1)
         : ASTNode(NodeType::FUNCTION_CALL, line, column),
           function_name(std::move(name)),
-          arguments(std::move(args)) {}
+          arguments(std::move(args)),
+          resolved_symbol(nullptr) {}
 };
 
 // Node for while statements
