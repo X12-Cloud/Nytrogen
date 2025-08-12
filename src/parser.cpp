@@ -265,6 +265,9 @@ std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
         initial_value = parseExpression();
     }
 
+    // Add variable to symbol table
+    symbol_table.addSymbol(Symbol(Symbol::SymbolType::VARIABLE, id_token.value, type->clone(), 0, 0));
+
     return std::make_unique<VariableDeclarationNode>(id_token.value, std::move(type), std::move(initial_value), id_token.line, id_token.column);
 }
 
@@ -432,7 +435,7 @@ std::unique_ptr<StructDefinitionNode> Parser::parseStructDefinition() {
     }
 
     expect(Token::RBRACE, "Expected '}' after struct definition.");
-    defined_structs[struct_name] = std::move(struct_node); // Store the struct definition
+    symbol_table.addStructDefinition(std::move(struct_node)); // Store the struct definition in symbol table
     return std::move(struct_node); // Return the struct node
 }
 
@@ -503,8 +506,10 @@ std::vector<std::unique_ptr<ParameterNode>> Parser::parseParameters() {
 
 std::unique_ptr<FunctionDefinitionNode> Parser::parseFunctionDefinition() {
     const Token& return_type_token = peek();
-    if (return_type_token.type != Token::KEYWORD_INT && return_type_token.type != Token::KEYWORD_VOID) {
-        throw std::runtime_error("Expected function return type (e.g., 'int' or 'void').");
+    if (return_type_token.type != Token::KEYWORD_INT && return_type_token.type != Token::KEYWORD_VOID &&
+        return_type_token.type != Token::KEYWORD_STRING && return_type_token.type != Token::KEYWORD_BOOL &&
+        return_type_token.type != Token::KEYWORD_CHAR && !defined_structs.count(return_type_token.value)) { // Allow struct return types
+        throw std::runtime_error("Expected function return type (e.g., 'int', 'void', 'string', 'bool', 'char', or a defined struct).");
     }
     consume();
 
@@ -513,10 +518,18 @@ std::unique_ptr<FunctionDefinitionNode> Parser::parseFunctionDefinition() {
 
     auto func_def_node = std::make_unique<FunctionDefinitionNode>(
         return_type_token.type, function_name_token.value,
-        return_type_token.line, return_type_token.column
+        return_type_token.line, function_name_token.column // Corrected column for function name
     );
 
+    // Enter a new scope for the function body
+    symbol_table.enterScope();
+
     func_def_node->parameters = parseParameters();
+
+    // Add parameters to the symbol table
+    for (const auto& param : func_def_node->parameters) {
+        symbol_table.addSymbol(Symbol(Symbol::SymbolType::VARIABLE, param->name, param->type->clone(), 0, 0)); // Placeholder offset/size
+    }
 
     expect(Token::LBRACE, "Expected '{' to begin function body.");
 
@@ -525,6 +538,9 @@ std::unique_ptr<FunctionDefinitionNode> Parser::parseFunctionDefinition() {
     }
 
     expect(Token::RBRACE, "Expected '}' to end function body.");
+
+    // Exit the scope for the function body
+    symbol_table.exitScope();
 
     return func_def_node;
 }

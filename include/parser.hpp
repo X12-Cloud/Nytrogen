@@ -8,6 +8,7 @@
 #include <map>
 #include <stdexcept>
 #include "ast.hpp"
+#include "symbol_table.hpp"
 
 // Parser class handles syntax analysis and AST construction
 class Parser {
@@ -20,6 +21,7 @@ private:
     size_t current_token_index;
     std::map<std::string, int> declared_variables;
     std::map<std::string, std::unique_ptr<StructDefinitionNode>> defined_structs;
+    SymbolTable symbol_table; // Add SymbolTable member
 
     // Token handling methods
     const Token& peek(size_t offset = 0) const;

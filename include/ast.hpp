@@ -98,27 +98,40 @@ struct TypeNode {
     TypeCategory category;
     TypeNode(TypeCategory cat) : category(cat) {}
     virtual ~TypeNode() = default;
+    virtual std::unique_ptr<TypeNode> clone() const = 0;
 };
 
 struct PrimitiveTypeNode : public TypeNode {
     Token::Type primitive_type;
     PrimitiveTypeNode(Token::Type type) : TypeNode(TypeCategory::PRIMITIVE), primitive_type(type) {}
+    std::unique_ptr<TypeNode> clone() const override {
+        return std::make_unique<PrimitiveTypeNode>(primitive_type);
+    }
 };
 
 struct PointerTypeNode : public TypeNode {
     std::unique_ptr<TypeNode> base_type;
     PointerTypeNode(std::unique_ptr<TypeNode> base) : TypeNode(TypeCategory::POINTER), base_type(std::move(base)) {}
+    std::unique_ptr<TypeNode> clone() const override {
+        return std::make_unique<PointerTypeNode>(base_type->clone());
+    }
 };
 
 struct ArrayTypeNode : public TypeNode {
     std::unique_ptr<TypeNode> base_type;
     int size;
     ArrayTypeNode(std::unique_ptr<TypeNode> base, int sz) : TypeNode(TypeCategory::ARRAY), base_type(std::move(base)), size(sz) {}
+    std::unique_ptr<TypeNode> clone() const override {
+        return std::make_unique<ArrayTypeNode>(base_type->clone(), size);
+    }
 };
 
 struct StructTypeNode : public TypeNode {
     std::string struct_name;
     StructTypeNode(std::string name) : TypeNode(TypeCategory::STRUCT), struct_name(std::move(name)) {}
+    std::unique_ptr<TypeNode> clone() const override {
+        return std::make_unique<StructTypeNode>(struct_name);
+    }
 };
 
 struct StructMember {
