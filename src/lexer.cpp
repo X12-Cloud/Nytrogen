@@ -150,8 +150,8 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
 	    else if (value == "char") tokens.push_back({Token::KEYWORD_CHAR, value, line, startColumn});		
 	    else if (value == "true") tokens.push_back({Token::TRUE, value, line, startColumn});
 	    else if (value == "false") tokens.push_back({Token::FALSE, value, line, startColumn});
-	            if (identifier == "for") return {Token::KEYWORD_FOR, identifier, line, column};
-        if (identifier == "struct") return {Token::KEYWORD_STRUCT, identifier, line, column};
+	    else if (value == "for") tokens.push_back({Token::KEYWORD_FOR, value, line, startColumn});
+	    else if (value == "struct") tokens.push_back({Token::KEYWORD_STRUCT, value, line, startColumn});
 	    else tokens.push_back({Token::IDENTIFIER, value, line, startColumn});
             continue;
         }
@@ -250,13 +250,18 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
             currentPos++; column++; continue;
         }
 
-	if (currentChar == '[') {
+        if (currentChar == '[') {
             tokens.push_back({Token::LBRACKET, "[", line, column});
             currentPos++; column++; continue;
         }
 
-	if (currentChar == ']') {
+        if (currentChar == ']') {
             tokens.push_back({Token::RBRACKET, "]", line, column});
+            currentPos++; column++; continue;
+        }
+
+        if (currentChar == '.') {
+            tokens.push_back({Token::DOT, ".", line, column});
             currentPos++; column++; continue;
         }
 

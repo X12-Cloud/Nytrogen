@@ -47,6 +47,7 @@ struct Token {
         RBRACE,         // }
 	LBRACKET,	// [
 	RBRACKET,	// ]
+	DOT,		// .
 
         COMMA,          // ,
 

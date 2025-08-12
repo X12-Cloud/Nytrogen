@@ -92,7 +92,8 @@ struct TypeNode {
     enum class TypeCategory {
         PRIMITIVE,
         POINTER,
-        ARRAY
+        ARRAY,
+        STRUCT
     };
     TypeCategory category;
     TypeNode(TypeCategory cat) : category(cat) {}
@@ -113,6 +114,34 @@ struct ArrayTypeNode : public TypeNode {
     std::unique_ptr<TypeNode> base_type;
     int size;
     ArrayTypeNode(std::unique_ptr<TypeNode> base, int sz) : TypeNode(TypeCategory::ARRAY), base_type(std::move(base)), size(sz) {}
+};
+
+struct StructTypeNode : public TypeNode {
+    std::string struct_name;
+    StructTypeNode(std::string name) : TypeNode(TypeCategory::STRUCT), struct_name(std::move(name)) {}
+};
+
+struct StructMember {
+    std::unique_ptr<TypeNode> type;
+    std::string name;
+};
+
+struct StructDefinitionNode : public ASTNode {
+    std::string name;
+    std::vector<StructMember> members;
+
+    StructDefinitionNode(std::string struct_name, int line = -1, int column = -1)
+        : ASTNode(NodeType::STRUCT_DEFINITION, line, column), name(std::move(struct_name)) {}
+};
+
+struct MemberAccessNode : public ASTNode {
+    std::unique_ptr<ASTNode> struct_expr; // The expression representing the struct instance
+    std::string member_name;
+
+    MemberAccessNode(std::unique_ptr<ASTNode> expr, std::string member, int line = -1, int column = -1)
+        : ASTNode(NodeType::MEMBER_ACCESS_EXPRESSION, line, column),
+          struct_expr(std::move(expr)),
+          member_name(std::move(member)) {}
 };
 
 // Node for variable declarations (e.g., int/string x;)
@@ -260,6 +289,7 @@ struct IfStatementNode : public ASTNode {
 struct ProgramNode : public ASTNode {
     std::vector<std::unique_ptr<ASTNode>> statements;
     std::vector<std::unique_ptr<FunctionDefinitionNode>> functions;
+    std::vector<std::unique_ptr<StructDefinitionNode>> structs;
 
     ProgramNode(int line = -1, int column = -1)
         : ASTNode(NodeType::PROGRAM, line, column) {}

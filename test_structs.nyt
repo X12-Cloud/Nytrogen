@@ -1,0 +1,10 @@
+struct Point {
+    int x;
+    int y;
+};
+
+int main() {
+    Point p;
+    print "Struct test complete.";
+    return 0;
+}

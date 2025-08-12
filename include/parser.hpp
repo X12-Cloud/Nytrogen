@@ -19,6 +19,7 @@ private:
     std::vector<Token> tokens;
     size_t current_token_index;
     std::map<std::string, int> declared_variables;
+    std::map<std::string, std::unique_ptr<StructDefinitionNode>> defined_structs;
 
     // Token handling methods
     const Token& peek(size_t offset = 0) const;
@@ -37,6 +38,7 @@ private:
     std::unique_ptr<FunctionCallNode> parseFunctionCall();
     std::vector<std::unique_ptr<ParameterNode>> parseParameters();
     std::unique_ptr<TypeNode> parseType();
+    std::unique_ptr<StructDefinitionNode> parseStructDefinition();
 
     // Expression parsing methods (now hierarchical for precedence)
     std::unique_ptr<ASTNode> parseExpression(); 		// Handles + and - (lowest precedence)

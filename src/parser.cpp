@@ -205,17 +205,40 @@ std::unique_ptr<WhileStatementNode> Parser::parseWhileStatement() {
 
 std::unique_ptr<TypeNode> Parser::parseType() {
     const Token& type_token = peek();
-    if (type_token.type != Token::KEYWORD_INT && type_token.type != Token::KEYWORD_STRING &&
-        type_token.type != Token::KEYWORD_BOOL && type_token.type != Token::KEYWORD_CHAR) {
-        throw std::runtime_error("Expected 'int', 'string', 'bool', or 'char' keyword for type.");
-    }
-    consume();
+    std::unique_ptr<TypeNode> type;
 
-    std::unique_ptr<TypeNode> type = std::make_unique<PrimitiveTypeNode>(type_token.type);
+    if (type_token.type == Token::KEYWORD_INT ||
+        type_token.type == Token::KEYWORD_STRING ||
+        type_token.type == Token::KEYWORD_BOOL ||
+        type_token.type == Token::KEYWORD_CHAR) {
+        consume();
+        type = std::make_unique<PrimitiveTypeNode>(type_token.type);
+    } else if (type_token.type == Token::IDENTIFIER) {
+        // Check if it's a defined struct
+        if (defined_structs.count(type_token.value)) {
+            consume();
+            type = std::make_unique<StructTypeNode>(type_token.value);
+        } else {
+            throw std::runtime_error("Expected 'int', 'string', 'bool', 'char', or a defined struct name for type.");
+        }
+    } else {
+        throw std::runtime_error("Expected 'int', 'string', 'bool', 'char', or a defined struct name for type.");
+    }
 
     while (peek().type == Token::STAR) {
         consume();
         type = std::make_unique<PointerTypeNode>(std::move(type));
+    }
+
+    // Handle array types (e.g., int[] or int*[5])
+    if (peek().type == Token::LBRACKET) {
+        consume(); // Consume '['
+        int array_size = -1; // -1 indicates unsized array or size not specified yet
+        if (peek().type == Token::INTEGER_LITERAL) {
+            array_size = std::stoi(consume().value);
+        }
+        expect(Token::RBRACKET, "Expected ']' after array size.");
+        type = std::make_unique<ArrayTypeNode>(std::move(type), array_size);
     }
 
     return type;
@@ -289,36 +312,50 @@ std::unique_ptr<FunctionCallNode> Parser::parseFunctionCall() {
 }
 
 std::unique_ptr<ASTNode> Parser::parseFactor() {
+    std::unique_ptr<ASTNode> node;
     const Token& current_token = peek();
+
     if (current_token.type == Token::INTEGER_LITERAL) {
-        return parseIntegerLiteralExpression();
+        node = parseIntegerLiteralExpression();
     } else if (current_token.type == Token::IDENTIFIER) {
         if (peek(1).type == Token::LPAREN) {
-            return parseFunctionCall();
+            node = parseFunctionCall();
         } else if (peek(1).type == Token::LBRACKET) {
             auto var_ref = parseVariableReference();
             consume(); // consume '['
             auto index_expr = parseExpression();
             expect(Token::RBRACKET, "Expected ']' after array index.");
-            return std::make_unique<ArrayAccessNode>(std::move(var_ref), std::move(index_expr));
+            node = std::make_unique<ArrayAccessNode>(std::move(var_ref), std::move(index_expr));
         } else {
-            return parseVariableReference();
+            node = parseVariableReference();
         }
     } else if (current_token.type == Token::LPAREN) {
         consume();
-        auto expr = parseExpression();
+        node = parseExpression();
         expect(Token::RPAREN, "Expected ')' after expression in parentheses.");
-        return expr;
     } else if (current_token.type == Token::STRING_LITERAL) {
-        return parseStringLiteralExpression();
+        node = parseStringLiteralExpression();
     } else if (current_token.type == Token::TRUE || current_token.type == Token::FALSE) {
-        return parseBooleanLiteralExpression();
+        node = parseBooleanLiteralExpression();
     } else if (current_token.type == Token::CHARACTER_LITERAL) {
-        return parseCharacterLiteralExpression();
+        node = parseCharacterLiteralExpression();
+    } else {
+        throw std::runtime_error("Parser Error: Expected an integer literal, identifier, or '(' for an expression factor. Got '" +
+                                 current_token.value + "' at line " + std::to_string(current_token.line) +
+                                 ", column " + std::to_string(current_token.column) + ".");
     }
-    throw std::runtime_error("Parser Error: Expected an integer literal, identifier, or '(' for an expression factor. Got '" +
-                             current_token.value + "' at line " + std::to_string(current_token.line) +
-                             ", column " + std::to_string(current_token.column) + ".");
+
+    // Handle member access (e.g., struct_instance.member)
+    while (peek().type == Token::DOT) {
+        consume(); // Consume '.'
+        const Token& member_name_token = consume();
+        if (member_name_token.type != Token::IDENTIFIER) {
+            throw std::runtime_error("Expected identifier after '.' for member access.");
+        }
+        node = std::make_unique<MemberAccessNode>(std::move(node), member_name_token.value, member_name_token.line, member_name_token.column);
+    }
+
+    return node;
 }
 
 std::unique_ptr<ASTNode> Parser::parseUnaryExpression() {
@@ -380,6 +417,25 @@ std::unique_ptr<ASTNode> Parser::parseExpression() {
     return parseComparisonExpression();
 }
 
+std::unique_ptr<StructDefinitionNode> Parser::parseStructDefinition() {
+    consume(); // Consume 'struct' keyword
+    std::string struct_name = consume().value; // Consume struct name
+    expect(Token::LBRACE, "Expected '{' after struct name.");
+
+    auto struct_node = std::make_unique<StructDefinitionNode>(struct_name);
+
+    while (peek().type != Token::RBRACE && peek().type != Token::END_OF_FILE) {
+        auto member_type = parseType();
+        std::string member_name = consume().value;
+        expect(Token::SEMICOLON, "Expected ';' after struct member declaration.");
+        struct_node->members.push_back({std::move(member_type), member_name});
+    }
+
+    expect(Token::RBRACE, "Expected '}' after struct definition.");
+    defined_structs[struct_name] = std::move(struct_node); // Store the struct definition
+    return std::move(struct_node); // Return the struct node
+}
+
 std::unique_ptr<ASTNode> Parser::parseStatement() {
     switch (peek().type) {
         case Token::KEYWORD_RETURN:
@@ -393,7 +449,12 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
             return decl_node;
         }
         case Token::IDENTIFIER:
-            if (peek(1).type == Token::LPAREN) {
+            // Check if it's a struct type declaration
+            if (defined_structs.count(peek().value)) {
+                auto decl_node = parseVariableDeclaration();
+                expect(Token::SEMICOLON, "Expected ';' after variable declaration.");
+                return decl_node;
+            } else if (peek(1).type == Token::LPAREN) {
                 auto functionCall = parseFunctionCall();
                 expect(Token::SEMICOLON, "Expected ';' after function call statement.");
                 return functionCall;
@@ -470,23 +531,38 @@ std::unique_ptr<FunctionDefinitionNode> Parser::parseFunctionDefinition() {
 
 std::unique_ptr<ProgramNode> Parser::parse() {
     auto program_node = std::make_unique<ProgramNode>();
-
     while (peek().type != Token::END_OF_FILE) {
-        try {
-            auto func_def = parseFunctionDefinition();
-            program_node->functions.push_back(std::move(func_def));
-        } catch (const std::runtime_error& e) {
-            std::cerr << "Parsing failed: " << e.what() << std::endl;
-            return nullptr;
+        if (peek().type == Token::KEYWORD_INT ||
+            peek().type == Token::KEYWORD_STRING ||
+            peek().type == Token::KEYWORD_VOID ||
+            peek().type == Token::KEYWORD_BOOL ||
+            peek().type == Token::KEYWORD_CHAR) {
+            // Could be a function definition or a variable declaration
+            // For simplicity, assume function definition if followed by identifier and LPAREN
+            // This needs more robust handling for actual type parsing
+            size_t temp_index = current_token_index;
+            Token type_token = consume(); // Consume type keyword
+            if (peek().type == Token::IDENTIFIER) {
+                consume(); // Consume identifier (function name)
+                if (peek().type == Token::LPAREN) {
+                    current_token_index = temp_index; // Rewind
+                    program_node->functions.push_back(parseFunctionDefinition());
+                } else {
+                    current_token_index = temp_index; // Rewind
+                    program_node->statements.push_back(parseVariableDeclaration());
+                }
+            } else {
+                current_token_index = temp_index; // Rewind if not identifier
+                program_node->statements.push_back(parseStatement());
+            }
+        } else if (peek().type == Token::KEYWORD_STRUCT) {
+            program_node->structs.push_back(parseStructDefinition());
+            if (peek().type == Token::SEMICOLON) {
+                consume(); // Consume optional semicolon after struct definition
+            }
+        } else {
+            program_node->statements.push_back(parseStatement());
         }
     }
-
-    try {
-        expect(Token::END_OF_FILE, "Expected end of file after parsing program. Unexpected tokens found.");
-    } catch (const std::runtime_error& e) {
-        std::cerr << "Parsing failed at end of file check: " << e.what() << std::endl;
-        return nullptr;
-    }
-
     return program_node;
 }
