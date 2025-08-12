@@ -10,6 +10,7 @@
 #include "lexer.hpp"
 #include "parser.hpp"
 #include "ast.hpp"
+#include "semantic_analyzer.hpp"
 
 std::map<std::string, int> stack_offsets;
 int current_stack_offset = 0;
@@ -62,6 +63,10 @@ int main(int argc, char* argv[]) {
         std::cerr << "AST generation failed during parsing. Exiting.\n";
         return 1;
     }
+
+    // Perform semantic analysis
+    SemanticAnalyzer semanticAnalyzer(ast_root, parser.getSymbolTable());
+    semanticAnalyzer.analyze();
 
     std::ofstream asm_file(output_asm_filename);
     if (!asm_file.is_open()) {

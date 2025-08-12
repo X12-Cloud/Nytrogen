@@ -15,6 +15,7 @@ class Parser {
 public:
     Parser(std::vector<Token> tokens);
     std::unique_ptr<ProgramNode> parse();
+    SymbolTable& getSymbolTable() { return symbol_table; }
 
 private:
     std::vector<Token> tokens;
