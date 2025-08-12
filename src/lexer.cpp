@@ -150,7 +150,8 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
 	    else if (value == "char") tokens.push_back({Token::KEYWORD_CHAR, value, line, startColumn});		
 	    else if (value == "true") tokens.push_back({Token::TRUE, value, line, startColumn});
 	    else if (value == "false") tokens.push_back({Token::FALSE, value, line, startColumn});
-	    else if (value == "for") tokens.push_back({Token::KEYWORD_FOR, value, line, startColumn});
+	            if (identifier == "for") return {Token::KEYWORD_FOR, identifier, line, column};
+        if (identifier == "struct") return {Token::KEYWORD_STRUCT, identifier, line, column};
 	    else tokens.push_back({Token::IDENTIFIER, value, line, startColumn});
             continue;
         }

@@ -33,6 +33,8 @@ struct ASTNode {
         FOR_STATEMENT = 16,
         UNARY_OP_EXPRESSION = 17,
         ARRAY_ACCESS_EXPRESSION = 18,
+        STRUCT_DEFINITION = 19,
+        MEMBER_ACCESS_EXPRESSION = 20,
     };
 
     NodeType node_type;

@@ -1,212 +1,130 @@
 # Nytrogen Compiler
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Build Status](https://github.com/X12-Cloud/Nytrogen/actions/workflows/build.yml/badge.svg)](https://github.com/X12-Cloud/Nytrogen/actions)
-[![GitHub Issues](https://img.shields.io/github/issues/X12-Cloud/Nytrogen)](https://github.com/X12-Cloud/Nytrogen/issues)
+Nytrogen is a simple, educational compiler designed to demonstrate the fundamental concepts of compiler design, including lexical analysis, parsing, and abstract syntax tree (AST) generation. It aims to provide a clear and concise example of how a programming language can be processed and understood by a machine.
 
-Nytrogen is an experimental compiler for a minimalistic programming language, designed to explore the core concepts of compiler design and implementation. It transforms Nytrogen source code (.ny/.nyt files) into optimized x86-64 assembly, ready for compilation on Linux systems.
+## Features
 
-## 🚀 Quick Start - Build from source
+The Nytrogen language currently supports the following features:
 
-```bash
-# Clone the repository
-git clone https://github.com/X12-Cloud/Nytrogen.git
-cd Nytrogen
+### Data Types
+*   `int`: Integer numbers.
+*   `string`: Sequences of characters.
+*   `bool`: Boolean values (`true` and `false`).
+*   `char`: Single characters.
+*   Pointers (`*`): Support for pointer types.
+*   Arrays (`[]`): Support for array types and array access.
 
-# Build the compiler
-mkdir build
-cd build
-cmake ..
-cmake --build .
+### Variables
+*   **Declaration:** Declare variables with specified types (e.g., `int x;`, `string message = "Hello";`).
+*   **Assignment:** Assign values to declared variables (e.g., `x = 10;`).
+*   **Referencing:** Use variables in expressions and statements.
 
-# Compile a test program
-../build/Nytro ../test.nyt
-
-# Assemble and link
-nasm -f elf64 out.asm -o out.o
-ld out.o -o out
-
-# Run the program
-./out
-```
-
-## 📚 Language Features
-
-### Current Implementation
-Nytrogen supports a growing set of features, focusing on core programming constructs:
-
-*   **Data Types:** `int`, `bool`, `char`, and basic `string` literals.
-*   **Variables:** Declarations and assignments for all supported types.
-*   **Arithmetic Operations:** Standard integer operations (`+`, `-`, `*`, `/`).
-*   **Control Flow:**
-    *   Conditional statements (`if`/`else`).
-    *   Looping constructs (`while` loops, `for` loops).
-*   **Functions:**
-    *   User-defined functions with parameters and return values.
-    *   Function calls.
-*   **Basic I/O:** `print` statement for integers, booleans, characters, and strings.
-*   **Memory Operations:** Address-of (`&`) and Dereference (`*`) operators (initial support for pointers).
-*   **Arrays:** Basic array declarations and indexing (`arr[index]`).
-
-### Planned Features
-- Standard library integration (e.g., file I/O, advanced string manipulation)
-- More complex data structures (e.g., structs)
-- Error handling and debugging tools
-
-## 🛠️ Installation
-
-### Prerequisites
-
-Nytrogen requires the following dependencies:
-
--   **C++ Compiler** (g++ recommended)
--   **CMake** (version 3.20 or higher)
--   **NASM** (Netwide Assembler)
--   **GNU Binutils** (for ld)
-
-#### Installation on Ubuntu/Debian
-```bash
-sudo apt update
-sudo apt install build-essential cmake nasm
-```
-
-#### Installation on Arch Linux
-```bash
-sudo pacman -S base-devel cmake nasm
-```
-
-### Building from Source
-
-1.  **Clone the repository**
-    ```bash
-    git clone https://github.com/X12-Cloud/Nytrogen.git
-    cd nytrogen
+### Control Flow
+*   **Conditional Statements:** `if` and `else` constructs for branching logic.
+    ```nytrogen
+    if (x > 0) {
+        print "Positive";
+    } else {
+        print "Non-positive";
+    }
+    ```
+*   **While Loops:** Execute a block of code repeatedly as long as a condition is true.
+    ```nytrogen
+    int i = 0;
+    while (i < 5) {
+        print i;
+        i = i + 1;
+    }
+    ```
+*   **For Loops:** Iterate over a sequence with an initializer, condition, and increment.
+    ```nytrogen
+    for (int i = 0; i < 5; i = i + 1) {
+        print i;
+    }
     ```
 
-2.  **Build the compiler**
+### Functions
+*   **Definition:** Define functions with a return type, name, and parameters.
+    ```nytrogen
+    int add(int a, int b) {
+        return a + b;
+    }
+    ```
+*   **Function Calls:** Invoke defined functions with arguments.
+    ```nytrogen
+    int result = add(5, 3);
+    print result;
+    ```
+*   **Return Statements:** Return a value from a function.
+
+### Expressions
+*   **Arithmetic Operations:** Perform addition (`+`), subtraction (`-`), multiplication (`*`), and division (`/`).
+*   **Comparison Operations:** Compare values using equality (`==`), inequality (`!=`), less than (`<`), greater than (`>`), less than or equal to (`<=`), and greater than or equal to (`>=`).
+*   **Unary Operations:** Support for unary operators like address-of (`&`).
+*   **Array Access:** Access elements of an array using an index (e.g., `myArray[0]`).
+
+### Statements
+*   **Print Statement:** Output the value of an expression to the console (e.g., `print "Hello World";`, `print myVariable;`).
+
+## Getting Started
+
+### Prerequisites
+*   A C++ compiler (e.g., g++).
+*   CMake (version 3.10 or higher).
+
+### Building the Compiler
+
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/your-username/Nytrogen.git
+    cd Nytrogen
+    ```
+2.  **Create a build directory and compile:**
     ```bash
     mkdir build
     cd build
     cmake ..
-    cmake --build .
+    make
+    ```
+    Alternatively, you can use the provided `build.sh` script from the project root:
+    ```bash
+    ./build.sh
     ```
 
-The compiler executable will be located at `build/Nytro`.
+### Running the Compiler
 
-## 📦 Project Structure
+After building, the executable will be located in the `build` directory. You can run it with a Nytrogen source file as an argument:
 
-```
-nytrogen/
-├── build/              # Build artifacts
-├── src/                # Source code
-│   ├── main.cpp        # Compiler entry point
-│   ├── lexer.hpp/cpp   # Lexical analysis
-│   ├── parser.hpp/cpp  # Syntax analysis
-│   └── ast.hpp         # Abstract Syntax Tree
-├── test.nyt            # Example program
-├── CMakeLists.txt      # CMake configuration
-├── run.sh
-├── clean_run.sh
-└── run_scripts/        # Build and run scripts
-    ├── run.sh
-    ├── build.sh
-    ├── clean_build.sh
-    └── clean_run.sh
+```bash
+./build/nytrogen <your_source_file.nyt>
 ```
 
-## 📝 Usage
-
-### Compiling Programs
-
-1.  **Compile a Nytrogen program**
-    ```bash
-    ./build/Nytro path/to/program.nyt
-    ```
-    This generates `out.asm` in the current directory.
-
-2.  **Assemble and link**
-    ```bash
-    nasm -f elf64 out.asm -o out.o
-    ld out.o -o out
-    ```
-
-3.  **Run the program**
-    ```bash
-    ./out
-    ```
-
-### Example Program
-```nyt
-// Example demonstrating various features
-int add(int a, int b) {
-    return a + b;
-}
-
-int main() {
-    int x = 10;
-    int y = 5;
-    bool flag = true;
-    char initial = 'A';
-
-    print("Hello from Nytrogen!");
-    print(x + y); // Prints 15
-
-    if (flag) {
-        print("Flag is true!");
-    }
-
-    for (int i = 0; i < 3; i = i + 1) {
-        print(i);
-    }
-
-    int sum = add(x, y);
-    print(sum); // Prints 15
-
-    int arr[2];
-    arr[0] = 100;
-    arr[1] = 200;
-    print(arr[0]); // Prints 100
-
-    int* ptr = &x;
-    print(*ptr); // Prints 10
-
-    *ptr = 50;
-    print(x); // Prints 50
-
-    return 0;
-}
+Example:
+```bash
+./build/nytrogen test.nyt
 ```
 
-## 🤝 Contributing
+You can also use the `run.sh` script for convenience:
+```bash
+./run.sh test.nyt
+```
 
-1.  Fork the repository
-2.  Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3.  Commit your changes (`git commit -m 'feat: Add some AmazingFeature'`)
-4.  Push to the branch (`git push origin feature/AmazingFeature`)
-5.  Open a Pull Request
+## Project Structure
 
-## 📄 License
+*   `src/`: Contains the source code for the lexer, parser, and main compiler logic.
+*   `include/`: Contains header files for AST nodes, lexer, and parser.
+*   `build/`: Directory for build artifacts (created by CMake).
+*   `docs/`: Documentation files.
+*   `test.nyt`: An example Nytrogen source file for testing.
+*   `build.sh`: Script to build the project.
+*   `run.sh`: Script to run the compiler with a test file.
+*   `clean_run.sh`: Script to clean the build and then run.
+*   `commit.sh`: Script to commit changes.
+
+## Contributing
+
+Contributions are welcome! Please feel free to open issues or submit pull requests.
+
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
--   Inspired by compiler design courses and projects
--   Built with C++ and modern development tools
--   Thanks to the open-source community for inspiration and resources
-
-## 📞 Support
-
-For support, please:
--   Open an issue on GitHub
--   Check existing issues for similar problems
--   Provide detailed information about your issue
-
-## 📮 Contact
-
--   GitHub: [X12-Cloud](https://github.com/X12-Cloud)
--   Email: X12Cloud@gmail.com
-
-## 📜 Documentation
-
-For more detailed documentation, please refer to the [docs](docs) directory.
