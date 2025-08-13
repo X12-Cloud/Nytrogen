@@ -151,11 +151,7 @@ std::string generateCode(const ASTNode* node, SemanticAnalyzer& semanticAnalyzer
 
         case ASTNode::NodeType::VARIABLE_REFERENCE: {
             const auto* ref_node = static_cast<const VariableReferenceNode*>(node);
-            Symbol* var_symbol = ref_node->resolved_symbol;
-            if (!var_symbol) {
-                throw std::runtime_error("Code generation error: variable '" + ref_node->name + "' used before declaration (resolved_symbol is null).");
-            }
-            int offset = var_symbol->offset;
+            int offset = ref_node->resolved_offset;
             if (as_lvalue) {
                 assembly += "  lea rax, [rbp + " + std::to_string(offset) + "]\n";
             } else {

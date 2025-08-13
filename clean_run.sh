@@ -10,4 +10,4 @@ echo "--- Performing a clean build and then running test.ny ---"
 
 
 # Step 3: run with run.sh
-./run.sh
+./run.sh "$1"

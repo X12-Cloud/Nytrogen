@@ -31,9 +31,15 @@ struct Symbol {
     Symbol(SymbolType type, std::string name, std::unique_ptr<TypeNode> dataType, int offset = 0, int size = 0)
         : type(type), name(std::move(name)), dataType(std::move(dataType)), structDef(nullptr), offset(offset), size(size) {}
 
+    // Constructor for functions
+    Symbol(SymbolType type, std::string name, std::unique_ptr<TypeNode> dataType, std::vector<std::unique_ptr<TypeNode>> paramTypes)
+        : type(type), name(std::move(name)), dataType(std::move(dataType)), structDef(nullptr), parameterTypes(std::move(paramTypes)), offset(0), size(0) {}
+
     // Constructor for struct definitions
     Symbol(SymbolType type, std::string name, std::unique_ptr<StructDefinitionNode> structDef)
         : type(type), name(std::move(name)), dataType(nullptr), structDef(std::move(structDef)), offset(0), size(0) {}
+
+    std::vector<std::unique_ptr<TypeNode>> parameterTypes; // For functions: types of parameters
 };
 
 // Represents a single scope in the symbol table (e.g., global, function body)

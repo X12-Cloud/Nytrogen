@@ -82,14 +82,14 @@ void SemanticAnalyzer::analyze() {
     symbolTable.enterScope();
 
     for (const auto& func_node : program_ast->functions) {
-        std::unique_ptr<TypeNode> return_type;
-        if (func_node->return_type_token == Token::KEYWORD_INT) {
-            return_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_INT);
-        } else if (func_node->return_type_token == Token::KEYWORD_VOID) {
-            return_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_VOID);
+        std::unique_ptr<TypeNode> return_type = func_node->return_type->clone();
+
+        std::vector<std::unique_ptr<TypeNode>> param_types;
+        for (const auto& param : func_node->parameters) {
+            param_types.push_back(param->type->clone());
         }
 
-        Symbol func_symbol(Symbol::SymbolType::FUNCTION, std::string(func_node->name), static_cast<std::unique_ptr<TypeNode>>(std::move(return_type)));
+        Symbol func_symbol(Symbol::SymbolType::FUNCTION, std::string(func_node->name), std::move(return_type), std::move(param_types));
         symbolTable.addSymbol(std::move(func_symbol));
     }
 
@@ -224,6 +224,8 @@ void SemanticAnalyzer::visit(VariableReferenceNode* node) {
         throw std::runtime_error("Semantic Error: Use of undeclared variable '" + node->name + "'.");
     }
     node->resolved_symbol = var_symbol;
+    node->resolved_offset = var_symbol->offset;
+    node->resolved_type = var_symbol->dataType->clone();
 }
 
 void SemanticAnalyzer::visit(BinaryOperationExpressionNode* node) {
@@ -265,12 +267,16 @@ void SemanticAnalyzer::visit(WhileStatementNode* node) {
         throw std::runtime_error("Semantic Error: While condition must be a boolean expression.");
     }
 
+    symbolTable.enterScope();
     for (const auto& stmt : node->body) {
         visit(stmt.get());
     }
+    symbolTable.exitScope();
 }
 
 void SemanticAnalyzer::visit(ForStatementNode* node) {
+    symbolTable.enterScope(); // Scope for initializer, condition, increment, and body
+
     if (node->initializer) {
         visit(node->initializer.get());
     }
@@ -287,6 +293,8 @@ void SemanticAnalyzer::visit(ForStatementNode* node) {
     for (const auto& stmt : node->body) {
         visit(stmt.get());
     }
+
+    symbolTable.exitScope();
 }
 
 void SemanticAnalyzer::visit(FunctionCallNode* node) {
@@ -296,8 +304,20 @@ void SemanticAnalyzer::visit(FunctionCallNode* node) {
     }
     node->resolved_symbol = func_symbol;
 
-    for (const auto& arg : node->arguments) {
-        visitExpression(arg.get());
+    // Check number of arguments
+    if (node->arguments.size() != func_symbol->parameterTypes.size()) {
+        throw std::runtime_error("Semantic Error: Function '" + node->function_name + "' expects " +
+                                 std::to_string(func_symbol->parameterTypes.size()) + " arguments, but " +
+                                 std::to_string(node->arguments.size()) + " were provided.");
+    }
+
+    // Check argument types
+    for (size_t i = 0; i < node->arguments.size(); ++i) {
+        std::unique_ptr<TypeNode> arg_type = visitExpression(node->arguments[i].get());
+        if (!areTypesCompatible(arg_type.get(), func_symbol->parameterTypes[i].get())) {
+            throw std::runtime_error("Semantic Error: Type mismatch in argument " + std::to_string(i + 1) +
+                                     " of function '" + node->function_name + "'.");
+        }
     }
 }
 
@@ -393,7 +413,11 @@ std::unique_ptr<TypeNode> SemanticAnalyzer::visitExpression(ASTNode* expr) {
         }
         case ASTNode::NodeType::FUNCTION_CALL: {
             visit(static_cast<FunctionCallNode*>(expr));
-            return std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_INT);
+            Symbol* func_symbol = symbolTable.lookup(static_cast<FunctionCallNode*>(expr)->function_name);
+            if (!func_symbol) {
+                throw std::runtime_error("Semantic Error: Function '" + static_cast<FunctionCallNode*>(expr)->function_name + "' not found.");
+            }
+            return func_symbol->dataType->clone();
         }
         case ASTNode::NodeType::MEMBER_ACCESS_EXPRESSION: {
             visit(static_cast<MemberAccessNode*>(expr));

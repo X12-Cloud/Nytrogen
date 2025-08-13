@@ -505,7 +505,7 @@ std::vector<std::unique_ptr<ParameterNode>> Parser::parseParameters() {
             param->name = name_token.value;
             parameters.push_back(std::move(param));
 
-        } while (peek().type == Token::COMMA && consume().type == Token::COMMA);
+        } while (peek().type == Token::COMMA && (consume(), true));
     }
 
     expect(Token::RPAREN, "Expected ')' after function parameters.");
@@ -513,20 +513,14 @@ std::vector<std::unique_ptr<ParameterNode>> Parser::parseParameters() {
 }
 
 std::unique_ptr<FunctionDefinitionNode> Parser::parseFunctionDefinition() {
-    const Token& return_type_token = peek();
-    if (return_type_token.type != Token::KEYWORD_INT && return_type_token.type != Token::KEYWORD_VOID &&
-        return_type_token.type != Token::KEYWORD_STRING && return_type_token.type != Token::KEYWORD_BOOL &&
-        return_type_token.type != Token::KEYWORD_CHAR && !symbol_table.isStructDefined(return_type_token.value)) { // Allow struct return types
-        throw std::runtime_error("Expected function return type (e.g., 'int', 'void', 'string', 'bool', 'char', or a defined struct).");
-    }
-    consume();
+    auto return_type = parseType();
 
     const Token& function_name_token = peek();
     expect(Token::IDENTIFIER, "Expected function name.");
 
     auto func_def_node = std::make_unique<FunctionDefinitionNode>(
-        return_type_token.type, function_name_token.value,
-        return_type_token.line, function_name_token.column // Corrected column for function name
+        std::move(return_type), function_name_token.value,
+        function_name_token.line, function_name_token.column
     );
 
     // Enter a new scope for the function body

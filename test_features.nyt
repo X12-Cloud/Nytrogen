@@ -1,11 +1,11 @@
 int add(int a, int b) {
-    return a * b;
+    return a + b;
 }
 
 int main() {
     // Test function call with parameters
     int result;
-    result = add(5, 3);
+    result = add(5, 10);
     print(result);
 
     // Test arrays

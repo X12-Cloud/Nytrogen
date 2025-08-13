@@ -190,9 +190,11 @@ struct VariableAssignmentNode : public ASTNode {
 struct VariableReferenceNode : public ASTNode {
     std::string name;
     Symbol* resolved_symbol; // Add resolved_symbol
+    int resolved_offset; // Store the resolved offset
+    std::unique_ptr<TypeNode> resolved_type; // Store the resolved type
 
     VariableReferenceNode(std::string var_name, int line = -1, int column = -1)
-        : ASTNode(NodeType::VARIABLE_REFERENCE, line, column), name(std::move(var_name)), resolved_symbol(nullptr) {}
+        : ASTNode(NodeType::VARIABLE_REFERENCE, line, column), name(std::move(var_name)), resolved_symbol(nullptr), resolved_offset(0) {}
 };
 
 struct UnaryOpExpressionNode : public ASTNode {
@@ -222,14 +224,14 @@ struct ParameterNode {
 
 // Node for function definitions (e.g., int main() {})
 struct FunctionDefinitionNode : public ASTNode {
-    Token::Type return_type_token;
+    std::unique_ptr<TypeNode> return_type;
     std::string name;
     std::vector<std::unique_ptr<ParameterNode>> parameters;
     std::vector<std::unique_ptr<ASTNode>> body_statements;
 
-    FunctionDefinitionNode(Token::Type ret_type, const std::string& func_name, int line = -1, int column = -1)
+    FunctionDefinitionNode(std::unique_ptr<TypeNode> ret_type, const std::string& func_name, int line = -1, int column = -1)
         : ASTNode(NodeType::FUNCTION_DEFINITION, line, column),
-          return_type_token(ret_type),
+          return_type(std::move(ret_type)),
 	            name(func_name) {}
 };
 
