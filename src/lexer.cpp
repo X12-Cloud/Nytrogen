@@ -42,6 +42,7 @@ std::string Token::typeToString() const {
 	case LBRACKET: return "LBRACKET";
         case RBRACKET: return "RBRACKET";
 	case COMMA: return "COMMA";
+	case DOT: return "DOT";
         case END_OF_FILE: return "END_OF_FILE";
         case UNKNOWN: return "UNKNOWN";
     }

@@ -5,6 +5,7 @@ struct Point {
 
 int main() {
     Point p;
-    print "Struct test complete.";
+    p.x = 10;
+    print p.x;
     return 0;
 }

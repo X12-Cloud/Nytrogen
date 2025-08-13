@@ -177,17 +177,13 @@ struct VariableDeclarationNode : public ASTNode {
 
 // Node for variable assignments (e.g., x = 5;)
 struct VariableAssignmentNode : public ASTNode {
-    std::string name;
-    std::unique_ptr<ASTNode> expression;
-    std::unique_ptr<ASTNode> index_expression; // Added for array assignments
-    Symbol* resolved_symbol; // Add resolved_symbol
+    std::unique_ptr<ASTNode> left;
+    std::unique_ptr<ASTNode> right;
 
-    VariableAssignmentNode(std::string var_name, std::unique_ptr<ASTNode> expr, std::unique_ptr<ASTNode> index_expr = nullptr, int line = -1, int column = -1)
+    VariableAssignmentNode(std::unique_ptr<ASTNode> left, std::unique_ptr<ASTNode> right, int line = -1, int column = -1)
         : ASTNode(NodeType::VARIABLE_ASSIGNMENT, line, column),
-          name(std::move(var_name)),
-          expression(std::move(expr)),
-          index_expression(std::move(index_expr)),
-          resolved_symbol(nullptr) {}
+          left(std::move(left)),
+          right(std::move(right)) {}
 };
 
 // Node for variable references in expressions (e.g., x in x + 1)

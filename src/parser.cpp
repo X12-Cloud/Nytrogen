@@ -176,12 +176,7 @@ std::unique_ptr<WhileStatementNode> Parser::parseWhileStatement() {
     std::unique_ptr<ASTNode> increment = nullptr;
     // Parse increment (optional)
     if (peek().type != Token::RPAREN) {
-        // The increment part can be an expression or an assignment
-        if (peek().type == Token::IDENTIFIER && peek(1).type == Token::EQ) {
-            increment = parseVariableAssignment();
-        } else {
-            increment = parseExpression();
-        }
+        increment = parseExpression();
     }
     expect(Token::RPAREN, "Expected ')' after for loop increment.");
 
@@ -271,30 +266,6 @@ std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
     return std::make_unique<VariableDeclarationNode>(id_token.value, std::move(type), std::move(initial_value), id_token.line, id_token.column);
 }
 
-std::unique_ptr<VariableAssignmentNode> Parser::parseVariableAssignment() {
-    const Token& id_token = peek();
-    expect(Token::IDENTIFIER, "Expected variable name.");
-
-    if (peek().type == Token::LBRACKET) {
-        consume(); // consume '['
-        auto index_expr = parseExpression();
-        expect(Token::RBRACKET, "Expected ']' after array index.");
-        expect(Token::EQ, "Expected '=' after array access.");
-        auto expr_node = parseExpression();
-        return std::make_unique<VariableAssignmentNode>(id_token.value, std::move(expr_node), std::move(index_expr), id_token.line, id_token.column);
-    }
-
-    expect(Token::EQ, "Expected '=' after variable name.");
-    auto expr_node = parseExpression();
-    return std::make_unique<VariableAssignmentNode>(id_token.value, std::move(expr_node), nullptr, id_token.line, id_token.column);
-}
-
-std::unique_ptr<VariableReferenceNode> Parser::parseVariableReference() {
-    const Token& id_token = peek();
-    expect(Token::IDENTIFIER, "Expected variable name.");
-    return std::make_unique<VariableReferenceNode>(id_token.value, id_token.line, id_token.column);
-}
-
 std::unique_ptr<FunctionCallNode> Parser::parseFunctionCall() {
     const Token& id_token = consume(); // Consume the function name identifier
 
@@ -324,13 +295,15 @@ std::unique_ptr<ASTNode> Parser::parseFactor() {
         if (peek(1).type == Token::LPAREN) {
             node = parseFunctionCall();
         } else if (peek(1).type == Token::LBRACKET) {
-            auto var_ref = parseVariableReference();
+            const auto& id_token = consume();
+            auto var_ref = std::make_unique<VariableReferenceNode>(id_token.value, id_token.line, id_token.column);
             consume(); // consume '['
             auto index_expr = parseExpression();
             expect(Token::RBRACKET, "Expected ']' after array index.");
             node = std::make_unique<ArrayAccessNode>(std::move(var_ref), std::move(index_expr));
         } else {
-            node = parseVariableReference();
+            const auto& id_token = consume();
+            node = std::make_unique<VariableReferenceNode>(id_token.value, id_token.line, id_token.column);
         }
     } else if (current_token.type == Token::LPAREN) {
         consume();
@@ -417,7 +390,20 @@ std::unique_ptr<ASTNode> Parser::parseComparisonExpression() {
 }
 
 std::unique_ptr<ASTNode> Parser::parseExpression() {
-    return parseComparisonExpression();
+    auto left = parseComparisonExpression();
+
+    if (peek().type == Token::EQ) {
+        consume(); // consume '='
+        auto right = parseExpression();
+        
+        if (dynamic_cast<VariableReferenceNode*>(left.get()) || dynamic_cast<MemberAccessNode*>(left.get()) || dynamic_cast<ArrayAccessNode*>(left.get())) {
+            return std::make_unique<VariableAssignmentNode>(std::move(left), std::move(right));
+        } else {
+            throw std::runtime_error("Invalid left-hand side in assignment expression.");
+        }
+    }
+
+    return left;
 }
 
 std::unique_ptr<StructDefinitionNode> Parser::parseStructDefinition() {
@@ -479,21 +465,14 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
             return decl_node;
         }
         case Token::IDENTIFIER: {
-            // It could be a variable declaration with a struct type
             if (symbol_table.isStructDefined(peek().value)) {
                 auto decl_node = parseVariableDeclaration();
                 expect(Token::SEMICOLON, "Expected ';' after variable declaration.");
                 return decl_node;
             }
-            if (peek(1).type == Token::LPAREN) {
-                auto functionCall = parseFunctionCall();
-                expect(Token::SEMICOLON, "Expected ';' after function call statement.");
-                return functionCall;
-            } else {
-                auto assign_node = parseVariableAssignment();
-                expect(Token::SEMICOLON, "Expected ';' after variable assignment.");
-                return assign_node;
-            }
+            auto expr = parseExpression();
+            expect(Token::SEMICOLON, "Expected ';' after expression statement.");
+            return expr;
         }
         case Token::KEYWORD_PRINT:
             return parsePrintStatement();
