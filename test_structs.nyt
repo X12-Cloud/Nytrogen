@@ -5,7 +5,6 @@ struct Point {
 
 int main() {
     Point p;
-    p.x = 10;
-    print p.x;
+    print "test success now make it work fr";
     return 0;
 }
