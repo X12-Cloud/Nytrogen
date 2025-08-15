@@ -1,0 +1,9 @@
+int main() {
+    // Test pointers
+    int* my_ptr;
+    int my_var;
+    my_var = 50;
+    my_ptr = &my_var;
+    print(*my_ptr);
+    return 0;
+}

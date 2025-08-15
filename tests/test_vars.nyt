@@ -1,0 +1,7 @@
+int main() {
+    // Test variables
+    int result;
+    result = 100;
+    print(result);
+    return 0;
+}

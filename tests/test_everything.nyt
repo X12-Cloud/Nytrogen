@@ -1,0 +1,54 @@
+struct Point {
+    int x;
+    int y;
+};
+
+int add(int a, int b) {
+    return a + b;
+}
+
+int main() {
+    // Test functions
+    int func_result;
+    func_result = add(5, 3);
+    print(func_result);
+
+    // Test arrays
+    int my_array[5];
+    my_array[0] = 10;
+    my_array[1] = 20;
+    print(my_array[0]);
+    print(my_array[1]);
+
+    // Test pointers
+    int* my_ptr;
+    int my_var;
+    my_var = 50;
+    my_ptr = &my_var;
+    print(*my_ptr);
+
+    // Test variables
+    int var_test_result;
+    var_test_result = 100;
+    print(var_test_result);
+
+    // Test for loop
+    int i;
+    for (i = 0; i < 3; i = i + 1) {
+        print(i);
+    }
+
+    // Test while loop
+    int j;
+    j = 0;
+    while (j < 3) {
+        print(j);
+        j = j + 1;
+    }
+
+    // Test structs
+    Point p;
+    print("test success now make it work fr");
+
+    return 0;
+}
