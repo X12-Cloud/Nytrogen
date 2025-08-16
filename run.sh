@@ -1,6 +1,19 @@
 #!/bin/bash
 
-./build/Nytro "$1"
+if [ -z "$1" ]; then
+    echo "Usage: $0 <input_file.nyt>"
+    exit 1
+fi
+
+SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
+
+# Create output directory if it doesn't exist
+mkdir -p out
+
+# Resolve input file path to be absolute
+INPUT_FILE=$(readlink -f "$1")
+
+"$SCRIPT_DIR/build/Nytro" "$INPUT_FILE"
 
 echo ""
 echo "--- Assembling out.asm ---"
@@ -14,4 +27,3 @@ echo ""
 echo "--- Running output program ---"
 ./out/out
 echo "Exit Code: $?"
-
