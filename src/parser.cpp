@@ -473,6 +473,11 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
             return decl_node;
         }
         case Token::IDENTIFIER: {
+            if (peek(1).type == Token::LPAREN) {
+                auto func_call = parseFunctionCall();
+                expect(Token::SEMICOLON, "Expected ';' after function call statement.");
+                return func_call;
+            }
             if (symbol_table.isStructDefined(peek().value)) {
                 auto decl_node = parseVariableDeclaration();
                 expect(Token::SEMICOLON, "Expected ';' after variable declaration.");
@@ -562,12 +567,11 @@ std::unique_ptr<ProgramNode> Parser::parse() {
             peek().type == Token::KEYWORD_STRING ||
             peek().type == Token::KEYWORD_VOID ||
             peek().type == Token::KEYWORD_BOOL ||
-            peek().type == Token::KEYWORD_CHAR) {
+            peek().type == Token::KEYWORD_CHAR ||
+            (peek().type == Token::IDENTIFIER && symbol_table.isStructDefined(peek().value))) {
             // Could be a function definition or a variable declaration
-            // For simplicity, assume function definition if followed by identifier and LPAREN
-            // This needs more robust handling for actual type parsing
             size_t temp_index = current_token_index;
-            Token type_token = consume(); // Consume type keyword
+            consume(); // Consume type keyword
             if (peek().type == Token::IDENTIFIER) {
                 consume(); // Consume identifier (function name)
                 if (peek().type == Token::LPAREN) {
