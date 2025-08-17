@@ -238,7 +238,9 @@ void SemanticAnalyzer::visit(BinaryOperationExpressionNode* node) {
 }
 
 void SemanticAnalyzer::visit(PrintStatementNode* node) {
-    visitExpression(node->expression.get());
+    for (const auto& expr : node->expressions) {
+        visitExpression(expr.get());
+    }
 }
 
 void SemanticAnalyzer::visit(ReturnStatementNode* node) {

@@ -288,13 +288,13 @@ struct BinaryOperationExpressionNode : public ASTNode {
           right(std::move(right_expr)) {}
 };
 
-// Node for print statements (e.g., 'print x;')
+// Node for print statements (e.g., 'print x, "hello";')
 struct PrintStatementNode : public ASTNode {
-    std::unique_ptr<ASTNode> expression; // The expression whose value will be printed
+    std::vector<std::unique_ptr<ASTNode>> expressions; // The expressions whose values will be printed
 
-    PrintStatementNode(std::unique_ptr<ASTNode> expr, int line = -1, int column = -1)
+    PrintStatementNode(std::vector<std::unique_ptr<ASTNode>> exprs, int line = -1, int column = -1)
         : ASTNode(NodeType::PRINT_STATEMENT, line, column),
-          expression(std::move(expr)) {}
+          expressions(std::move(exprs)) {}
 };
 
 struct IfStatementNode : public ASTNode {

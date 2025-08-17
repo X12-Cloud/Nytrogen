@@ -81,9 +81,17 @@ std::unique_ptr<ReturnStatementNode> Parser::parseReturnStatement() {
 std::unique_ptr<PrintStatementNode> Parser::parsePrintStatement() {
     const Token& print_token = peek();
     expect(Token::KEYWORD_PRINT, "Expected 'print' keyword.");
-    auto expr_node = parseExpression();
-    expect(Token::SEMICOLON, "Expected ';' after return expression.");
-    return std::make_unique<PrintStatementNode>(std::move(expr_node), print_token.line, print_token.column);
+
+    std::vector<std::unique_ptr<ASTNode>> expressions;
+    expressions.push_back(parseExpression());
+
+    while (peek().type == Token::COMMA) {
+        consume(); // Consume the comma
+        expressions.push_back(parseExpression());
+    }
+
+    expect(Token::SEMICOLON, "Expected ';' after print statement.");
+    return std::make_unique<PrintStatementNode>(std::move(expressions), print_token.line, print_token.column);
 }
 
 std::unique_ptr<IfStatementNode> Parser::parseIfStatement() {

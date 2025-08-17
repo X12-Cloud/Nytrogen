@@ -337,22 +337,23 @@ std::string generateCode(const ASTNode* node, SemanticAnalyzer& semanticAnalyzer
 
         case ASTNode::NodeType::PRINT_STATEMENT: {
             const auto* print_node = static_cast<const PrintStatementNode*>(node);
-            assembly += generateCode(print_node->expression.get(), semanticAnalyzer);
+            for (const auto& expr : print_node->expressions) {
+                assembly += generateCode(expr.get(), semanticAnalyzer);
 
-            if (print_node->expression->node_type == ASTNode::NodeType::STRING_LITERAL_EXPRESSION) {
-                assembly += "  mov rsi, rax\n";
-                assembly += "  lea rdi, [rel _print_str_format]\n";
-            } else if (print_node->expression->node_type == ASTNode::NodeType::CHARACTER_LITERAL_EXPRESSION) {
-                assembly += "  mov rsi, rax\n";
-                assembly += "  lea rdi, [rel _print_char_format]\n";
-            }
-            else {
-                assembly += "  mov rsi, rax\n";
-                assembly += "  lea rdi, [rel _print_int_format]\n";
-            }
+                if (expr->node_type == ASTNode::NodeType::STRING_LITERAL_EXPRESSION) {
+                    assembly += "  mov rsi, rax\n";
+                    assembly += "  lea rdi, [rel _print_str_format]\n";
+                } else if (expr->node_type == ASTNode::NodeType::CHARACTER_LITERAL_EXPRESSION) {
+                    assembly += "  mov rsi, rax\n";
+                    assembly += "  lea rdi, [rel _print_char_format]\n";
+                } else {
+                    assembly += "  mov rsi, rax\n";
+                    assembly += "  lea rdi, [rel _print_int_format]\n";
+                }
 
-            assembly += "  xor rax, rax\n";
-            assembly += "  call printf\n";
+                assembly += "  xor rax, rax\n";
+                assembly += "  call printf\n";
+            }
             break;
         }
 
