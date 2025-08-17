@@ -333,7 +333,13 @@ void CodeGenerator::visit(ForStatementNode* node) {
     if (node->initializer) {
         visit(node->initializer.get());
     }
-    out << "    jmp " << loop_condition_label << std::endl;
+
+    out << loop_condition_label << ":" << std::endl;
+    if (node->condition) {
+        visit(node->condition.get());
+        out << "    cmp rax, 0" << std::endl;
+        out << "    je " << loop_end_label << std::endl;
+    }
 
     out << loop_start_label << ":" << std::endl;
     for (const auto& stmt : node->body) {
@@ -343,14 +349,7 @@ void CodeGenerator::visit(ForStatementNode* node) {
         visit(node->increment.get());
     }
 
-    out << loop_condition_label << ":" << std::endl;
-    if (node->condition) {
-        visit(node->condition.get());
-        out << "    cmp rax, 0" << std::endl;
-        out << "    jne " << loop_start_label << std::endl;
-    } else { 
-        out << "    jmp " << loop_start_label << std::endl;
-    }
+    out << "    jmp " << loop_condition_label << std::endl;
     out << loop_end_label << ":" << std::endl;
 }
 

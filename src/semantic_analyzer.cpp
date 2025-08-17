@@ -264,9 +264,8 @@ void SemanticAnalyzer::visit(IfStatementNode* node) {
 
 void SemanticAnalyzer::visit(WhileStatementNode* node) {
     std::unique_ptr<TypeNode> cond_type = visitExpression(node->condition.get());
-    if (cond_type->category != TypeNode::TypeCategory::PRIMITIVE ||
-        static_cast<PrimitiveTypeNode*>(cond_type.get())->primitive_type != Token::KEYWORD_BOOL) {
-        throw std::runtime_error("Semantic Error: While condition must be a boolean expression.");
+    if (cond_type->category != TypeNode::TypeCategory::PRIMITIVE) {
+        throw std::runtime_error("Semantic Error: While condition must be a primitive type.");
     }
 
     symbolTable.enterScope();
@@ -284,9 +283,8 @@ void SemanticAnalyzer::visit(ForStatementNode* node) {
     }
     if (node->condition) {
         std::unique_ptr<TypeNode> cond_type = visitExpression(node->condition.get());
-        if (cond_type->category != TypeNode::TypeCategory::PRIMITIVE ||
-            static_cast<PrimitiveTypeNode*>(cond_type.get())->primitive_type != Token::KEYWORD_BOOL) {
-            throw std::runtime_error("Semantic Error: For loop condition must be a boolean expression.");
+        if (cond_type->category != TypeNode::TypeCategory::PRIMITIVE) {
+            throw std::runtime_error("Semantic Error: For loop condition must be a primitive type.");
         }
     }
     if (node->increment) {
