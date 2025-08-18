@@ -1,191 +1,201 @@
-# Nytrogen Language Grammar Specification
+# Nytrogen Language Grammar
 
-This document outlines the current grammar of the Nytrogen programming language (v0.1). It defines the valid structure for code written in .ny or .nyt files.
-
----
+This document provides a detailed specification of the Nytrogen programming language grammar. It is intended for developers who want to write Nytrogen programs or contribute to the compiler itself.
 
 ## Program Structure
 
-A Nytrogen program is a collection of function definitions and optional struct definitions.
+A Nytrogen program consists of a series of declarations, which can be either struct definitions or function definitions. The program's execution begins at the `main` function.
 
 ```
-Program → (StructDefinition | FunctionDefinition)* EOF
+Program ::= (StructDefinition | FunctionDefinition)*
 ```
 
----
+## Comments
+
+Comments are used to add explanatory notes to the code and are ignored by the compiler. Nytrogen supports single-line comments starting with `//`.
+
+```nytrogen
+// This is a single-line comment.
+int x = 10; // This comment is at the end of a line.
+```
 
 ## Data Types
 
-The language supports the following data types:
-- `int`: A 32-bit integer.
-- `int*`: A pointer to an integer.
-- `int[size]`: An array of integers.
-- `struct`: A user-defined data structure.
+Nytrogen supports a range of fundamental data types:
 
----
+*   `int`: A 32-bit signed integer.
+*   `string`: A sequence of characters enclosed in double quotes.
+*   `bool`: A boolean value, which can be `true` or `false`.
+*   `char`: A single character enclosed in single quotes.
+*   `void`: Represents the absence of a value, typically used as a function return type.
+
+### Pointers
+
+You can create a pointer to a variable by using the `*` symbol:
+
+```nytrogen
+int* ptr; // Declares a pointer to an integer.
+```
+
+### Arrays
+
+Arrays are fixed-size collections of elements of the same type:
+
+```nytrogen
+int numbers[10]; // Declares an array of 10 integers.
+```
 
 ## Variables
 
-Variables must be declared before they are used.
+Variables are used to store and manipulate data. They must be declared with a specific type before they can be used.
 
-**Declaration:**
-```
-VariableDeclaration → Type Identifier (";" | "[" IntegerLiteral "]" ";")
-```
+### Declaration
 
-**Examples:**
-```c
-int my_variable;
-int* my_pointer;
-int my_array[10];
-```
+A variable declaration specifies the type and name of the variable.
 
-**Assignment:**
-```
-VariableAssignment → Identifier "=" Expression ";"
+```nytrogen
+// Declaring variables of different types
+int count;
+bool is_active;
+string message;
 ```
 
-**Example:**
-```c
-my_variable = 100;
+### Initialization
+
+You can initialize a variable at the time of declaration:
+
+```nytrogen
+int score = 100;
+bool is_finished = false;
+string name = "Nytrogen";
 ```
 
----
+### Assignment
+
+After a variable has been declared, you can assign it a new value:
+
+```nytrogen
+score = 150;
+is_finished = true;
+```
 
 ## Structs
 
-Structs are user-defined types that can hold multiple fields.
+Structs allow you to create complex data types by grouping together variables of different types.
 
-**Definition:**
-```
-StructDefinition → "struct" Identifier "{" (VariableDeclaration)+ "}" ";"
-```
+### Definition
 
-**Example:**
-```c
+Here is how you define a struct:
+
+```nytrogen
 struct Point {
     int x;
     int y;
 };
 ```
 
----
+### Usage
+
+Once a struct is defined, you can declare variables of that type:
+
+```nytrogen
+Point p1;
+p1.x = 10;
+p1.y = 20;
+```
 
 ## Functions
 
-Functions are defined with a return type, a name, and optional parameters.
+Functions are blocks of code that can be defined and called to perform a specific task.
 
-**Definition:**
-```
-FunctionDefinition → Type Identifier "(" (ParameterList)? ")" "{" (Statement)* "}"
-```
+### Definition
 
-- The `main` function is the entry point of the program and must be defined.
+A function definition includes a return type, a name, a list of parameters, and a body.
 
-**Example:**
-```c
+```nytrogen
+// A function that adds two integers
 int add(int a, int b) {
     return a + b;
 }
 
-int main() {
-    int result;
-    result = add(5, 3);
-    return 0;
+// A function that does not return a value
+void print_message(string msg) {
+    print msg;
 }
 ```
 
----
+### The `main` Function
 
-## Statements
+The `main` function is the entry point of every Nytrogen program. It is where the execution of the program begins.
 
-Statements are the building blocks of a function.
+*   **Return Type:** The `main` function must have a return type of `int`.
+*   **Parameters:** It takes no parameters.
 
-- **Variable Declaration & Assignment:** (see above)
-- **Return Statement:** `return Expression ";"`
-- **Print Statement:** `print Expression ";"`
-- **Control Flow Statements:** `for` and `while` loops.
-
----
-
-## Print Statement
-
-The `print` statement is used to output data to the console.
-
-**Syntax:**
+```nytrogen
+int main() {
+    // Your program's code goes here
+    print "Hello from main!";
+    return 0; // A return value of 0 indicates success
+}
 ```
-PrintStatement → "print" Expression ";"
-```
-
-**Important Limitations:**
-- You can print a single integer expression.
-- You can print a single string literal.
-- **You cannot combine strings and variables in a single print statement.**
-
-**Valid Examples:**
-```c
-int x;
-x = 10;
-print(x);
-
-print("Hello, World!");
-```
-
-**Invalid Example:**
-```c
-// This will not work!
-int x;
-x = 10;
-print("The value is: ", x);
-```
-
----
 
 ## Control Flow
 
-**For Loop:**
-```
-for "(" Statement Statement Expression ")" "{" (Statement)* "}"
-```
+Nytrogen provides several control flow statements to manage the execution path of your program.
 
-**Example:**
-```c
-int i;
-for (i = 0; i < 5; i = i + 1) {
-    print(i);
+### `if-else` Statement
+
+The `if-else` statement allows you to execute different blocks of code based on a condition.
+
+```nytrogen
+int x = 10;
+if (x > 0) {
+    print "Positive";
+} else {
+    print "Not positive";
 }
 ```
 
-**While Loop:**
-```
-while "(" Expression ")" "{" (Statement)* "}"
-```
+### `while` Loop
 
-**Example:**
-```c
-int i;
-i = 0;
+The `while` loop repeatedly executes a block of code as long as a condition is true.
+
+```nytrogen
+int i = 0;
 while (i < 5) {
-    print(i);
+    print i;
     i = i + 1;
 }
 ```
 
----
+### `for` Loop
+
+The `for` loop is ideal for iterating a specific number of times.
+
+```nytrogen
+for (int i = 0; i < 5; i = i + 1) {
+    print i;
+}
+```
 
 ## Expressions
 
-Expressions evaluate to a value.
+Expressions are combinations of values, variables, and operators that are evaluated to produce a new value.
 
+*   **Arithmetic:** `+`, `-`, `*`, `/`
+*   **Comparison:** `==`, `!=`, `<`, `>`, `<=`, `>=`
+*   **Logical:** `&&` (AND), `||` (OR), `!` (NOT)
+
+## Built-in Functions
+
+Nytrogen provides a `print` function for displaying output.
+
+### `print`
+
+The `print` function can output the value of any expression.
+
+```nytrogen
+print "Hello, Nytrogen!";
+int version = 1;
+print version;
 ```
-Expression → Term (("+" | "-") Term)*
-Term       → Factor (("*" | "/") Factor)*
-Factor     → IntegerLiteral
-           | StringLiteral
-           | Identifier
-           | "(" Expression ")"
-```
-
----
-
-Last updated: August 2025

@@ -1,130 +1,61 @@
 # Nytrogen Compiler
 
-Nytrogen is a simple, educational compiler designed to demonstrate the fundamental concepts of compiler design, including lexical analysis, parsing, and abstract syntax tree (AST) generation. It aims to provide a clear and concise example of how a programming language can be processed and understood by a machine.
+**Nytrogen** is an educational compiler built to demonstrate the core principles of compiler design. It takes source code written in the Nytrogen language and translates it into executable code.
+
+This project is ideal for students, hobbyists, or anyone interested in learning how programming languages are processed and understood by a computer. It provides a clear and practical example of a compiler pipeline, from lexical analysis to code generation.
+
+## About Nytrogen
+
+*   **Purpose:** Educational tool for learning compiler design.
+*   **Language:** A simple, C-style procedural language.
+*   **Status:** Under active development.
+
+## Documentation
+
+This project includes detailed documentation to help you get started and understand the compiler's design:
+
+*   **[Getting Started](./docs/getting_started.md):** A comprehensive guide to building and running the Nytrogen compiler.
+*   **[Language Grammar](./docs/grammer.md):** A detailed specification of the Nytrogen language syntax and features.
+*   **[Compiler Architecture](./docs/architecture.md):** An overview of the internal design of the compiler.
 
 ## Features
 
-The Nytrogen language currently supports the following features:
+The Nytrogen language supports a variety of essential programming features:
 
-### Data Types
-*   `int`: Integer numbers.
-*   `string`: Sequences of characters.
-*   `bool`: Boolean values (`true` and `false`).
-*   `char`: Single characters.
-*   Pointers (`*`): Support for pointer types.
-*   Arrays (`[]`): Support for array types and array access.
+*   **Data Types:** `int`, `string`, `bool`, `char`, pointers (`*`), and arrays (`[]`).
+*   **Control Flow:** `if-else` statements, `for` loops, and `while` loops.
+*   **Functions:** Define functions with parameters and return values.
+*   **Structs:** Create custom data structures.
+*   **Expressions:** Arithmetic, comparison, and logical operators.
 
-### Variables
-*   **Declaration:** Declare variables with specified types (e.g., `int x;`, `string message = "Hello";`).
-*   **Assignment:** Assign values to declared variables (e.g., `x = 10;`).
-*   **Referencing:** Use variables in expressions and statements.
-
-### Control Flow
-*   **Conditional Statements:** `if` and `else` constructs for branching logic.
-    ```nytrogen
-    if (x > 0) {
-        print "Positive";
-    } else {
-        print "Non-positive";
-    }
-    ```
-*   **While Loops:** Execute a block of code repeatedly as long as a condition is true.
-    ```nytrogen
-    int i = 0;
-    while (i < 5) {
-        print i;
-        i = i + 1;
-    }
-    ```
-*   **For Loops:** Iterate over a sequence with an initializer, condition, and increment.
-    ```nytrogen
-    for (int i = 0; i < 5; i = i + 1) {
-        print i;
-    }
-    ```
-
-### Functions
-*   **Definition:** Define functions with a return type, name, and parameters.
-    ```nytrogen
-    int add(int a, int b) {
-        return a + b;
-    }
-    ```
-*   **Function Calls:** Invoke defined functions with arguments.
-    ```nytrogen
-    int result = add(5, 3);
-    print result;
-    ```
-*   **Return Statements:** Return a value from a function.
-
-### Expressions
-*   **Arithmetic Operations:** Perform addition (`+`), subtraction (`-`), multiplication (`*`), and division (`/`).
-*   **Comparison Operations:** Compare values using equality (`==`), inequality (`!=`), less than (`<`), greater than (`>`), less than or equal to (`<=`), and greater than or equal to (`>=`).
-*   **Unary Operations:** Support for unary operators like address-of (`&`).
-*   **Array Access:** Access elements of an array using an index (e.g., `myArray[0]`).
-
-### Statements
-*   **Print Statement:** Output the value of an expression to the console (e.g., `print "Hello World";`, `print myVariable;`).
+For a complete list of features and syntax, please refer to the [Language Grammar](./docs/grammer.md) document.
 
 ## Getting Started
 
-### Prerequisites
-*   A C++ compiler (e.g., g++).
-*   CMake (version 3.10 or higher).
+To get started with Nytrogen, please see the **[Getting Started Guide](./docs/getting_started.md)**. This guide provides step-by-step instructions for setting up your environment, building the compiler, and running your first program.
 
-### Building the Compiler
-
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/your-username/Nytrogen.git
-    cd Nytrogen
-    ```
-2.  **Create a build directory and compile:**
-    ```bash
-    mkdir build
-    cd build
-    cmake ..
-    make
-    ```
-    Alternatively, you can use the provided `build.sh` script from the project root:
-    ```bash
-    ./build.sh
-    ```
-
-### Running the Compiler
-
-After building, the executable will be located in the `build` directory. You can run it with a Nytrogen source file as an argument:
+In short, you can build and run the compiler using the following scripts:
 
 ```bash
-./build/nytrogen <your_source_file.nyt>
-```
+# Build the compiler
+./build.sh
 
-Example:
-```bash
-./build/nytrogen test.nyt
-```
-
-You can also use the `run.sh` script for convenience:
-```bash
+# Run a Nytrogen source file
 ./run.sh test.nyt
 ```
 
 ## Project Structure
 
-*   `src/`: Contains the source code for the lexer, parser, and main compiler logic.
-*   `include/`: Contains header files for AST nodes, lexer, and parser.
-*   `build/`: Directory for build artifacts (created by CMake).
-*   `docs/`: Documentation files.
-*   `test.nyt`: An example Nytrogen source file for testing.
-*   `build.sh`: Script to build the project.
-*   `run.sh`: Script to run the compiler with a test file.
-*   `clean_run.sh`: Script to clean the build and then run.
-*   `commit.sh`: Script to commit changes.
+*   `src/`: Source code for the compiler's components.
+*   `include/`: Header files for the compiler.
+*   `docs/`: Project documentation.
+*   `tests/`: Sample Nytrogen programs for testing.
+*   `build.sh`, `run.sh`: Helper scripts for building and running.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to open issues or submit pull requests.
+Contributions are highly encouraged! If you would like to contribute, please feel free to open an issue or submit a pull request.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License. See the [LICENSE](./LICENSE) file for details.
