@@ -1,5 +1,4 @@
 /build/
 /out/
-*.o
-*.asm
-Nytro
+output.txt
+
