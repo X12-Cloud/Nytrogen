@@ -21,6 +21,9 @@ std::string Token::typeToString() const {
 	case KEYWORD_BOOL: return "KEYWORD_BOOL";
         case KEYWORD_CHAR: return "KEYWORD_CHAR";
         case KEYWORD_FOR: return "KEYWORD_FOR";
+	case KEYWORD_SWITCH: return "KEYWORD_SWITCH";
+	case KEYWORD_CASE: return "KEYWORD_CASE";
+	case KEYWORD_DEFAULT: return "KEYWORD_DEFAULT";
 	case IDENTIFIER: return "IDENTIFIER";
         case EQ: return "EQ";
         case PLUS: return "PLUS";
@@ -153,6 +156,7 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
 	    else if (value == "false") tokens.push_back({Token::FALSE, value, line, startColumn});
 	    else if (value == "for") tokens.push_back({Token::KEYWORD_FOR, value, line, startColumn});
 	    else if (value == "struct") tokens.push_back({Token::KEYWORD_STRUCT, value, line, startColumn});
+	    else if (value == "switch") tokens.push_back({Token::KEYWORD_SWITCH, value, line, startColumn});
 	    else tokens.push_back({Token::IDENTIFIER, value, line, startColumn});
             continue;
         }
