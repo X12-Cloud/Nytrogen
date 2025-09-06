@@ -56,7 +56,7 @@ for test_file in "$TESTS_DIR"/*.nyt; do
         fi
 
         # 3. Link the object file
-        if ! ld -o "$exec_output_file" "$obj_output_file" > /dev/null 2>&1; then
+        if ! gcc -no-pie -o "$exec_output_file" "$obj_output_file" > /dev/null 2>&1; then
             echo -e "${RED}LINKING FAILED${NC}"
             FAILED_COUNT=$((FAILED_COUNT + 1))
             continue

@@ -17,16 +17,10 @@ void CodeGenerator::generate(const std::string& output_filename) {
     out << "  _print_char_format db \"%c\", 10, 0" << std::endl;
 
     out << "section .text" << std::endl;
-    out << "global _start" << std::endl;
+    out << "global main" << std::endl;
     out << "extern printf" << std::endl;
 
     visit(program_ast.get());
-
-    out << "_start:" << std::endl;
-    out << "  call main" << std::endl;
-    out << "  mov rdi, rax" << std::endl;
-    out << "  mov rax, 60" << std::endl;
-    out << "  syscall" << std::endl;
 
     out.close();
 }

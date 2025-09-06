@@ -34,7 +34,21 @@ int main(int argc, char* argv[]) {
     }
 
     std::string input_filepath = argv[1];
-    std::string output_asm_filename = "out/out.asm";
+
+    // --- Dynamically set the output filename ---
+    std::string basename = input_filepath;
+    size_t last_slash = basename.find_last_of("/\\");
+    if (last_slash != std::string::npos) {
+        basename = basename.substr(last_slash + 1);
+    }
+
+    size_t last_dot = basename.find_last_of(".");
+    if (last_dot != std::string::npos) {
+        basename = basename.substr(0, last_dot);
+    }
+
+    std::string output_asm_filename = "out/" + basename + ".asm";
+    // --- End dynamic filename ---
 
     std::string ext = input_filepath.substr(input_filepath.find_last_of(".") + 1);
     if (ext != "ny" && ext != "nyt") {
