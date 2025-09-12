@@ -3,5 +3,10 @@ int main() {
     int result;
     result = 100;
     print(result);
+
+    bool x;
+    x = true;
+    print(x);
+
     return 0;
 }
