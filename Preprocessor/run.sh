@@ -5,10 +5,10 @@ if [ -z "$1" ]; then
     exit 1
 fi
 
-INPUT_FILE=$(readlink -f "$1")
+INPUT_FILE=$1
 
-# Navigate to the Preprocessor directory
-cd "$(dirname "$0")"
+# Get the directory of the script
+SCRIPT_DIR=$(dirname "$0")
 
 # Run the preprocessor
-./build/nytro-pre "$INPUT_FILE"
+"$SCRIPT_DIR/build/nytro-pre" "$INPUT_FILE"

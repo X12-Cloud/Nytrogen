@@ -29,7 +29,7 @@ void processFile(const std::string& input_filepath, std::ostream& output_stream)
 
     std::string line;
     while (std::getline(input_file, line)) {
-        if (line.find("include \"") == 0) {
+        if (line.find("include \"" ) == 0) {
             size_t start_quote = line.find('"');
             size_t end_quote = line.find('"', start_quote + 1);
             if (start_quote != std::string::npos && end_quote != std::string::npos) {
@@ -58,23 +58,8 @@ int main(int argc, char* argv[]) {
     }
 
     std::string input_filepath = argv[1];
-    std::string output_filepath = "out/out.pre.nyt";
 
-    // Create output directory if it doesn't exist
-    fs::path out_dir("out");
-    if (!fs::exists(out_dir)) {
-        fs::create_directory(out_dir);
-    }
-
-    std::ofstream output_file(output_filepath);
-    if (!output_file.is_open()) {
-        std::cerr << "Error: Could not open output file: " << output_filepath << std::endl;
-        return 1;
-    }
-
-    std::cout << "Preprocessing " << input_filepath << " -> " << output_filepath << std::endl;
-    processFile(input_filepath, output_file);
-    std::cout << "Preprocessing finished." << std::endl;
+    processFile(input_filepath, std::cout);
 
     return 0;
 }

@@ -1,8 +1,8 @@
 include "math.nyt"
 
 int main() {
-    sqaure(2);
-
+    //square();
+	print 1;
     //int x = 10;
     //int* p = &x;
     //print(*p);
