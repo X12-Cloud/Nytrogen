@@ -29,12 +29,18 @@ int main(int argc, char* argv[]) {
     std::cout << "Nytrogen Compiler (Arch Linux)\n";
 
     if (argc < 2) {
-        std::cerr << "Error: No source file provided. Usage: ./Nytro <source_file>\n";
+        std::cerr << "Error: No source file provided. Usage: ./Nytro <source_file> [output_dir]\n";
         return 2;
     }
 
     std::string input_filepath = argv[1];
-    std::string output_asm_filename = "out/out.asm";
+    std::string output_dir = ".";
+    if (argc > 2) {
+        output_dir = argv[2];
+    }
+
+    std::string output_asm_filename = output_dir + "/out.asm";
+
 
     std::string ext = input_filepath.substr(input_filepath.find_last_of(".") + 1);
     if (ext != "ny" && ext != "nyt") {

@@ -7,8 +7,8 @@ fi
 
 INPUT_FILE=$1
 
-# Get the directory of the script
-SCRIPT_DIR=$(dirname "$0")
+# Get the absolute path of the script's directory
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 
 # Run the preprocessor
 "$SCRIPT_DIR/build/nytro-pre" "$INPUT_FILE"
