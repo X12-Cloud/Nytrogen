@@ -37,7 +37,7 @@ struct Symbol {
 
     // Constructor for struct definitions
     Symbol(SymbolType type, std::string name, std::unique_ptr<StructDefinitionNode> structDef)
-        : type(type), name(std::move(name)), dataType(nullptr), structDef(std::move(structDef)), offset(0), size(0) {}
+        : type(type), name(std::move(name)), dataType(nullptr), structDef(std::move(structDef)), offset(0), size(structDef->size) {}
 
     std::vector<std::unique_ptr<TypeNode>> parameterTypes; // For functions: types of parameters
 };
@@ -67,6 +67,7 @@ public:
 class SymbolTable {
 public:
     std::vector<std::unique_ptr<Scope>> scopes; // Stack of scopes
+    std::map<std::string, StructDefinitionNode*> struct_definitions;
 
     SymbolTable() {
         enterScope(); // Start with a global scope
@@ -107,8 +108,15 @@ public:
     }
 
     bool isStructDefined(const std::string& name) {
-        Symbol* symbol = lookup(name);
-        return symbol && symbol->type == Symbol::SymbolType::STRUCT_DEFINITION;
+        return struct_definitions.count(name) > 0;
+    }
+
+    void addStructDefinition(const std::string& name, StructDefinitionNode* node) {
+        struct_definitions[name] = node;
+    }
+
+    std::map<std::string, StructDefinitionNode*> getStructDefinitions() {
+        return struct_definitions;
     }
 };
 

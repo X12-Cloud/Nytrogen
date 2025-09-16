@@ -44,6 +44,8 @@ private:
     void visit(StringLiteralExpressionNode* node);
     void visit(BooleanLiteralExpressionNode* node);
     void visit(CharacterLiteralExpressionNode* node);
+
+    int getTypeSize(const TypeNode* type);
 };
 
 #endif // CODE_GENERATOR_HPP

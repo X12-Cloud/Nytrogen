@@ -217,13 +217,8 @@ std::unique_ptr<TypeNode> Parser::parseType() {
         consume();
         type = std::make_unique<PrimitiveTypeNode>(type_token.type);
     } else if (type_token.type == Token::IDENTIFIER) {
-        // Check if it's a defined struct
-        if (symbol_table.isStructDefined(type_token.value)) {
-            consume();
-            type = std::make_unique<StructTypeNode>(type_token.value);
-        } else {
-            throw std::runtime_error("Expected 'int', 'string', 'bool', 'char', or a defined struct name for type.");
-        }
+        consume();
+        type = std::make_unique<StructTypeNode>(type_token.value);
     } else {
         throw std::runtime_error("Expected 'int', 'string', 'bool', 'char', or a defined struct name for type.");
     }
@@ -231,17 +226,6 @@ std::unique_ptr<TypeNode> Parser::parseType() {
     while (peek().type == Token::STAR) {
         consume();
         type = std::make_unique<PointerTypeNode>(std::move(type));
-    }
-
-    // Handle array types (e.g., int[] or int*[5])
-    if (peek().type == Token::LBRACKET) {
-        consume(); // Consume '['
-        int array_size = -1; // -1 indicates unsized array or size not specified yet
-        if (peek().type == Token::INTEGER_LITERAL) {
-            array_size = std::stoi(consume().value);
-        }
-        expect(Token::RBRACKET, "Expected ']' after array size.");
-        type = std::make_unique<ArrayTypeNode>(std::move(type), array_size);
     }
 
     return type;
@@ -267,9 +251,6 @@ std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
         consume(); // Consume '='
         initial_value = parseExpression();
     }
-
-    // Add variable to symbol table
-    symbol_table.addSymbol(Symbol(Symbol::SymbolType::VARIABLE, id_token.value, type->clone(), 0, 0));
 
     return std::make_unique<VariableDeclarationNode>(id_token.value, std::move(type), std::move(initial_value), id_token.line, id_token.column);
 }
@@ -444,10 +425,8 @@ std::unique_ptr<StructDefinitionNode> Parser::parseStructDefinition() {
             // This is a simplification. A proper implementation would need to know the size of the base type.
             member_size = 8; // Treat array as a pointer for now
         } else if (auto struct_type = dynamic_cast<StructTypeNode*>(member_type.get())) {
-            Symbol* struct_symbol = symbol_table.lookup(struct_type->struct_name);
-            if (struct_symbol) {
-                member_size = struct_symbol->size;
-            }
+            // We can't know the size of another struct at parse time, so we'll have to calculate it in the semantic analyzer
+            member_size = 0; 
         }
 
         struct_node->members.push_back({std::move(member_type), member_name, current_offset});
@@ -456,8 +435,7 @@ std::unique_ptr<StructDefinitionNode> Parser::parseStructDefinition() {
 
     struct_node->size = current_offset;
     expect(Token::RBRACE, "Expected '}' after struct definition.");
-    symbol_table.addSymbol(Symbol(Symbol::SymbolType::STRUCT_DEFINITION, struct_name, std::move(struct_node)));
-    return nullptr; // The struct definition is now owned by the symbol table
+    return struct_node;
 }
 
 std::unique_ptr<ASTNode> Parser::parseStatement() {
@@ -477,8 +455,7 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
                 auto func_call = parseFunctionCall();
                 expect(Token::SEMICOLON, "Expected ';' after function call statement.");
                 return func_call;
-            }
-            if (symbol_table.isStructDefined(peek().value)) {
+            } else if (peek(1).type == Token::IDENTIFIER) {
                 auto decl_node = parseVariableDeclaration();
                 expect(Token::SEMICOLON, "Expected ';' after variable declaration.");
                 return decl_node;
@@ -563,30 +540,13 @@ std::unique_ptr<FunctionDefinitionNode> Parser::parseFunctionDefinition() {
 std::unique_ptr<ProgramNode> Parser::parse() {
     auto program_node = std::make_unique<ProgramNode>();
     while (peek().type != Token::END_OF_FILE) {
-        if (peek().type == Token::KEYWORD_INT ||
-            peek().type == Token::KEYWORD_STRING ||
-            peek().type == Token::KEYWORD_VOID ||
-            peek().type == Token::KEYWORD_BOOL ||
-            peek().type == Token::KEYWORD_CHAR ||
-            (peek().type == Token::IDENTIFIER && symbol_table.isStructDefined(peek().value))) {
-            // Could be a function definition or a variable declaration
-            size_t temp_index = current_token_index;
-            consume(); // Consume type keyword
-            if (peek().type == Token::IDENTIFIER) {
-                consume(); // Consume identifier (function name)
-                if (peek().type == Token::LPAREN) {
-                    current_token_index = temp_index; // Rewind
-                    program_node->functions.push_back(parseFunctionDefinition());
-                } else {
-                    current_token_index = temp_index; // Rewind
-                    program_node->statements.push_back(parseVariableDeclaration());
-                }
-            } else {
-                current_token_index = temp_index; // Rewind if not identifier
-                program_node->statements.push_back(parseStatement());
-            }
+        if (peek(1).type == Token::IDENTIFIER && peek(2).type == Token::LPAREN) {
+            program_node->functions.push_back(parseFunctionDefinition());
         } else if (peek().type == Token::KEYWORD_STRUCT) {
-            parseStructDefinition();
+            auto struct_def = parseStructDefinition();
+            if (struct_def) {
+                program_node->structs.push_back(std::move(struct_def));
+            }
             if (peek().type == Token::SEMICOLON) {
                 consume(); // Consume optional semicolon after struct definition
             }

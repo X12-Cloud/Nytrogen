@@ -101,6 +101,14 @@ void CodeGenerator::visit(ASTNode* node) {
 }
 
 void CodeGenerator::visit(ProgramNode* node) {
+    for (const auto& stmt : node->statements) {
+        if (stmt->node_type == ASTNode::NodeType::VARIABLE_DECLARATION) {
+            auto decl = static_cast<VariableDeclarationNode*>(stmt.get());
+            out << "section .bss" << std::endl;
+            out << decl->name << ": resb " << getTypeSize(decl->type.get()) << std::endl;
+            out << "section .text" << std::endl;
+        }
+    }
     for (const auto& func : node->functions) {
         visit(func.get());
     }
@@ -117,18 +125,7 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
     for (const auto& stmt : node->body_statements) {
         if (stmt->node_type == ASTNode::NodeType::VARIABLE_DECLARATION) {
             auto decl = static_cast<VariableDeclarationNode*>(stmt.get());
-            int var_size = 0;
-            if (decl->type->category == TypeNode::TypeCategory::STRUCT) {
-                Symbol* struct_def_symbol = symbolTable.lookup(static_cast<StructTypeNode*>(decl->type.get())->struct_name);
-                if (struct_def_symbol) {
-                    var_size = struct_def_symbol->structDef->size;
-                }
-            } else {
-                Symbol* symbol = symbolTable.lookup(decl->name);
-                if (symbol) {
-                    var_size = symbol->size;
-                }
-            }
+            int var_size = getTypeSize(decl->type.get());
             symbolTable.scopes.back()->currentOffset -= var_size;
             int offset = symbolTable.scopes.back()->currentOffset;
             Symbol symbol(Symbol::SymbolType::VARIABLE, decl->name, decl->type->clone(), offset, var_size);
@@ -160,8 +157,10 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
     }
 
     if (node->type->category == TypeNode::TypeCategory::STRUCT) {
-        // For structs, we just need to make sure space is allocated.
-        // The function prologue already does this.
+        if (node->initial_value) {
+            throw std::runtime_error("Code generation error: Struct initialization not yet supported.");
+        }
+        return;
     } else if (node->initial_value) {
         visit(node->initial_value.get());
         out << "    mov [rbp + " << symbol->offset << "], rax" << std::endl;
@@ -171,20 +170,22 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
 void CodeGenerator::visit(VariableAssignmentNode* node) {
     visit(node->right.get());
     out << "    push rax" << std::endl;
-    visit(node->left.get());
-    out << "    pop rbx" << std::endl;
-
-    if (node->left->node_type == ASTNode::NodeType::MEMBER_ACCESS_EXPRESSION) {
-        out << "    mov [rax], rbx" << std::endl;
+    if (node->left->node_type == ASTNode::NodeType::VARIABLE_REFERENCE) {
+        Symbol* symbol = symbolTable.lookup(static_cast<VariableReferenceNode*>(node->left.get())->name);
+        if (symbol) {
+            out << "    lea rax, [rbp + " << symbol->offset << "]" << std::endl;
+        }
     } else {
-        out << "    mov [rax], rbx" << std::endl;
+        visit(node->left.get());
     }
+    out << "    pop rbx" << std::endl;
+    out << "    mov [rax], rbx" << std::endl;
 }
 
 void CodeGenerator::visit(VariableReferenceNode* node) {
     Symbol* symbol = symbolTable.lookup(node->name);
     if (symbol) {
-        out << "    lea rax, [rbp + " << symbol->offset << "]" << std::endl;
+        out << "    mov rax, [rbp + " << symbol->offset << "]" << std::endl;
     }
 }
 
@@ -252,11 +253,22 @@ void CodeGenerator::visit(PrintStatementNode* node) {
     for (const auto& expr : node->expressions) {
         visit(expr.get());
 
-        if (expr->node_type == ASTNode::NodeType::MEMBER_ACCESS_EXPRESSION) {
-            out << "    mov rax, [rax]" << std::endl;
-        }
-
-        if (expr->node_type == ASTNode::NodeType::STRING_LITERAL_EXPRESSION) {
+        if (auto* ref = dynamic_cast<VariableReferenceNode*>(expr.get())) {
+            if (ref->resolved_type) {
+                if (ref->resolved_type->category == TypeNode::TypeCategory::PRIMITIVE) {
+                    auto prim = static_cast<PrimitiveTypeNode*>(ref->resolved_type.get());
+                    if (prim->primitive_type == Token::KEYWORD_BOOL) {
+                        out << "    lea rdi, [rel _print_int_format]" << std::endl;
+                    } else if (prim->primitive_type == Token::KEYWORD_CHAR) {
+                        out << "    lea rdi, [rel _print_char_format]" << std::endl;
+                    } else if (prim->primitive_type == Token::KEYWORD_STRING) {
+                        out << "    lea rdi, [rel _print_str_format]" << std::endl;
+                    } else {
+                        out << "    lea rdi, [rel _print_int_format]" << std::endl;
+                    }
+                }
+            }
+        } else if (expr->node_type == ASTNode::NodeType::STRING_LITERAL_EXPRESSION) {
             out << "    mov rsi, rax" << std::endl;
             out << "    lea rdi, [rel _print_str_format]" << std::endl;
         } else if (expr->node_type == ASTNode::NodeType::CHARACTER_LITERAL_EXPRESSION) {
@@ -274,6 +286,7 @@ void CodeGenerator::visit(PrintStatementNode* node) {
 
 void CodeGenerator::visit(ReturnStatementNode* node) {
     visit(node->expression.get());
+    out << "    jmp .main_epilogue" << std::endl;
 }
 
 void CodeGenerator::visit(IfStatementNode* node) {
@@ -372,8 +385,7 @@ void CodeGenerator::visit(MemberAccessNode* node) {
         throw std::runtime_error("Code generation error: member symbol not resolved for '" + node->member_name + "'.");
     }
 
-    out << "    lea rbx, [rax + " << member_symbol->offset << "]" << std::endl;
-    out << "    mov rax, rbx" << std::endl;
+    out << "    mov rax, [rax + " << member_symbol->offset << "]" << std::endl;
 }
 
 void CodeGenerator::visit(UnaryOpExpressionNode* node) {
@@ -394,16 +406,10 @@ void CodeGenerator::visit(UnaryOpExpressionNode* node) {
 void CodeGenerator::visit(ArrayAccessNode* node) {
     visit(node->index_expr.get());
     out << "    mov rbx, rax" << std::endl;
-    const auto* ref_node = static_cast<const VariableReferenceNode*>(node->array_expr.get());
-    Symbol* var_symbol = ref_node->resolved_symbol;
-    if (!var_symbol) {
-        throw std::runtime_error("Code generation error: array variable '" + ref_node->name + "' not found for access (resolved_symbol is null).");
-    }
-    int offset = var_symbol->offset;
-    out << "    lea rcx, [rbp + " << std::to_string(offset) + "]" << std::endl;
+    visit(node->array_expr.get());
     out << "    imul rbx, 8" << std::endl;
-    out << "    add rcx, rbx" << std::endl;
-    out << "    mov rax, [rcx]" << std::endl;
+    out << "    add rax, rbx" << std::endl;
+    out << "    mov rax, [rax]" << std::endl;
 }
 
 void CodeGenerator::visit(StructDefinitionNode* node) {
@@ -428,4 +434,44 @@ void CodeGenerator::visit(BooleanLiteralExpressionNode* node) {
 
 void CodeGenerator::visit(CharacterLiteralExpressionNode* node) {
     out << "    mov rax, " << static_cast<int>(node->value) << std::endl;
+}
+
+int CodeGenerator::getTypeSize(const TypeNode* type) {
+    if (!type) {
+        throw std::runtime_error("Code Generation Error: Attempted to get size of a null type.");
+    }
+
+    switch (type->category) {
+        case TypeNode::TypeCategory::PRIMITIVE: {
+            const PrimitiveTypeNode* prim_type = static_cast<const PrimitiveTypeNode*>(type);
+            switch (prim_type->primitive_type) {
+                case Token::KEYWORD_INT: return 4;
+                case Token::KEYWORD_BOOL: return 1;
+                case Token::KEYWORD_CHAR: return 1;
+                case Token::KEYWORD_STRING: return 8;
+                case Token::KEYWORD_VOID: return 0;
+                default: throw std::runtime_error("Code Generation Error: Unknown primitive type for size calculation.");
+            }
+        }
+        case TypeNode::TypeCategory::POINTER:
+            return 8;
+        case TypeNode::TypeCategory::ARRAY: {
+            const ArrayTypeNode* array_type = static_cast<const ArrayTypeNode*>(type);
+            int element_size = getTypeSize(array_type->base_type.get());
+            if (array_type->size > 0) {
+                return element_size * array_type->size;
+            }
+            return 0; 
+        }
+        case TypeNode::TypeCategory::STRUCT: {
+            const StructTypeNode* struct_type = static_cast<const StructTypeNode*>(type);
+            Symbol* struct_def_symbol = symbolTable.lookup(struct_type->struct_name);
+            if (!struct_def_symbol || !struct_def_symbol->structDef) {
+                throw std::runtime_error("Code Generation Error: Undefined struct '" + struct_type->struct_name + "'.");
+            }
+            return struct_def_symbol->structDef->size;
+        }
+        default:
+            throw std::runtime_error("Code Generation Error: Unknown type category for size calculation.");
+    }
 }

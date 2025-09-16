@@ -12,7 +12,7 @@ int SemanticAnalyzer::getTypeSize(const TypeNode* type) {
         case TypeNode::TypeCategory::PRIMITIVE: {
             const PrimitiveTypeNode* prim_type = static_cast<const PrimitiveTypeNode*>(type);
             switch (prim_type->primitive_type) {
-                case Token::KEYWORD_INT: return 8; // 8 bytes for int (qword)
+                case Token::KEYWORD_INT: return 4; // 4 bytes for int (dword)
                 case Token::KEYWORD_BOOL: return 1; // 1 byte for bool
                 case Token::KEYWORD_CHAR: return 1; // 1 byte for char
                 case Token::KEYWORD_STRING: return 8; // 8 bytes for string (pointer)
@@ -24,6 +24,9 @@ int SemanticAnalyzer::getTypeSize(const TypeNode* type) {
             return 8; // Pointers are 8 bytes on x64
         case TypeNode::TypeCategory::ARRAY: {
             const ArrayTypeNode* array_type = static_cast<const ArrayTypeNode*>(type);
+            if (array_type->size <= 0) {
+                throw std::runtime_error("Semantic Error: Unsized arrays not allowed for local variables.");
+            }
             int element_size = getTypeSize(array_type->base_type.get());
             if (array_type->size > 0) {
                 return element_size * array_type->size;
@@ -81,6 +84,10 @@ bool SemanticAnalyzer::areTypesCompatible(const TypeNode* type1, const TypeNode*
 void SemanticAnalyzer::analyze() {
     symbolTable.enterScope();
 
+    for (const auto& struct_node : program_ast->structs) {
+        visit(struct_node.get());
+    }
+
     for (const auto& func_node : program_ast->functions) {
         std::unique_ptr<TypeNode> return_type = func_node->return_type->clone();
 
@@ -99,6 +106,23 @@ void SemanticAnalyzer::analyze() {
 
     for (const auto& func_node : program_ast->functions) {
         visit(func_node.get());
+    }
+
+    bool has_main = false;
+    for (const auto& func : program_ast->functions) {
+        if (func->name == "main") {
+            has_main = true;
+            if (func->return_type->category != TypeNode::TypeCategory::PRIMITIVE ||
+                static_cast<PrimitiveTypeNode*>(func->return_type.get())->primitive_type != Token::KEYWORD_INT) {
+                throw std::runtime_error("Semantic Error: 'main' function must return int.");
+            }
+            if (!func->parameters.empty()) {
+                throw std::runtime_error("Semantic Error: 'main' function should have no parameters.");
+            }
+        }
+    }
+    if (!has_main) {
+        throw std::runtime_error("Semantic Error: No 'main' function defined.");
     }
 
     symbolTable.exitScope();
@@ -235,6 +259,20 @@ void SemanticAnalyzer::visit(BinaryOperationExpressionNode* node) {
     if (left_type->category != right_type->category) {
         throw std::runtime_error("Semantic Error: Type mismatch in binary operation.");
     }
+
+    switch (node->op_type) {
+        case Token::EQUAL_EQUAL:
+        case Token::BANG_EQUAL:
+        case Token::LESS:
+        case Token::GREATER:
+        case Token::LESS_EQUAL:
+        case Token::GREATER_EQUAL:
+            node->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_BOOL);
+            break;
+        default:
+            node->resolved_type = std::move(left_type);
+            break;
+    }
 }
 
 void SemanticAnalyzer::visit(PrintStatementNode* node) {
@@ -264,8 +302,9 @@ void SemanticAnalyzer::visit(IfStatementNode* node) {
 
 void SemanticAnalyzer::visit(WhileStatementNode* node) {
     std::unique_ptr<TypeNode> cond_type = visitExpression(node->condition.get());
-    if (cond_type->category != TypeNode::TypeCategory::PRIMITIVE) {
-        throw std::runtime_error("Semantic Error: While condition must be a primitive type.");
+    if (cond_type->category != TypeNode::TypeCategory::PRIMITIVE ||
+        static_cast<PrimitiveTypeNode*>(cond_type.get())->primitive_type != Token::KEYWORD_BOOL) {
+        throw std::runtime_error("Semantic Error: While condition must be a boolean expression.");
     }
 
     symbolTable.enterScope();
@@ -283,8 +322,9 @@ void SemanticAnalyzer::visit(ForStatementNode* node) {
     }
     if (node->condition) {
         std::unique_ptr<TypeNode> cond_type = visitExpression(node->condition.get());
-        if (cond_type->category != TypeNode::TypeCategory::PRIMITIVE) {
-            throw std::runtime_error("Semantic Error: For loop condition must be a primitive type.");
+        if (cond_type->category != TypeNode::TypeCategory::PRIMITIVE ||
+            static_cast<PrimitiveTypeNode*>(cond_type.get())->primitive_type != Token::KEYWORD_BOOL) {
+            throw std::runtime_error("Semantic Error: For loop condition must be a boolean expression.");
         }
     }
     if (node->increment) {
@@ -341,7 +381,7 @@ void SemanticAnalyzer::visit(MemberAccessNode* node) {
     for (const auto& member : struct_def->members) {
         if (member.name == node->member_name) {
             member_found = true;
-            node->resolved_symbol = new Symbol(Symbol::SymbolType::STRUCT_MEMBER, member.name, member.type->clone(), member.offset, getTypeSize(member.type.get()));
+            node->resolved_symbol = symbolTable.lookup(member.name);
             break;
         }
     }
@@ -359,11 +399,12 @@ void SemanticAnalyzer::visit(UnaryOpExpressionNode* node) {
             throw std::runtime_error("Semantic Error: Address-of operator '&' can only be applied to variables.");
         }
         node->resolved_symbol = static_cast<VariableReferenceNode*>(node->operand.get())->resolved_symbol;
+        node->resolved_type = std::make_unique<PointerTypeNode>(std::move(operand_type));
     } else if (node->op_type == Token::STAR) {
         if (operand_type->category != TypeNode::TypeCategory::POINTER) {
             throw std::runtime_error("Semantic Error: Dereference operator '*' can only be applied to pointer types.");
         }
-        node->resolved_symbol = new Symbol(Symbol::SymbolType::VARIABLE, "", static_cast<PointerTypeNode*>(operand_type.get())->base_type->clone(), 0, getTypeSize(static_cast<PointerTypeNode*>(operand_type.get())->base_type.get()));
+        node->resolved_type = static_cast<PointerTypeNode*>(operand_type.get())->base_type->clone();
     } else {
         throw std::runtime_error("Semantic Error: Unknown unary operator.");
     }
@@ -385,6 +426,16 @@ void SemanticAnalyzer::visit(ArrayAccessNode* node) {
 }
 
 void SemanticAnalyzer::visit(StructDefinitionNode* node) {
+    // Calculate offsets
+    int offset = 0;
+    for (auto& member : node->members) {
+        member.offset = offset;
+        offset += getTypeSize(member.type.get());
+    }
+    node->size = offset;
+
+    // Register in symbol table
+    symbolTable.addSymbol(Symbol(Symbol::SymbolType::STRUCT_DEFINITION, node->name, node->clone()));
 }
 
 std::unique_ptr<TypeNode> SemanticAnalyzer::visitExpression(ASTNode* expr) {
@@ -409,7 +460,7 @@ std::unique_ptr<TypeNode> SemanticAnalyzer::visitExpression(ASTNode* expr) {
         }
         case ASTNode::NodeType::BINARY_OPERATION_EXPRESSION: {
             visit(static_cast<BinaryOperationExpressionNode*>(expr));
-            return visitExpression(static_cast<BinaryOperationExpressionNode*>(expr)->left.get());
+            return static_cast<BinaryOperationExpressionNode*>(expr)->resolved_type->clone();
         }
         case ASTNode::NodeType::FUNCTION_CALL: {
             visit(static_cast<FunctionCallNode*>(expr));
@@ -438,20 +489,23 @@ std::unique_ptr<TypeNode> SemanticAnalyzer::visitExpression(ASTNode* expr) {
         case ASTNode::NodeType::UNARY_OP_EXPRESSION: {
             visit(static_cast<UnaryOpExpressionNode*>(expr));
             const UnaryOpExpressionNode* unary_node = static_cast<const UnaryOpExpressionNode*>(expr);
-            std::unique_ptr<TypeNode> operand_type = visitExpression(unary_node->operand.get());
-            if (unary_node->op_type == Token::ADDRESSOF) {
-                return std::make_unique<PointerTypeNode>(std::move(operand_type));
-            } else if (unary_node->op_type == Token::STAR) {
-                const PointerTypeNode* ptr_type = static_cast<const PointerTypeNode*>(operand_type.get());
-                return ptr_type->base_type->clone();
-            }
-            throw std::runtime_error("Semantic Error: Unhandled unary operator type in visitExpression.");
+            return unary_node->resolved_type->clone();
         }
         case ASTNode::NodeType::ARRAY_ACCESS_EXPRESSION: {
             visit(static_cast<ArrayAccessNode*>(expr));
             std::unique_ptr<TypeNode> array_type = visitExpression(static_cast<ArrayAccessNode*>(expr)->array_expr.get());
             const ArrayTypeNode* arr_type = static_cast<const ArrayTypeNode*>(array_type.get());
             return arr_type->base_type->clone();
+        }
+        case ASTNode::NodeType::VARIABLE_ASSIGNMENT: {
+            auto* assign_node = static_cast<VariableAssignmentNode*>(expr);
+            visit(assign_node);
+            return visitExpression(assign_node->left.get());
+        }
+        case ASTNode::NodeType::VARIABLE_DECLARATION: {
+            auto* decl_node = static_cast<VariableDeclarationNode*>(expr);
+            visit(decl_node);
+            return decl_node->type->clone();
         }
         default:
             throw std::runtime_error("Semantic Error: Unexpected AST node type in visitExpression.");

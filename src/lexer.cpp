@@ -21,6 +21,7 @@ std::string Token::typeToString() const {
 	case KEYWORD_BOOL: return "KEYWORD_BOOL";
         case KEYWORD_CHAR: return "KEYWORD_CHAR";
         case KEYWORD_FOR: return "KEYWORD_FOR";
+        case KEYWORD_STRUCT: return "KEYWORD_STRUCT";
 	case KEYWORD_SWITCH: return "KEYWORD_SWITCH";
 	case KEYWORD_CASE: return "KEYWORD_CASE";
 	case KEYWORD_DEFAULT: return "KEYWORD_DEFAULT";

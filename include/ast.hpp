@@ -149,6 +149,15 @@ struct StructDefinitionNode : public ASTNode {
 
     StructDefinitionNode(std::string struct_name, int line = -1, int column = -1)
         : ASTNode(NodeType::STRUCT_DEFINITION, line, column), name(std::move(struct_name)), size(0) {}
+
+    std::unique_ptr<StructDefinitionNode> clone() const {
+        auto new_node = std::make_unique<StructDefinitionNode>(name, line, column);
+        new_node->size = size;
+        for (const auto& member : members) {
+            new_node->members.push_back({member.type->clone(), member.name, member.offset});
+        }
+        return new_node;
+    }
 };
 
 struct MemberAccessNode : public ASTNode {
@@ -201,6 +210,7 @@ struct UnaryOpExpressionNode : public ASTNode {
     Token::Type op_type;
     std::unique_ptr<ASTNode> operand;
     Symbol* resolved_symbol; // Add resolved_symbol
+    std::unique_ptr<TypeNode> resolved_type; // Add resolved_type
 
     UnaryOpExpressionNode(Token::Type op, std::unique_ptr<ASTNode> operand_node, int line = -1, int column = -1)
         : ASTNode(NodeType::UNARY_OP_EXPRESSION, line, column), op_type(op), operand(std::move(operand_node)), resolved_symbol(nullptr) {}
@@ -280,6 +290,7 @@ struct BinaryOperationExpressionNode : public ASTNode {
     std::unique_ptr<ASTNode> left;
     Token::Type op_type;
     std::unique_ptr<ASTNode> right;
+    std::unique_ptr<TypeNode> resolved_type; // Add resolved_type
 
     BinaryOperationExpressionNode(std::unique_ptr<ASTNode> left_expr, Token::Type op, std::unique_ptr<ASTNode> right_expr, int line = -1, int column = -1)
         : ASTNode(NodeType::BINARY_OPERATION_EXPRESSION, line, column),
