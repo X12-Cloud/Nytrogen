@@ -1,9 +1,8 @@
-
 #include "code_generator.hpp"
 #include <stdexcept>
 
 CodeGenerator::CodeGenerator(std::unique_ptr<ProgramNode>& ast, SymbolTable& symTable)
-    : program_ast(ast), symbolTable(symTable), string_label_counter(0) {}
+: program_ast(ast), symbolTable(symTable), string_label_counter(0) {}
 
 void CodeGenerator::generate(const std::string& output_filename) {
     out.open(output_filename);
@@ -119,22 +118,23 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
     out << "    push rbp" << std::endl;
     out << "    mov rbp, rsp" << std::endl;
 
-    symbolTable.enterScope();
-
+    // Calculate total local variable space from current scope
     int local_var_space = 0;
-    for (const auto& stmt : node->body_statements) {
-        if (stmt->node_type == ASTNode::NodeType::VARIABLE_DECLARATION) {
-            auto decl = static_cast<VariableDeclarationNode*>(stmt.get());
-            int var_size = getTypeSize(decl->type.get());
-            symbolTable.scopes.back()->currentOffset -= var_size;
-            int offset = symbolTable.scopes.back()->currentOffset;
-            Symbol symbol(Symbol::SymbolType::VARIABLE, decl->name, decl->type->clone(), offset, var_size);
-            symbolTable.addSymbol(std::move(symbol));
-            local_var_space += var_size;
+    if (!symbolTable.scopes.empty()) {
+        for (const auto& [name, symbol] : symbolTable.scopes.back()->symbols) {
+            if (symbol.type == Symbol::SymbolType::VARIABLE) {
+                local_var_space += symbol.size;
+            }
         }
+    } else {
+        throw std::runtime_error("Code generation error: No active scope in function '" + node->name + "'.");
     }
-    out << "    sub rsp, " << local_var_space << std::endl;
 
+    if (local_var_space > 0) {
+        out << "    sub rsp, " << local_var_space << std::endl;
+    }
+
+    // Generate code for all statements
     for (const auto& stmt : node->body_statements) {
         visit(stmt.get());
     }
@@ -146,8 +146,6 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
     out << "    mov rsp, rbp" << std::endl;
     out << "    pop rbp" << std::endl;
     out << "    ret" << std::endl << std::endl;
-
-    symbolTable.exitScope();
 }
 
 void CodeGenerator::visit(VariableDeclarationNode* node) {
@@ -163,7 +161,28 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
         return;
     } else if (node->initial_value) {
         visit(node->initial_value.get());
-        out << "    mov [rbp + " << symbol->offset << "], rax" << std::endl;
+        out << "    push rax" << std::endl;                    // Save the value
+        out << "    lea rax, [rbp + " << symbol->offset << "]" << std::endl; // rax = address of variable
+        out << "    pop rbx" << std::endl;                     // Restore value into rbx
+
+        // Store with correct size based on type
+        if (node->type->category == TypeNode::TypeCategory::PRIMITIVE) {
+            auto prim = static_cast<PrimitiveTypeNode*>(node->type.get());
+            switch (prim->primitive_type) {
+                case Token::KEYWORD_BOOL:
+                case Token::KEYWORD_CHAR:
+                    out << "    mov [rax], bl" << std::endl;
+                    break;
+                case Token::KEYWORD_INT:
+                    out << "    mov [rax], ebx" << std::endl;
+                    break;
+                default:
+                    out << "    mov [rax], rbx" << std::endl;
+                    break;
+            }
+        } else {
+            out << "    mov [rax], rbx" << std::endl;
+        }
     }
 }
 
@@ -193,54 +212,52 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
     visit(node->left.get());
     out << "    push rax" << std::endl;
     visit(node->right.get());
-    out << "    pop rbx" << std::endl;
+    out << "    pop rcx" << std::endl;  // left is in rcx, right in rax
 
     switch (node->op_type) {
         case Token::PLUS:
-            out << "    add rbx, rax" << std::endl;
-            out << "    mov rax, rbx" << std::endl;
+            out << "    add rax, rcx" << std::endl;
             break;
         case Token::MINUS:
-            out << "    sub rbx, rax" << std::endl;
-            out << "    mov rax, rbx" << std::endl;
+            out << "    sub rcx, rax" << std::endl;
+            out << "    mov rax, rcx" << std::endl;
             break;
         case Token::STAR:
-            out << "    imul rax, rbx" << std::endl;
+            out << "    imul rax, rcx" << std::endl;
             break;
         case Token::SLASH:
-            out << "    mov rcx, rax" << std::endl;
-            out << "    mov rax, rbx" << std::endl;
-            out << "    mov rbx, rcx" << std::endl;
-            out << "    xor rdx, rdx" << std::endl;
+            out << "    mov rbx, rax" << std::endl;
+            out << "    mov rax, rcx" << std::endl;
+            out << "    cqo" << std::endl;
             out << "    idiv rbx" << std::endl;
             break;
         case Token::EQUAL_EQUAL:
-            out << "    cmp rbx, rax" << std::endl;
+            out << "    cmp rcx, rax" << std::endl;
             out << "    sete al" << std::endl;
             out << "    movzx rax, al" << std::endl;
             break;
         case Token::BANG_EQUAL:
-            out << "    cmp rbx, rax" << std::endl;
+            out << "    cmp rcx, rax" << std::endl;
             out << "    setne al" << std::endl;
             out << "    movzx rax, al" << std::endl;
             break;
         case Token::LESS:
-            out << "    cmp rbx, rax" << std::endl;
+            out << "    cmp rcx, rax" << std::endl;
             out << "    setl al" << std::endl;
             out << "    movzx rax, al" << std::endl;
             break;
         case Token::GREATER:
-            out << "    cmp rbx, rax" << std::endl;
+            out << "    cmp rcx, rax" << std::endl;
             out << "    setg al" << std::endl;
             out << "    movzx rax, al" << std::endl;
             break;
         case Token::LESS_EQUAL:
-            out << "    cmp rbx, rax" << std::endl;
+            out << "    cmp rcx, rax" << std::endl;
             out << "    setle al" << std::endl;
             out << "    movzx rax, al" << std::endl;
             break;
         case Token::GREATER_EQUAL:
-            out << "    cmp rbx, rax" << std::endl;
+            out << "    cmp rcx, rax" << std::endl;
             out << "    setge al" << std::endl;
             out << "    movzx rax, al" << std::endl;
             break;
@@ -252,30 +269,12 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
 void CodeGenerator::visit(PrintStatementNode* node) {
     for (const auto& expr : node->expressions) {
         visit(expr.get());
+        out << "    mov rsi, rax" << std::endl;
 
-        if (auto* ref = dynamic_cast<VariableReferenceNode*>(expr.get())) {
-            if (ref->resolved_type) {
-                if (ref->resolved_type->category == TypeNode::TypeCategory::PRIMITIVE) {
-                    auto prim = static_cast<PrimitiveTypeNode*>(ref->resolved_type.get());
-                    if (prim->primitive_type == Token::KEYWORD_BOOL) {
-                        out << "    lea rdi, [rel _print_int_format]" << std::endl;
-                    } else if (prim->primitive_type == Token::KEYWORD_CHAR) {
-                        out << "    lea rdi, [rel _print_char_format]" << std::endl;
-                    } else if (prim->primitive_type == Token::KEYWORD_STRING) {
-                        out << "    lea rdi, [rel _print_str_format]" << std::endl;
-                    } else {
-                        out << "    lea rdi, [rel _print_int_format]" << std::endl;
-                    }
-                }
-            }
-        } else if (expr->node_type == ASTNode::NodeType::STRING_LITERAL_EXPRESSION) {
-            out << "    mov rsi, rax" << std::endl;
+        // FOR NOW: Use node_type to choose format — ignore resolved_type
+        if (expr->node_type == ASTNode::NodeType::STRING_LITERAL_EXPRESSION) {
             out << "    lea rdi, [rel _print_str_format]" << std::endl;
-        } else if (expr->node_type == ASTNode::NodeType::CHARACTER_LITERAL_EXPRESSION) {
-            out << "    mov rsi, rax" << std::endl;
-            out << "    lea rdi, [rel _print_char_format]" << std::endl;
         } else {
-            out << "    mov rsi, rax" << std::endl;
             out << "    lea rdi, [rel _print_int_format]" << std::endl;
         }
 
@@ -378,13 +377,11 @@ void CodeGenerator::visit(FunctionCallNode* node) {
 }
 
 void CodeGenerator::visit(MemberAccessNode* node) {
-    visit(node->struct_expr.get()); // Get the base address of the struct in rax
-
+    visit(node->struct_expr.get());
     Symbol* member_symbol = node->resolved_symbol;
     if (!member_symbol) {
         throw std::runtime_error("Code generation error: member symbol not resolved for '" + node->member_name + "'.");
     }
-
     out << "    mov rax, [rax + " << member_symbol->offset << "]" << std::endl;
 }
 
@@ -426,6 +423,8 @@ void CodeGenerator::visit(StringLiteralExpressionNode* node) {
     out << label << " db \"" << node->value << "\", 0" << std::endl;
     out << "section .text" << std::endl;
     out << "    lea rax, [rel " << label << "]" << std::endl;
+    // SET resolved_type so print knows it's a string
+    node->resolved_type = std::make_shared<PrimitiveTypeNode>(Token::KEYWORD_STRING);
 }
 
 void CodeGenerator::visit(BooleanLiteralExpressionNode* node) {
@@ -453,25 +452,25 @@ int CodeGenerator::getTypeSize(const TypeNode* type) {
                 default: throw std::runtime_error("Code Generation Error: Unknown primitive type for size calculation.");
             }
         }
-        case TypeNode::TypeCategory::POINTER:
-            return 8;
-        case TypeNode::TypeCategory::ARRAY: {
-            const ArrayTypeNode* array_type = static_cast<const ArrayTypeNode*>(type);
-            int element_size = getTypeSize(array_type->base_type.get());
-            if (array_type->size > 0) {
-                return element_size * array_type->size;
-            }
-            return 0; 
-        }
-        case TypeNode::TypeCategory::STRUCT: {
-            const StructTypeNode* struct_type = static_cast<const StructTypeNode*>(type);
-            Symbol* struct_def_symbol = symbolTable.lookup(struct_type->struct_name);
-            if (!struct_def_symbol || !struct_def_symbol->structDef) {
-                throw std::runtime_error("Code Generation Error: Undefined struct '" + struct_type->struct_name + "'.");
-            }
-            return struct_def_symbol->structDef->size;
-        }
-        default:
-            throw std::runtime_error("Code Generation Error: Unknown type category for size calculation.");
+                case TypeNode::TypeCategory::POINTER:
+                    return 8;
+                case TypeNode::TypeCategory::ARRAY: {
+                    const ArrayTypeNode* array_type = static_cast<const ArrayTypeNode*>(type);
+                    int element_size = getTypeSize(array_type->base_type.get());
+                    if (array_type->size > 0) {
+                        return element_size * array_type->size;
+                    }
+                    return 0;
+                }
+                case TypeNode::TypeCategory::STRUCT: {
+                    const StructTypeNode* struct_type = static_cast<const StructTypeNode*>(type);
+                    Symbol* struct_def_symbol = symbolTable.lookup(struct_type->struct_name);
+                    if (!struct_def_symbol || !struct_def_symbol->structDef) {
+                        throw std::runtime_error("Code Generation Error: Undefined struct '" + struct_type->struct_name + "'.");
+                    }
+                    return struct_def_symbol->structDef->size;
+                }
+                default:
+                    throw std::runtime_error("Code Generation Error: Unknown type category for size calculation.");
     }
 }

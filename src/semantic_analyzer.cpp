@@ -82,32 +82,36 @@ bool SemanticAnalyzer::areTypesCompatible(const TypeNode* type1, const TypeNode*
 }
 
 void SemanticAnalyzer::analyze() {
-    symbolTable.enterScope();
+    symbolTable.enterScope(); // global scope
 
+    // Process structs
     for (const auto& struct_node : program_ast->structs) {
         visit(struct_node.get());
     }
 
+    // Declare functions (but don't visit bodies yet)
     for (const auto& func_node : program_ast->functions) {
         std::unique_ptr<TypeNode> return_type = func_node->return_type->clone();
-
         std::vector<std::unique_ptr<TypeNode>> param_types;
         for (const auto& param : func_node->parameters) {
             param_types.push_back(param->type->clone());
         }
-
         Symbol func_symbol(Symbol::SymbolType::FUNCTION, std::string(func_node->name), std::move(return_type), std::move(param_types));
         symbolTable.addSymbol(std::move(func_symbol));
     }
 
+    // Process global statements
     for (const auto& stmt : program_ast->statements) {
         visit(stmt.get());
     }
 
+    // Now visit function bodies — but do NOT exit their scopes
     for (const auto& func_node : program_ast->functions) {
         visit(func_node.get());
+        // DO NOT exit scope — code generator needs it
     }
 
+    // Check for main
     bool has_main = false;
     for (const auto& func : program_ast->functions) {
         if (func->name == "main") {
@@ -115,17 +119,18 @@ void SemanticAnalyzer::analyze() {
             if (func->return_type->category != TypeNode::TypeCategory::PRIMITIVE ||
                 static_cast<PrimitiveTypeNode*>(func->return_type.get())->primitive_type != Token::KEYWORD_INT) {
                 throw std::runtime_error("Semantic Error: 'main' function must return int.");
-            }
-            if (!func->parameters.empty()) {
-                throw std::runtime_error("Semantic Error: 'main' function should have no parameters.");
-            }
+                }
+                if (!func->parameters.empty()) {
+                    throw std::runtime_error("Semantic Error: 'main' function should have no parameters.");
+                }
         }
     }
     if (!has_main) {
         throw std::runtime_error("Semantic Error: No 'main' function defined.");
     }
 
-    symbolTable.exitScope();
+    // DO NOT exit global scope — code generator might need it
+    // symbolTable.exitScope(); ← COMMENTED OUT
 }
 
 void SemanticAnalyzer::visit(ASTNode* node) {
@@ -195,21 +200,21 @@ void SemanticAnalyzer::visit(ProgramNode* node) {
 
 void SemanticAnalyzer::visit(FunctionDefinitionNode* node) {
     symbolTable.enterScope();
-
     int param_offset = 16;
     for (const auto& param : node->parameters) {
         int size = getTypeSize(param->type.get());
         symbolTable.addSymbol(Symbol(Symbol::SymbolType::VARIABLE, param->name, param->type->clone(), param_offset, size));
         param_offset += size;
     }
-
     symbolTable.scopes.back()->currentOffset = 0;
 
+    // Analyze body statements — variables declared here
     for (const auto& stmt : node->body_statements) {
         visit(stmt.get());
     }
 
-    symbolTable.exitScope();
+    // DO NOT exit scope here — code generator needs it!
+    // symbolTable.exitScope(); ← COMMENTED OUT
 }
 
 void SemanticAnalyzer::visit(VariableDeclarationNode* node) {

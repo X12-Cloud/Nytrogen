@@ -1,0 +1,2685 @@
+--- File: src/code_generator.cpp ---
+#include "code_generator.hpp"
+#include <stdexcept>
+
+CodeGenerator::CodeGenerator(std::unique_ptr<ProgramNode>& ast, SymbolTable& symTable)
+: program_ast(ast), symbolTable(symTable), string_label_counter(0) {}
+
+void CodeGenerator::generate(const std::string& output_filename) {
+    out.open(output_filename);
+    if (!out.is_open()) {
+        throw std::runtime_error("Could not open output file: " + output_filename);
+    }
+
+    out << "section .data" << std::endl;
+    out << "  _print_int_format db \"%d\", 10, 0" << std::endl;
+    out << "  _print_str_format db \"%s\", 10, 0" << std::endl;
+    out << "  _print_char_format db \"%c\", 10, 0" << std::endl;
+
+    out << "section .text" << std::endl;
+    out << "global _start" << std::endl;
+    out << "extern printf" << std::endl;
+
+    visit(program_ast.get());
+
+    out << "_start:" << std::endl;
+    out << "  call main" << std::endl;
+    out << "  mov rdi, rax" << std::endl;
+    out << "  mov rax, 60" << std::endl;
+    out << "  syscall" << std::endl;
+
+    out.close();
+}
+
+void CodeGenerator::visit(ASTNode* node) {
+    if (!node) return;
+
+    switch (node->node_type) {
+        case ASTNode::NodeType::PROGRAM:
+            visit(static_cast<ProgramNode*>(node));
+            break;
+        case ASTNode::NodeType::FUNCTION_DEFINITION:
+            visit(static_cast<FunctionDefinitionNode*>(node));
+            break;
+        case ASTNode::NodeType::VARIABLE_DECLARATION:
+            visit(static_cast<VariableDeclarationNode*>(node));
+            break;
+        case ASTNode::NodeType::VARIABLE_ASSIGNMENT:
+            visit(static_cast<VariableAssignmentNode*>(node));
+            break;
+        case ASTNode::NodeType::VARIABLE_REFERENCE:
+            visit(static_cast<VariableReferenceNode*>(node));
+            break;
+        case ASTNode::NodeType::BINARY_OPERATION_EXPRESSION:
+            visit(static_cast<BinaryOperationExpressionNode*>(node));
+            break;
+        case ASTNode::NodeType::PRINT_STATEMENT:
+            visit(static_cast<PrintStatementNode*>(node));
+            break;
+        case ASTNode::NodeType::RETURN_STATEMENT:
+            visit(static_cast<ReturnStatementNode*>(node));
+            break;
+        case ASTNode::NodeType::IF_STATEMENT:
+            visit(static_cast<IfStatementNode*>(node));
+            break;
+        case ASTNode::NodeType::WHILE_STATEMENT:
+            visit(static_cast<WhileStatementNode*>(node));
+            break;
+        case ASTNode::NodeType::FOR_STATEMENT:
+            visit(static_cast<ForStatementNode*>(node));
+            break;
+        case ASTNode::NodeType::FUNCTION_CALL:
+            visit(static_cast<FunctionCallNode*>(node));
+            break;
+        case ASTNode::NodeType::MEMBER_ACCESS_EXPRESSION:
+            visit(static_cast<MemberAccessNode*>(node));
+            break;
+        case ASTNode::NodeType::UNARY_OP_EXPRESSION:
+            visit(static_cast<UnaryOpExpressionNode*>(node));
+            break;
+        case ASTNode::NodeType::ARRAY_ACCESS_EXPRESSION:
+            visit(static_cast<ArrayAccessNode*>(node));
+            break;
+        case ASTNode::NodeType::STRUCT_DEFINITION:
+            visit(static_cast<StructDefinitionNode*>(node));
+            break;
+        case ASTNode::NodeType::INTEGER_LITERAL_EXPRESSION:
+            visit(static_cast<IntegerLiteralExpressionNode*>(node));
+            break;
+        case ASTNode::NodeType::STRING_LITERAL_EXPRESSION:
+            visit(static_cast<StringLiteralExpressionNode*>(node));
+            break;
+        case ASTNode::NodeType::BOOLEAN_LITERAL_EXPRESSION:
+            visit(static_cast<BooleanLiteralExpressionNode*>(node));
+            break;
+        case ASTNode::NodeType::CHARACTER_LITERAL_EXPRESSION:
+            visit(static_cast<CharacterLiteralExpressionNode*>(node));
+            break;
+        default:
+            throw std::runtime_error("Code Generation Error: Unknown AST node type.");
+    }
+}
+
+void CodeGenerator::visit(ProgramNode* node) {
+    for (const auto& stmt : node->statements) {
+        if (stmt->node_type == ASTNode::NodeType::VARIABLE_DECLARATION) {
+            auto decl = static_cast<VariableDeclarationNode*>(stmt.get());
+            out << "section .bss" << std::endl;
+            out << decl->name << ": resb " << getTypeSize(decl->type.get()) << std::endl;
+            out << "section .text" << std::endl;
+        }
+    }
+    for (const auto& func : node->functions) {
+        visit(func.get());
+    }
+}
+
+void CodeGenerator::visit(FunctionDefinitionNode* node) {
+    out << node->name << ":" << std::endl;
+    out << "    push rbp" << std::endl;
+    out << "    mov rbp, rsp" << std::endl;
+
+    // Calculate total local variable space from current scope
+    int local_var_space = 0;
+    if (!symbolTable.scopes.empty()) {
+        for (const auto& [name, symbol] : symbolTable.scopes.back()->symbols) {
+            if (symbol.type == Symbol::SymbolType::VARIABLE) {
+                local_var_space += symbol.size;
+            }
+        }
+    } else {
+        throw std::runtime_error("Code generation error: No active scope in function '" + node->name + "'.");
+    }
+
+    // ALLOCATE STACK SPACE BEFORE GENERATING CODE FOR STATEMENTS
+    if (local_var_space > 0) {
+        out << "    sub rsp, " << local_var_space << std::endl;
+    }
+
+    // Generate code for all statements
+    for (const auto& stmt : node->body_statements) {
+        visit(stmt.get());
+    }
+
+    if (node->name == "main") {
+        out << ".main_epilogue:" << std::endl;
+    }
+
+    out << "    mov rsp, rbp" << std::endl;
+    out << "    pop rbp" << std::endl;
+    out << "    ret" << std::endl << std::endl;
+
+    // Exit the function scope — it was left open by semantic analyzer
+    symbolTable.exitScope();
+}
+
+void CodeGenerator::visit(VariableDeclarationNode* node) {
+    Symbol* symbol = symbolTable.lookup(node->name);
+    if (!symbol) {
+        throw std::runtime_error("Code generation error: variable '" + node->name + "' not found in symbol table.");
+    }
+
+    if (node->type->category == TypeNode::TypeCategory::STRUCT) {
+        if (node->initial_value) {
+            throw std::runtime_error("Code generation error: Struct initialization not yet supported.");
+        }
+        return;
+    } else if (node->initial_value) {
+        visit(node->initial_value.get());
+        out << "    push rax" << std::endl;                    // Save the value (e.g., 1)
+        out << "    lea rax, [rbp + " << symbol->offset << "]" << std::endl; // rax = address of variable
+        out << "    pop rbx" << std::endl;                     // Restore value into rbx
+
+        // Store with correct size based on type
+        if (node->type->category == TypeNode::TypeCategory::PRIMITIVE) {
+            auto prim = static_cast<PrimitiveTypeNode*>(node->type.get());
+            switch (prim->primitive_type) {
+                case Token::KEYWORD_BOOL:
+                case Token::KEYWORD_CHAR:
+                    out << "    mov [rax], bl" << std::endl;
+                    break;
+                case Token::KEYWORD_INT:
+                    out << "    mov [rax], ebx" << std::endl;
+                    break;
+                default:
+                    out << "    mov [rax], rbx" << std::endl;
+                    break;
+            }
+        } else {
+            out << "    mov [rax], rbx" << std::endl;
+        }
+    }
+}
+
+void CodeGenerator::visit(VariableAssignmentNode* node) {
+    visit(node->right.get());
+    out << "    push rax" << std::endl;
+    if (node->left->node_type == ASTNode::NodeType::VARIABLE_REFERENCE) {
+        Symbol* symbol = symbolTable.lookup(static_cast<VariableReferenceNode*>(node->left.get())->name);
+        if (symbol) {
+            out << "    lea rax, [rbp + " << symbol->offset << "]" << std::endl;
+        }
+    } else {
+        visit(node->left.get());
+    }
+    out << "    pop rbx" << std::endl;
+    out << "    mov [rax], rbx" << std::endl;
+}
+
+void CodeGenerator::visit(VariableReferenceNode* node) {
+    Symbol* symbol = symbolTable.lookup(node->name);
+    if (symbol) {
+        out << "    mov rax, [rbp + " << symbol->offset << "]" << std::endl;
+    }
+}
+
+void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
+    visit(node->left.get());
+    out << "    push rax" << std::endl;
+    visit(node->right.get());
+    out << "    pop rcx" << std::endl;  // left is in rcx, right in rax
+
+    switch (node->op_type) {
+        case Token::PLUS:
+            out << "    add rax, rcx" << std::endl;  // rax = rcx + rax
+            break;
+        case Token::MINUS:
+            out << "    sub rcx, rax" << std::endl;
+            out << "    mov rax, rcx" << std::endl;
+            break;
+        case Token::STAR:
+            out << "    imul rax, rcx" << std::endl;
+            break;
+        case Token::SLASH:
+            out << "    mov rbx, rax" << std::endl;   // save right
+            out << "    mov rax, rcx" << std::endl;   // left into rax
+            out << "    cqo" << std::endl;            // sign-extend for idiv
+            out << "    idiv rbx" << std::endl;       // rax = rax / rbx
+            break;
+        case Token::EQUAL_EQUAL:
+            out << "    cmp rcx, rax" << std::endl;
+            out << "    sete al" << std::endl;
+            out << "    movzx rax, al" << std::endl;
+            break;
+        case Token::BANG_EQUAL:
+            out << "    cmp rcx, rax" << std::endl;
+            out << "    setne al" << std::endl;
+            out << "    movzx rax, al" << std::endl;
+            break;
+        case Token::LESS:
+            out << "    cmp rcx, rax" << std::endl;
+            out << "    setl al" << std::endl;
+            out << "    movzx rax, al" << std::endl;
+            break;
+        case Token::GREATER:
+            out << "    cmp rcx, rax" << std::endl;
+            out << "    setg al" << std::endl;
+            out << "    movzx rax, al" << std::endl;
+            break;
+        case Token::LESS_EQUAL:
+            out << "    cmp rcx, rax" << std::endl;
+            out << "    setle al" << std::endl;
+            out << "    movzx rax, al" << std::endl;
+            break;
+        case Token::GREATER_EQUAL:
+            out << "    cmp rcx, rax" << std::endl;
+            out << "    setge al" << std::endl;
+            out << "    movzx rax, al" << std::endl;
+            break;
+        default:
+            throw std::runtime_error("Unknown binary operator.");
+    }
+}
+
+void CodeGenerator::visit(PrintStatementNode* node) {
+    for (const auto& expr : node->expressions) {
+        visit(expr.get());
+
+        // Always pass the value in rsi
+        out << "    mov rsi, rax" << std::endl;
+
+        // Select format based on resolved type
+        if (expr->resolved_type && expr->resolved_type->category == TypeNode::TypeCategory::PRIMITIVE) {
+            auto prim = static_cast<PrimitiveTypeNode*>(expr->resolved_type.get());
+            switch (prim->primitive_type) {
+                case Token::KEYWORD_BOOL:
+                case Token::KEYWORD_INT:
+                    out << "    lea rdi, [rel _print_int_format]" << std::endl;
+                    break;
+                case Token::KEYWORD_CHAR:
+                    out << "    lea rdi, [rel _print_char_format]" << std::endl;
+                    break;
+                case Token::KEYWORD_STRING:
+                    out << "    lea rdi, [rel _print_str_format]" << std::endl;
+                    break;
+                default:
+                    out << "    lea rdi, [rel _print_int_format]" << std::endl;
+                    break;
+            }
+        } else {
+            // Fallback: treat as int
+            out << "    lea rdi, [rel _print_int_format]" << std::endl;
+        }
+
+        out << "    xor rax, rax" << std::endl;  // No xmm regs used
+        out << "    call printf" << std::endl;
+    }
+}
+
+void CodeGenerator::visit(ReturnStatementNode* node) {
+    visit(node->expression.get());
+    out << "    jmp .main_epilogue" << std::endl;
+}
+
+void CodeGenerator::visit(IfStatementNode* node) {
+    static int if_counter = 0;
+    int label_id = if_counter++;
+
+    std::string true_label = ".if_true_" + std::to_string(label_id);
+    std::string false_label = ".if_false_" + std::to_string(label_id);
+    std::string end_label = ".if_end_" + std::to_string(label_id);
+
+    visit(node->condition.get());
+    out << "    cmp rax, 0" << std::endl;
+    out << "    je " << false_label << std::endl;
+
+    out << true_label << ":" << std::endl;
+    for (const auto& stmt : node->true_block) {
+        visit(stmt.get());
+    }
+    out << "    jmp " << end_label << std::endl;
+
+    out << false_label << ":" << std::endl;
+    for (const auto& stmt : node->false_block) {
+        visit(stmt.get());
+    }
+
+    out << end_label << ":" << std::endl;
+}
+
+void CodeGenerator::visit(WhileStatementNode* node) {
+    static int while_counter = 0;
+    int label_id = while_counter++;
+
+    std::string start_label = ".while_start_" + std::to_string(label_id);
+    std::string end_label = ".while_end_" + std::to_string(label_id);
+
+    out << start_label << ":" << std::endl;
+    visit(node->condition.get());
+    out << "    cmp rax, 0" << std::endl;
+    out << "    je " << end_label << std::endl;
+
+    for (const auto& stmt : node->body) {
+        visit(stmt.get());
+    }
+
+    out << "    jmp " << start_label << std::endl;
+    out << end_label << ":" << std::endl;
+}
+
+void CodeGenerator::visit(ForStatementNode* node) {
+    static int for_counter = 0;
+    int label_id = for_counter++;
+
+    std::string loop_start_label = ".for_loop_start_" + std::to_string(label_id);
+    std::string loop_condition_label = ".for_loop_condition_" + std::to_string(label_id);
+    std::string loop_end_label = ".for_loop_end_" + std::to_string(label_id);
+
+    if (node->initializer) {
+        visit(node->initializer.get());
+    }
+
+    out << loop_condition_label << ":" << std::endl;
+    if (node->condition) {
+        visit(node->condition.get());
+        out << "    cmp rax, 0" << std::endl;
+        out << "    je " << loop_end_label << std::endl;
+    }
+
+    out << loop_start_label << ":" << std::endl;
+    for (const auto& stmt : node->body) {
+        visit(stmt.get());
+    }
+    if (node->increment) {
+        visit(node->increment.get());
+    }
+
+    out << "    jmp " << loop_condition_label << std::endl;
+    out << loop_end_label << ":" << std::endl;
+}
+
+void CodeGenerator::visit(FunctionCallNode* node) {
+    for (int i = node->arguments.size() - 1; i >= 0; --i) {
+        visit(node->arguments[i].get());
+        out << "    push rax" << std::endl;
+    }
+    out << "    call " << node->function_name << std::endl;
+    if (!node->arguments.empty()) {
+        out << "    add rsp, " << node->arguments.size() * 8 << std::endl;
+    }
+}
+
+void CodeGenerator::visit(MemberAccessNode* node) {
+    visit(node->struct_expr.get()); // Get the base address of the struct in rax
+
+    Symbol* member_symbol = node->resolved_symbol;
+    if (!member_symbol) {
+        throw std::runtime_error("Code generation error: member symbol not resolved for '" + node->member_name + "'.");
+    }
+
+    out << "    mov rax, [rax + " << member_symbol->offset << "]" << std::endl;
+}
+
+void CodeGenerator::visit(UnaryOpExpressionNode* node) {
+    visit(node->operand.get());
+    if (node->op_type == Token::ADDRESSOF) {
+        const auto* ref_node = static_cast<const VariableReferenceNode*>(node->operand.get());
+        Symbol* var_symbol = ref_node->resolved_symbol;
+        if (!var_symbol) {
+            throw std::runtime_error("Code generation error: variable '" + ref_node->name + "' used before declaration for address-of (resolved_symbol is null).");
+        }
+        int offset = var_symbol->offset;
+        out << "    lea rax, [rbp + " << std::to_string(offset) << "]" << std::endl;
+    } else if (node->op_type == Token::STAR) {
+        out << "    mov rax, [rax]" << std::endl;
+    }
+}
+
+void CodeGenerator::visit(ArrayAccessNode* node) {
+    visit(node->index_expr.get());
+    out << "    mov rbx, rax" << std::endl;
+    visit(node->array_expr.get());
+    out << "    imul rbx, 8" << std::endl;
+    out << "    add rax, rbx" << std::endl;
+    out << "    mov rax, [rax]" << std::endl;
+}
+
+void CodeGenerator::visit(StructDefinitionNode* node) {
+    // No code generation needed for struct definitions
+}
+
+void CodeGenerator::visit(IntegerLiteralExpressionNode* node) {
+    out << "    mov rax, " << node->value << std::endl;
+}
+
+void CodeGenerator::visit(StringLiteralExpressionNode* node) {
+    std::string label = "_str_" + std::to_string(string_label_counter++);
+    out << "section .data" << std::endl;
+    out << label << " db \"" << node->value << "\", 0" << std::endl;
+    out << "section .text" << std::endl;
+    out << "    lea rax, [rel " << label << "]" << std::endl;
+}
+
+void CodeGenerator::visit(BooleanLiteralExpressionNode* node) {
+    out << "    mov rax, " << (node->value ? 1 : 0) << std::endl;
+}
+
+void CodeGenerator::visit(CharacterLiteralExpressionNode* node) {
+    out << "    mov rax, " << static_cast<int>(node->value) << std::endl;
+}
+
+int CodeGenerator::getTypeSize(const TypeNode* type) {
+    if (!type) {
+        throw std::runtime_error("Code Generation Error: Attempted to get size of a null type.");
+    }
+
+    switch (type->category) {
+        case TypeNode::TypeCategory::PRIMITIVE: {
+            const PrimitiveTypeNode* prim_type = static_cast<const PrimitiveTypeNode*>(type);
+            switch (prim_type->primitive_type) {
+                case Token::KEYWORD_INT: return 4;
+                case Token::KEYWORD_BOOL: return 1;
+                case Token::KEYWORD_CHAR: return 1;
+                case Token::KEYWORD_STRING: return 8;
+                case Token::KEYWORD_VOID: return 0;
+                default: throw std::runtime_error("Code Generation Error: Unknown primitive type for size calculation.");
+            }
+        }
+                case TypeNode::TypeCategory::POINTER:
+                    return 8;
+                case TypeNode::TypeCategory::ARRAY: {
+                    const ArrayTypeNode* array_type = static_cast<const ArrayTypeNode*>(type);
+                    int element_size = getTypeSize(array_type->base_type.get());
+                    if (array_type->size > 0) {
+                        return element_size * array_type->size;
+                    }
+                    return 0;
+                }
+                case TypeNode::TypeCategory::STRUCT: {
+                    const StructTypeNode* struct_type = static_cast<const StructTypeNode*>(type);
+                    Symbol* struct_def_symbol = symbolTable.lookup(struct_type->struct_name);
+                    if (!struct_def_symbol || !struct_def_symbol->structDef) {
+                        throw std::runtime_error("Code Generation Error: Undefined struct '" + struct_type->struct_name + "'.");
+                    }
+                    return struct_def_symbol->structDef->size;
+                }
+                default:
+                    throw std::runtime_error("Code Generation Error: Unknown type category for size calculation.");
+    }
+}
+
+
+--- File: src/lexer.cpp ---
+#include "lexer.hpp"
+#include <iostream>
+#include <cctype>
+
+// Token type to string conversion
+std::string Token::typeToString() const {
+    switch (type) {
+        case KEYWORD_RETURN: return "KEYWORD_RETURN";
+        case KEYWORD_PRINT: return "KEYWORD_PRINT";
+        case INTEGER_LITERAL: return "INTEGER_LITERAL";
+        case STRING_LITERAL: return "STRING_LITERAL";
+	case TRUE: return "TRUE";
+	case FALSE: return "FALSE";
+	case CHARACTER_LITERAL: return "CHARACTER_LITERAL";
+        case KEYWORD_INT: return "KEYWORD_INT";
+        case KEYWORD_VOID: return "KEYWORD_VOID";
+        case KEYWORD_STRING: return "KEYWORD_STRING";
+        case KEYWORD_IF: return "KEYWORD_IF";
+	case KEYWORD_WHILE: return "KEYWORD_WHILE";
+        case KEYWORD_ELSE: return "KEYWORD_ELSE";
+	case KEYWORD_BOOL: return "KEYWORD_BOOL";
+        case KEYWORD_CHAR: return "KEYWORD_CHAR";
+        case KEYWORD_FOR: return "KEYWORD_FOR";
+        case KEYWORD_STRUCT: return "KEYWORD_STRUCT";
+	case KEYWORD_SWITCH: return "KEYWORD_SWITCH";
+	case KEYWORD_CASE: return "KEYWORD_CASE";
+	case KEYWORD_DEFAULT: return "KEYWORD_DEFAULT";
+	case IDENTIFIER: return "IDENTIFIER";
+        case EQ: return "EQ";
+        case PLUS: return "PLUS";
+        case MINUS: return "MINUS";
+        case STAR: return "STAR";
+        case SLASH: return "SLASH";
+	case ADDRESSOF: return "ADDRESSOF";
+        case EQUAL_EQUAL: return "EQUAL_EQUAL";
+        case BANG_EQUAL: return "BANG_EQUAL";
+        case LESS: return "LESS";
+        case GREATER: return "GREATER";
+        case LESS_EQUAL: return "LESS_EQUAL";
+        case GREATER_EQUAL: return "GREATER_EQUAL";
+        case SEMICOLON: return "SEMICOLON";
+        case LPAREN: return "LPAREN";
+	case RPAREN: return "RPAREN";
+        case LBRACE: return "LBRACE";
+        case RBRACE: return "RBRACE";
+	case LBRACKET: return "LBRACKET";
+        case RBRACKET: return "RBRACKET";
+	case COMMA: return "COMMA";
+	case DOT: return "DOT";
+        case END_OF_FILE: return "END_OF_FILE";
+        case UNKNOWN: return "UNKNOWN";
+    }
+    return "UNKNOWN_TYPE";
+}
+
+// Lexical analysis - converts source code to tokens
+std::vector<Token> tokenize(const std::string& sourceCode) {
+    std::vector<Token> tokens;
+    int currentPos = 0;
+    int line = 1;
+    int column = 1;
+
+    while (currentPos < sourceCode.length()) {
+        char currentChar = sourceCode[currentPos];
+
+        // Single-line comment
+        if (currentChar == '/' && currentPos + 1 < sourceCode.length() && sourceCode[currentPos + 1] == '/') {
+            currentPos += 2;
+            column += 2;
+            while (currentPos < sourceCode.length() && sourceCode[currentPos] != '\n') {
+                currentPos++;
+                column++;
+            }
+            continue;
+        }
+
+        // Whitespace
+        if (std::isspace(currentChar)) {
+            if (currentChar == '\n') {
+                line++;
+                column = 1;
+            } else {
+                column++;
+            }
+            currentPos++;
+            continue;
+        }
+
+        // Integer literal
+        if (std::isdigit(currentChar)) {
+            std::string value;
+            int startColumn = column;
+            while (currentPos < sourceCode.length() && std::isdigit(sourceCode[currentPos])) {
+                value += sourceCode[currentPos++];
+                column++;
+            }
+            tokens.push_back({Token::INTEGER_LITERAL, value, line, startColumn});
+            continue;
+        }
+
+        // Character literal
+        if (currentChar == '\'') {
+            std::string value;
+            int startColumn = column;
+            currentPos++; column++; // Skip initial quote
+            if (currentPos < sourceCode.length()) {
+                value += sourceCode[currentPos++];
+                column++;
+            }
+            if (currentPos >= sourceCode.length() || sourceCode[currentPos] != '\'') {
+                std::cerr << "Lexer Error: Unclosed or invalid character literal at line " << line << ", column " << startColumn << std::endl;
+            } else {
+                currentPos++; column++; // Skip closing quote
+            }
+            tokens.push_back({Token::CHARACTER_LITERAL, value, line, startColumn});
+            continue;
+        }
+
+        // String literal
+        if (currentChar == '"') {
+            std::string value;
+            int startColumn = column;
+            currentPos++; column++; // Skip initial quote
+            while (currentPos < sourceCode.length() && sourceCode[currentPos] != '"') {
+                value += sourceCode[currentPos++];
+                column++;
+            }
+            if (currentPos >= sourceCode.length()) {
+                std::cerr << "Lexer Error: Unclosed string literal at line " << line << ", column " << startColumn << std::endl;
+            }
+            else {
+                currentPos++; column++; // Skip closing quote
+            }
+            tokens.push_back({Token::STRING_LITERAL, value, line, startColumn});
+            continue;
+        }
+
+        // Identifier or keyword
+        if (std::isalpha(currentChar) || currentChar == '_') {
+            std::string value;
+            int startColumn = column;
+            while (currentPos < sourceCode.length() &&
+                   (std::isalnum(sourceCode[currentPos]) || sourceCode[currentPos] == '_')) {
+                value += sourceCode[currentPos++];
+                column++;
+            }
+            if (value == "return") tokens.push_back({Token::KEYWORD_RETURN, value, line, startColumn});
+            else if (value == "int") tokens.push_back({Token::KEYWORD_INT, value, line, startColumn});
+            else if (value == "string") tokens.push_back({Token::KEYWORD_STRING, value, line, startColumn});
+            else if (value == "print") tokens.push_back({Token::KEYWORD_PRINT, value, line, startColumn});
+            else if (value == "if") tokens.push_back({Token::KEYWORD_IF, value, line, startColumn});
+            else if (value == "else") tokens.push_back({Token::KEYWORD_ELSE, value, line, startColumn});
+	    else if (value == "while") tokens.push_back({Token::KEYWORD_WHILE, value, line, startColumn});
+	    else if (value == "bool") tokens.push_back({Token::KEYWORD_BOOL, value, line, startColumn});
+	    else if (value == "char") tokens.push_back({Token::KEYWORD_CHAR, value, line, startColumn});		
+	    else if (value == "true") tokens.push_back({Token::TRUE, value, line, startColumn});
+	    else if (value == "false") tokens.push_back({Token::FALSE, value, line, startColumn});
+	    else if (value == "for") tokens.push_back({Token::KEYWORD_FOR, value, line, startColumn});
+	    else if (value == "struct") tokens.push_back({Token::KEYWORD_STRUCT, value, line, startColumn});
+	    else if (value == "switch") tokens.push_back({Token::KEYWORD_SWITCH, value, line, startColumn});
+	    else tokens.push_back({Token::IDENTIFIER, value, line, startColumn});
+            continue;
+        }
+
+        // == or =
+        if (currentChar == '=') {
+            if (currentPos + 1 < sourceCode.length() && sourceCode[currentPos + 1] == '=') {
+                tokens.push_back({Token::EQUAL_EQUAL, "==", line, column});
+                currentPos += 2; column += 2;
+            } else {
+                tokens.push_back({Token::EQ, "=", line, column});
+                currentPos++; column++;
+            }
+            continue;
+        }
+
+        // !=
+        if (currentChar == '!') {
+            if (currentPos + 1 < sourceCode.length() && sourceCode[currentPos + 1] == '=') {
+                tokens.push_back({Token::BANG_EQUAL, "!=", line, column});
+                currentPos += 2; column += 2;
+            } else {
+                std::cerr << "Lexer Error: Unexpected character '!' at line " << line << ", column " << column << std::endl;
+                currentPos++; column++;
+            }
+            continue;
+        }
+
+        // < or <=
+        if (currentChar == '<') {
+            if (currentPos + 1 < sourceCode.length() && sourceCode[currentPos + 1] == '=') {
+                tokens.push_back({Token::LESS_EQUAL, "<=", line, column});
+                currentPos += 2; column += 2;
+            } else {
+                tokens.push_back({Token::LESS, "<", line, column});
+                currentPos++; column++;
+            }
+            continue;
+        }
+
+        // > or >=
+        if (currentChar == '>') {
+            if (currentPos + 1 < sourceCode.length() && sourceCode[currentPos + 1] == '=') {
+                tokens.push_back({Token::GREATER_EQUAL, ">=", line, column});
+                currentPos += 2; column += 2;
+            } else {
+                tokens.push_back({Token::GREATER, ">", line, column});
+                currentPos++; column++;
+            }
+            continue;
+        }
+
+        // Other single-char tokens
+        if (currentChar == ';') {
+            tokens.push_back({Token::SEMICOLON, ";", line, column});
+            currentPos++; column++; continue;
+        }
+
+        if (currentChar == '+') {
+            tokens.push_back({Token::PLUS, "+", line, column});
+            currentPos++; column++; continue;
+        }
+
+        if (currentChar == '-') {
+            tokens.push_back({Token::MINUS, "-", line, column});
+            currentPos++; column++; continue;
+        }
+
+        if (currentChar == '*') {
+            tokens.push_back({Token::STAR, "*", line, column});
+            currentPos++; column++; continue;
+        }
+
+        if (currentChar == '/') {
+            tokens.push_back({Token::SLASH, "/", line, column});
+            currentPos++; column++; continue;
+        }
+
+        if (currentChar == '(') {
+            tokens.push_back({Token::LPAREN, "(", line, column});
+            currentPos++; column++; continue;
+        }
+
+        if (currentChar == ')') {
+            tokens.push_back({Token::RPAREN, ")", line, column});
+            currentPos++; column++; continue;
+        }
+
+        if (currentChar == '{') {
+            tokens.push_back({Token::LBRACE, "{", line, column});
+            currentPos++; column++; continue;
+        }
+
+        if (currentChar == '}') {
+            tokens.push_back({Token::RBRACE, "}", line, column});
+            currentPos++; column++; continue;
+        }
+
+        if (currentChar == '[') {
+            tokens.push_back({Token::LBRACKET, "[", line, column});
+            currentPos++; column++; continue;
+        }
+
+        if (currentChar == ']') {
+            tokens.push_back({Token::RBRACKET, "]", line, column});
+            currentPos++; column++; continue;
+        }
+
+        if (currentChar == '.') {
+            tokens.push_back({Token::DOT, ".", line, column});
+            currentPos++; column++; continue;
+        }
+
+        if (currentChar == ',') {
+            tokens.push_back({Token::COMMA, ",", line, column});
+            currentPos++; column++; continue;
+        }
+
+        if (currentChar == '&') {
+            tokens.push_back({Token::ADDRESSOF, "&", line, column});
+            currentPos++; column++; continue;
+        }
+
+        // Unknown character
+        std::cerr << "Lexer Error: Unknown character '" << currentChar << "' at line " << line << ", column " << column << std::endl;
+        currentPos++; column++;
+    }
+
+    tokens.push_back({Token::END_OF_FILE, "", line, column});
+    return tokens;
+}
+
+
+--- File: src/main.cpp ---
+#include <iostream>
+#include <string>
+#include <fstream>
+#include <sstream>
+#include <vector>
+#include <map>
+#include <unordered_map>
+#include <stdexcept>
+
+#include "lexer.hpp"
+#include "parser.hpp"
+#include "ast.hpp"
+#include "semantic_analyzer.hpp"
+
+#include "code_generator.hpp"
+
+std::string readFileContent(const std::string& filepath) {
+    std::ifstream file(filepath);
+    if (!file.is_open()) {
+        std::cerr << "Error: Could not open file: " << filepath << std::endl;
+        return "";
+    }
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    return buffer.str();
+}
+
+int main(int argc, char* argv[]) {
+    std::cout << "Nytrogen Compiler (Arch Linux)\n";
+
+    if (argc < 2) {
+        std::cerr << "Error: No source file provided. Usage: ./Nytro <source_file> [output_dir]\n";
+        return 2;
+    }
+
+    std::string input_filepath = argv[1];
+    std::string output_dir = ".";
+    if (argc > 2) {
+        output_dir = argv[2];
+    }
+
+    std::string output_asm_filename = output_dir + "/out.asm";
+
+
+    std::string ext = input_filepath.substr(input_filepath.find_last_of(".") + 1);
+    if (ext != "ny" && ext != "nyt") {
+        std::cerr << "Error: Input file must have .ny or .nyt extension (found: ." << ext << ")\n";
+        return 3;
+    }
+
+    std::string sourceCode = readFileContent(input_filepath);
+    if (sourceCode.empty()) return 2;
+
+    std::cout << "\n--- Processing Source File: " << input_filepath << " ---\n\n";
+
+    std::vector<Token> tokens = tokenize(sourceCode);
+    Parser parser(std::move(tokens));
+    std::unique_ptr<ProgramNode> ast_root = parser.parse();
+
+    if (!ast_root) {
+        std::cerr << "AST generation failed during parsing. Exiting.\n";
+        return 1;
+    }
+
+    // Perform semantic analysis
+    SemanticAnalyzer semanticAnalyzer(ast_root, parser.getSymbolTable());
+    semanticAnalyzer.analyze();
+
+    // Generate code
+    CodeGenerator codeGenerator(ast_root, semanticAnalyzer.getSymbolTable());
+    codeGenerator.generate(output_asm_filename);
+
+    std::cout << "Successfully generated assembly to '" << output_asm_filename << "'\n";
+    return 0;
+}
+
+
+
+--- File: src/parser.cpp ---
+#include <iostream>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <map>
+#include <cctype>
+
+#include "parser.hpp"
+#include "lexer.hpp"
+#include "ast.hpp"
+
+Parser::Parser(std::vector<Token> tokens) : tokens(std::move(tokens)), current_token_index(0) {}
+
+const Token& Parser::peek(size_t offset) const {
+    size_t index = current_token_index + offset;
+    if (index >= tokens.size()) {
+        return tokens.back();
+    }
+    return tokens[current_token_index + offset];
+}
+
+const Token& Parser::consume() {
+    if (current_token_index >= tokens.size()) {
+        throw std::runtime_error("Parser Error: Cannot consume token after end of file.");
+    }
+    return tokens[current_token_index++];
+}
+
+void Parser::expect(Token::Type expected_type, const std::string& error_msg) {
+    const Token& current_token = peek();
+    if (current_token.type != expected_type) {
+        throw std::runtime_error(error_msg +
+            " (Got " + current_token.typeToString() +
+            " '" + current_token.value +
+            "' at line " + std::to_string(current_token.line) +
+            ", column " + std::to_string(current_token.column) + ")");
+    } else {
+        consume();
+    }
+}
+
+std::unique_ptr<IntegerLiteralExpressionNode> Parser::parseIntegerLiteralExpression() {
+    const Token& int_token = peek();
+    expect(Token::INTEGER_LITERAL, "Expected an integer literal.");
+    int value = std::stoi(int_token.value);
+    return std::make_unique<IntegerLiteralExpressionNode>(value, int_token.line, int_token.column);
+}
+
+std::unique_ptr<StringLiteralExpressionNode> Parser::parseStringLiteralExpression() {
+    const Token& str_token = peek();
+    expect(Token::STRING_LITERAL, "Expected a string literal.");
+    return std::make_unique<StringLiteralExpressionNode>(str_token.value, str_token.line, str_token.column);
+}
+
+std::unique_ptr<BooleanLiteralExpressionNode> Parser::parseBooleanLiteralExpression() {
+    const Token& bool_token = peek();
+    if (bool_token.type == Token::TRUE) {
+        consume();
+        return std::make_unique<BooleanLiteralExpressionNode>(true, bool_token.line, bool_token.column);
+    } else if (bool_token.type == Token::FALSE) {
+        consume();
+        return std::make_unique<BooleanLiteralExpressionNode>(false, bool_token.line, bool_token.column);
+    }
+    throw std::runtime_error("Expected 'true' or 'false' literal.");
+}
+
+std::unique_ptr<CharacterLiteralExpressionNode> Parser::parseCharacterLiteralExpression() {
+    const Token& char_token = peek();
+    expect(Token::CHARACTER_LITERAL, "Expected a character literal.");
+    return std::make_unique<CharacterLiteralExpressionNode>(char_token.value[0], char_token.line, char_token.column);
+}
+
+std::unique_ptr<ReturnStatementNode> Parser::parseReturnStatement() {
+    const Token& return_token = peek();
+    expect(Token::KEYWORD_RETURN, "Expected 'return' keyword.");
+    auto expr_node = parseExpression();
+    expect(Token::SEMICOLON, "Expected ';' after return expression.");
+    return std::make_unique<ReturnStatementNode>(std::move(expr_node), return_token.line, return_token.column);
+}
+
+std::unique_ptr<PrintStatementNode> Parser::parsePrintStatement() {
+    const Token& print_token = peek();
+    expect(Token::KEYWORD_PRINT, "Expected 'print' keyword.");
+
+    std::vector<std::unique_ptr<ASTNode>> expressions;
+    expressions.push_back(parseExpression());
+
+    while (peek().type == Token::COMMA) {
+        consume(); // Consume the comma
+        expressions.push_back(parseExpression());
+    }
+
+    expect(Token::SEMICOLON, "Expected ';' after print statement.");
+    return std::make_unique<PrintStatementNode>(std::move(expressions), print_token.line, print_token.column);
+}
+
+std::unique_ptr<IfStatementNode> Parser::parseIfStatement() {
+    const Token& if_token = peek();
+    expect(Token::KEYWORD_IF, "Expected 'if' keyword.");
+    expect(Token::LPAREN, "Expected '(' after 'if'.");
+
+    auto condition = parseExpression();
+
+    expect(Token::RPAREN, "Expected ')' after if condition.");
+    expect(Token::LBRACE, "Expected '{' to begin 'if' block.");
+
+    std::vector<std::unique_ptr<ASTNode>> true_block;
+
+    while (peek().type != Token::RBRACE && peek().type != Token::END_OF_FILE) {
+        true_block.push_back(parseStatement());
+    }
+
+    expect(Token::RBRACE, "Expected '}' to close 'if' block.");
+
+    std::vector<std::unique_ptr<ASTNode>> false_block;
+
+    if (peek().type == Token::KEYWORD_ELSE) {
+        consume();
+        expect(Token::LBRACE, "Expected '{' to begin 'else' block.");
+        while (peek().type != Token::RBRACE && peek().type != Token::END_OF_FILE) {
+            false_block.push_back(parseStatement());
+        }
+        expect(Token::RBRACE, "Expected '}' to close 'else' block.");
+    }
+
+    return std::make_unique<IfStatementNode>(
+        std::move(condition),
+        std::move(true_block),
+        std::move(false_block),
+        if_token.line, if_token.column
+    );
+}
+
+std::unique_ptr<WhileStatementNode> Parser::parseWhileStatement() {
+    const Token& while_token = peek();
+    expect(Token::KEYWORD_WHILE, "Expected 'while' keyword.");
+    expect(Token::LPAREN, "Expected '(' after 'while'.");
+
+    auto condition = parseExpression();
+
+    expect(Token::RPAREN, "Expected ')' after while condition.");
+    expect(Token::LBRACE, "Expected '{' to begin 'while' block.");
+
+    std::vector<std::unique_ptr<ASTNode>> body;
+    while (peek().type != Token::RBRACE && peek().type != Token::END_OF_FILE) {
+        body.push_back(parseStatement());
+    }
+
+    expect(Token::RBRACE, "Expected '}' to close 'while' block.");
+
+    return std::make_unique<WhileStatementNode>(
+        std::move(condition),
+        std::move(body),
+        while_token.line, while_token.column
+    );
+}
+
+    std::unique_ptr<ForStatementNode> Parser::parseForStatement() {
+    const Token& for_token = peek();
+    expect(Token::KEYWORD_FOR, "Expected 'for' keyword.");
+    expect(Token::LPAREN, "Expected '(' after 'for'.");
+
+    std::unique_ptr<ASTNode> initializer = nullptr;
+    // Parse initializer (optional)
+    if (peek().type != Token::SEMICOLON) {
+        // If it starts with a type keyword, it's a declaration
+        if (peek().type == Token::KEYWORD_INT || peek().type == Token::KEYWORD_STRING ||
+            peek().type == Token::KEYWORD_BOOL || peek().type == Token::KEYWORD_CHAR) {
+            initializer = parseVariableDeclaration();
+        } else {
+            // Otherwise, it's an expression (assignment or function call)
+            initializer = parseExpression();
+        }
+    }
+    expect(Token::SEMICOLON, "Expected ';' after for loop initializer.");
+
+    std::unique_ptr<ASTNode> condition = nullptr;
+    // Parse condition (optional)
+    if (peek().type != Token::SEMICOLON) {
+        condition = parseExpression();
+    }
+    expect(Token::SEMICOLON, "Expected ';' after for loop condition.");
+
+    std::unique_ptr<ASTNode> increment = nullptr;
+    // Parse increment (optional)
+    if (peek().type != Token::RPAREN) {
+        increment = parseExpression();
+    }
+    expect(Token::RPAREN, "Expected ')' after for loop increment.");
+
+    expect(Token::LBRACE, "Expected '{' to begin 'for' block.");
+
+    std::vector<std::unique_ptr<ASTNode>> body;
+    while (peek().type != Token::RBRACE && peek().type != Token::END_OF_FILE) {
+        body.push_back(parseStatement());
+    }
+
+    expect(Token::RBRACE, "Expected '}' to close 'for' block.");
+
+    return std::make_unique<ForStatementNode>(
+        std::move(initializer),
+        std::move(condition),
+        std::move(increment),
+        std::move(body),
+        for_token.line, for_token.column
+    );
+}
+
+std::unique_ptr<TypeNode> Parser::parseType() {
+    const Token& type_token = peek();
+    std::unique_ptr<TypeNode> type;
+
+    if (type_token.type == Token::KEYWORD_INT ||
+        type_token.type == Token::KEYWORD_STRING ||
+        type_token.type == Token::KEYWORD_BOOL ||
+        type_token.type == Token::KEYWORD_CHAR) {
+        consume();
+        type = std::make_unique<PrimitiveTypeNode>(type_token.type);
+    } else if (type_token.type == Token::IDENTIFIER) {
+        consume();
+        type = std::make_unique<StructTypeNode>(type_token.value);
+    } else {
+        throw std::runtime_error("Expected 'int', 'string', 'bool', 'char', or a defined struct name for type.");
+    }
+
+    while (peek().type == Token::STAR) {
+        consume();
+        type = std::make_unique<PointerTypeNode>(std::move(type));
+    }
+
+    return type;
+}
+
+std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
+    auto type = parseType();
+
+    const Token& id_token = peek();
+    expect(Token::IDENTIFIER, "Expected variable name after type.");
+
+    if (peek().type == Token::LBRACKET) {
+        consume(); // Consume '['
+        const Token& size_token = peek();
+        expect(Token::INTEGER_LITERAL, "Expected integer literal for array size.");
+        int size = std::stoi(size_token.value);
+        expect(Token::RBRACKET, "Expected ']' after array size.");
+        type = std::make_unique<ArrayTypeNode>(std::move(type), size);
+    }
+
+    std::unique_ptr<ASTNode> initial_value = nullptr;
+    if (peek().type == Token::EQ) {
+        consume(); // Consume '='
+        initial_value = parseExpression();
+    }
+
+    return std::make_unique<VariableDeclarationNode>(id_token.value, std::move(type), std::move(initial_value), id_token.line, id_token.column);
+}
+
+std::unique_ptr<FunctionCallNode> Parser::parseFunctionCall() {
+    const Token& id_token = consume(); // Consume the function name identifier
+
+    expect(Token::LPAREN, "Expected '(' after function name for a function call.");
+
+    std::vector<std::unique_ptr<ASTNode>> arguments;
+    if (peek().type != Token::RPAREN) {
+        arguments.push_back(parseExpression());
+        while (peek().type == Token::COMMA) {
+            consume(); // Consume the comma
+            arguments.push_back(parseExpression());
+        }
+    }
+
+    expect(Token::RPAREN, "Expected ')' after function call arguments.");
+
+    return std::make_unique<FunctionCallNode>(id_token.value, std::move(arguments), id_token.line, id_token.column);
+}
+
+std::unique_ptr<ASTNode> Parser::parseFactor() {
+    std::unique_ptr<ASTNode> node;
+    const Token& current_token = peek();
+
+    if (current_token.type == Token::INTEGER_LITERAL) {
+        node = parseIntegerLiteralExpression();
+    } else if (current_token.type == Token::IDENTIFIER) {
+        if (peek(1).type == Token::LPAREN) {
+            node = parseFunctionCall();
+        } else if (peek(1).type == Token::LBRACKET) {
+            const auto& id_token = consume();
+            auto var_ref = std::make_unique<VariableReferenceNode>(id_token.value, id_token.line, id_token.column);
+            consume(); // consume '['
+            auto index_expr = parseExpression();
+            expect(Token::RBRACKET, "Expected ']' after array index.");
+            node = std::make_unique<ArrayAccessNode>(std::move(var_ref), std::move(index_expr));
+        } else {
+            const auto& id_token = consume();
+            node = std::make_unique<VariableReferenceNode>(id_token.value, id_token.line, id_token.column);
+        }
+    } else if (current_token.type == Token::LPAREN) {
+        consume();
+        node = parseExpression();
+        expect(Token::RPAREN, "Expected ')' after expression in parentheses.");
+    } else if (current_token.type == Token::STRING_LITERAL) {
+        node = parseStringLiteralExpression();
+    } else if (current_token.type == Token::TRUE || current_token.type == Token::FALSE) {
+        node = parseBooleanLiteralExpression();
+    } else if (current_token.type == Token::CHARACTER_LITERAL) {
+        node = parseCharacterLiteralExpression();
+    } else {
+        throw std::runtime_error("Parser Error: Expected an integer literal, identifier, or '(' for an expression factor. Got '" +
+                                 current_token.value + "' at line " + std::to_string(current_token.line) +
+                                 ", column " + std::to_string(current_token.column) + ".");
+    }
+
+    // Handle member access (e.g., struct_instance.member)
+    while (peek().type == Token::DOT) {
+        consume(); // Consume '.'
+        const Token& member_name_token = consume();
+        if (member_name_token.type != Token::IDENTIFIER) {
+            throw std::runtime_error("Expected identifier after '.' for member access.");
+        }
+        node = std::make_unique<MemberAccessNode>(std::move(node), member_name_token.value, member_name_token.line, member_name_token.column);
+    }
+
+    return node;
+}
+
+std::unique_ptr<ASTNode> Parser::parseUnaryExpression() {
+    if (peek().type == Token::STAR || peek().type == Token::ADDRESSOF) {
+        const Token& op_token = consume();
+        auto operand = parseUnaryExpression();
+        return std::make_unique<UnaryOpExpressionNode>(op_token.type, std::move(operand), op_token.line, op_token.column);
+    }
+    return parseFactor();
+}
+
+std::unique_ptr<ASTNode> Parser::parseTerm() {
+    auto left_expr = parseUnaryExpression();
+
+    while (peek().type == Token::STAR || peek().type == Token::SLASH) {
+        const Token& op_token = consume();
+        auto right_expr = parseUnaryExpression();
+        left_expr = std::make_unique<BinaryOperationExpressionNode>(
+            std::move(left_expr), op_token.type, std::move(right_expr),
+            op_token.line, op_token.column
+        );
+    }
+    return left_expr;
+}
+
+std::unique_ptr<ASTNode> Parser::parseAdditiveExpression() {
+    auto left = parseTerm();
+
+    while (peek().type == Token::PLUS || peek().type == Token::MINUS) {
+        const Token& op_token = consume();
+        auto right = parseTerm();
+        left = std::make_unique<BinaryOperationExpressionNode>(
+            std::move(left), op_token.type, std::move(right),
+            op_token.line, op_token.column
+        );
+    }
+
+    return left;
+}
+
+std::unique_ptr<ASTNode> Parser::parseComparisonExpression() {
+    auto left = parseAdditiveExpression();
+
+    while (peek().type == Token::EQUAL_EQUAL || peek().type == Token::BANG_EQUAL ||
+           peek().type == Token::LESS || peek().type == Token::LESS_EQUAL ||
+           peek().type == Token::GREATER || peek().type == Token::GREATER_EQUAL) {
+        const Token& op_token = consume();
+        auto right = parseAdditiveExpression();
+        left = std::make_unique<BinaryOperationExpressionNode>(
+            std::move(left), op_token.type, std::move(right),
+            op_token.line, op_token.column
+        );
+    }
+
+    return left;
+}
+
+std::unique_ptr<ASTNode> Parser::parseExpression() {
+    auto left = parseComparisonExpression();
+
+    if (peek().type == Token::EQ) {
+        consume(); // consume '='
+        auto right = parseExpression();
+        
+        if (dynamic_cast<VariableReferenceNode*>(left.get()) || dynamic_cast<MemberAccessNode*>(left.get()) || dynamic_cast<ArrayAccessNode*>(left.get())) {
+            return std::make_unique<VariableAssignmentNode>(std::move(left), std::move(right));
+        } else {
+            throw std::runtime_error("Invalid left-hand side in assignment expression.");
+        }
+    }
+
+    return left;
+}
+
+std::unique_ptr<StructDefinitionNode> Parser::parseStructDefinition() {
+    consume(); // Consume 'struct' keyword
+    std::string struct_name = consume().value; // Consume struct name
+    expect(Token::LBRACE, "Expected '{' after struct name.");
+
+    auto struct_node = std::make_unique<StructDefinitionNode>(struct_name);
+    int current_offset = 0;
+
+    while (peek().type != Token::RBRACE && peek().type != Token::END_OF_FILE) {
+        auto member_type = parseType();
+        std::string member_name = consume().value;
+        expect(Token::SEMICOLON, "Expected ';' after struct member declaration.");
+
+        int member_size = 0;
+        if (auto primitive_type = dynamic_cast<PrimitiveTypeNode*>(member_type.get())) {
+            switch (primitive_type->primitive_type) {
+                case Token::KEYWORD_INT: member_size = 4;
+                    break;
+                case Token::KEYWORD_CHAR: member_size = 1;
+                    break;
+                case Token::KEYWORD_BOOL: member_size = 1;
+                    break;
+                default: member_size = 0; // Should not happen
+            }
+        } else if (auto pointer_type = dynamic_cast<PointerTypeNode*>(member_type.get())) {
+            member_size = 8; // Size of a pointer
+        } else if (auto array_type = dynamic_cast<ArrayTypeNode*>(member_type.get())) {
+            // This is a simplification. A proper implementation would need to know the size of the base type.
+            member_size = 8; // Treat array as a pointer for now
+        } else if (auto struct_type = dynamic_cast<StructTypeNode*>(member_type.get())) {
+            // We can't know the size of another struct at parse time, so we'll have to calculate it in the semantic analyzer
+            member_size = 0; 
+        }
+
+        struct_node->members.push_back({std::move(member_type), member_name, current_offset});
+        current_offset += member_size;
+    }
+
+    struct_node->size = current_offset;
+    expect(Token::RBRACE, "Expected '}' after struct definition.");
+    return struct_node;
+}
+
+std::unique_ptr<ASTNode> Parser::parseStatement() {
+    switch (peek().type) {
+        case Token::KEYWORD_RETURN:
+            return parseReturnStatement();
+        case Token::KEYWORD_INT:
+        case Token::KEYWORD_STRING:
+        case Token::KEYWORD_BOOL:
+        case Token::KEYWORD_CHAR: {
+            auto decl_node = parseVariableDeclaration();
+            expect(Token::SEMICOLON, "Expected ';' after variable declaration.");
+            return decl_node;
+        }
+        case Token::IDENTIFIER: {
+            if (peek(1).type == Token::LPAREN) {
+                auto func_call = parseFunctionCall();
+                expect(Token::SEMICOLON, "Expected ';' after function call statement.");
+                return func_call;
+            } else if (peek(1).type == Token::IDENTIFIER) {
+                auto decl_node = parseVariableDeclaration();
+                expect(Token::SEMICOLON, "Expected ';' after variable declaration.");
+                return decl_node;
+            }
+            auto expr = parseExpression();
+            expect(Token::SEMICOLON, "Expected ';' after expression statement.");
+            return expr;
+        }
+        case Token::KEYWORD_PRINT:
+            return parsePrintStatement();
+        case Token::KEYWORD_IF:
+            return parseIfStatement();
+        case Token::KEYWORD_WHILE:
+            return parseWhileStatement();
+        case Token::KEYWORD_FOR:
+            return parseForStatement();
+        default:
+            throw std::runtime_error("Parser Error: Unexpected token in statement: '" +
+                                     peek().value + "' at line " + std::to_string(peek().line) +
+                                     ", column " + std::to_string(peek().column) + ".");
+    }
+}
+
+std::vector<std::unique_ptr<ParameterNode>> Parser::parseParameters() {
+    std::vector<std::unique_ptr<ParameterNode>> parameters;
+    expect(Token::LPAREN, "Expected '(' after function name.");
+
+    if (peek().type != Token::RPAREN) {
+        do {
+            auto param = std::make_unique<ParameterNode>();
+            param->type = parseType();
+
+            const Token& name_token = consume();
+            if (name_token.type != Token::IDENTIFIER) {
+                throw std::runtime_error("Expected identifier for parameter name.");
+            }
+            param->name = name_token.value;
+            parameters.push_back(std::move(param));
+
+        } while (peek().type == Token::COMMA && (consume(), true));
+    }
+
+    expect(Token::RPAREN, "Expected ')' after function parameters.");
+    return parameters;
+}
+
+std::unique_ptr<FunctionDefinitionNode> Parser::parseFunctionDefinition() {
+    auto return_type = parseType();
+
+    const Token& function_name_token = peek();
+    expect(Token::IDENTIFIER, "Expected function name.");
+
+    auto func_def_node = std::make_unique<FunctionDefinitionNode>(
+        std::move(return_type), function_name_token.value,
+        function_name_token.line, function_name_token.column
+    );
+
+    // Enter a new scope for the function body
+    symbol_table.enterScope();
+
+    func_def_node->parameters = parseParameters();
+
+    // Add parameters to the symbol table
+    for (const auto& param : func_def_node->parameters) {
+        symbol_table.addSymbol(Symbol(Symbol::SymbolType::VARIABLE, param->name, param->type->clone(), 0, 0)); // Placeholder offset/size
+    }
+
+    expect(Token::LBRACE, "Expected '{' to begin function body.");
+
+    while (peek().type != Token::RBRACE && peek().type != Token::END_OF_FILE) {
+        func_def_node->body_statements.push_back(parseStatement());
+    }
+
+    expect(Token::RBRACE, "Expected '}' to end function body.");
+
+    // Exit the scope for the function body
+    symbol_table.exitScope();
+
+    return func_def_node;
+}
+
+std::unique_ptr<ProgramNode> Parser::parse() {
+    auto program_node = std::make_unique<ProgramNode>();
+    while (peek().type != Token::END_OF_FILE) {
+        if (peek(1).type == Token::IDENTIFIER && peek(2).type == Token::LPAREN) {
+            program_node->functions.push_back(parseFunctionDefinition());
+        } else if (peek().type == Token::KEYWORD_STRUCT) {
+            auto struct_def = parseStructDefinition();
+            if (struct_def) {
+                program_node->structs.push_back(std::move(struct_def));
+            }
+            if (peek().type == Token::SEMICOLON) {
+                consume(); // Consume optional semicolon after struct definition
+            }
+        } else {
+            program_node->statements.push_back(parseStatement());
+        }
+    }
+    return program_node;
+}
+
+--- File: src/semantic_analyzer.cpp ---
+#include "semantic_analyzer.hpp"
+#include <iostream>
+#include <stdexcept>
+
+// Helper to get size of a type
+int SemanticAnalyzer::getTypeSize(const TypeNode* type) {
+    if (!type) {
+        throw std::runtime_error("Semantic Error: Attempted to get size of a null type.");
+    }
+
+    switch (type->category) {
+        case TypeNode::TypeCategory::PRIMITIVE: {
+            const PrimitiveTypeNode* prim_type = static_cast<const PrimitiveTypeNode*>(type);
+            switch (prim_type->primitive_type) {
+                case Token::KEYWORD_INT: return 4; // 4 bytes for int (dword)
+                case Token::KEYWORD_BOOL: return 1; // 1 byte for bool
+                case Token::KEYWORD_CHAR: return 1; // 1 byte for char
+                case Token::KEYWORD_STRING: return 8; // 8 bytes for string (pointer)
+                case Token::KEYWORD_VOID: return 0; // Void has no size
+                default: throw std::runtime_error("Semantic Error: Unknown primitive type for size calculation.");
+            }
+        }
+        case TypeNode::TypeCategory::POINTER:
+            return 8; // Pointers are 8 bytes on x64
+        case TypeNode::TypeCategory::ARRAY: {
+            const ArrayTypeNode* array_type = static_cast<const ArrayTypeNode*>(type);
+            if (array_type->size <= 0) {
+                throw std::runtime_error("Semantic Error: Unsized arrays not allowed for local variables.");
+            }
+            int element_size = getTypeSize(array_type->base_type.get());
+            if (array_type->size > 0) {
+                return element_size * array_type->size;
+            }
+            return 0; 
+        }
+        case TypeNode::TypeCategory::STRUCT: {
+            const StructTypeNode* struct_type = static_cast<const StructTypeNode*>(type);
+            Symbol* struct_def_symbol = symbolTable.lookup(struct_type->struct_name);
+            if (!struct_def_symbol || !struct_def_symbol->structDef) {
+                throw std::runtime_error("Semantic Error: Undefined struct '" + struct_type->struct_name + "'.");
+            }
+            return struct_def_symbol->structDef->size;
+        }
+        default:
+            throw std::runtime_error("Semantic Error: Unknown type category for size calculation.");
+    }
+}
+
+bool SemanticAnalyzer::areTypesCompatible(const TypeNode* type1, const TypeNode* type2) {
+    if (!type1 || !type2) {
+        return false; // Null types are not compatible
+    }
+
+    if (type1->category != type2->category) {
+        return false;
+    }
+
+    switch (type1->category) {
+        case TypeNode::TypeCategory::PRIMITIVE: {
+            const PrimitiveTypeNode* p1 = static_cast<const PrimitiveTypeNode*>(type1);
+            const PrimitiveTypeNode* p2 = static_cast<const PrimitiveTypeNode*>(type2);
+            return p1->primitive_type == p2->primitive_type;
+        }
+        case TypeNode::TypeCategory::POINTER: {
+            const PointerTypeNode* ptr1 = static_cast<const PointerTypeNode*>(type1);
+            const PointerTypeNode* ptr2 = static_cast<const PointerTypeNode*>(type2);
+            return areTypesCompatible(ptr1->base_type.get(), ptr2->base_type.get());
+        }
+        case TypeNode::TypeCategory::ARRAY: {
+            const ArrayTypeNode* arr1 = static_cast<const ArrayTypeNode*>(type1);
+            const ArrayTypeNode* arr2 = static_cast<const ArrayTypeNode*>(type2);
+            return areTypesCompatible(arr1->base_type.get(), arr2->base_type.get());
+        }
+        case TypeNode::TypeCategory::STRUCT: {
+            const StructTypeNode* s1 = static_cast<const StructTypeNode*>(type1);
+            const StructTypeNode* s2 = static_cast<const StructTypeNode*>(type2);
+            return s1->struct_name == s2->struct_name;
+        }
+        default:
+            return false; // Unknown category
+    }
+}
+
+void SemanticAnalyzer::analyze() {
+    symbolTable.enterScope(); // global scope
+
+    // Process structs
+    for (const auto& struct_node : program_ast->structs) {
+        visit(struct_node.get());
+    }
+
+    // Declare functions (but don't visit bodies yet)
+    for (const auto& func_node : program_ast->functions) {
+        std::unique_ptr<TypeNode> return_type = func_node->return_type->clone();
+        std::vector<std::unique_ptr<TypeNode>> param_types;
+        for (const auto& param : func_node->parameters) {
+            param_types.push_back(param->type->clone());
+        }
+        Symbol func_symbol(Symbol::SymbolType::FUNCTION, std::string(func_node->name), std::move(return_type), std::move(param_types));
+        symbolTable.addSymbol(std::move(func_symbol));
+    }
+
+    // Process global statements
+    for (const auto& stmt : program_ast->statements) {
+        visit(stmt.get());
+    }
+
+    // Now visit function bodies — but do NOT exit their scopes
+    for (const auto& func_node : program_ast->functions) {
+        visit(func_node.get());
+        // DO NOT exit scope — code generator needs it
+    }
+
+    // Check for main
+    bool has_main = false;
+    for (const auto& func : program_ast->functions) {
+        if (func->name == "main") {
+            has_main = true;
+            if (func->return_type->category != TypeNode::TypeCategory::PRIMITIVE ||
+                static_cast<PrimitiveTypeNode*>(func->return_type.get())->primitive_type != Token::KEYWORD_INT) {
+                throw std::runtime_error("Semantic Error: 'main' function must return int.");
+                }
+                if (!func->parameters.empty()) {
+                    throw std::runtime_error("Semantic Error: 'main' function should have no parameters.");
+                }
+        }
+    }
+    if (!has_main) {
+        throw std::runtime_error("Semantic Error: No 'main' function defined.");
+    }
+
+    // DO NOT exit global scope — code generator might need it
+    // symbolTable.exitScope(); ← COMMENTED OUT
+}
+
+void SemanticAnalyzer::visit(ASTNode* node) {
+    if (!node) return;
+
+    switch (node->node_type) {
+        case ASTNode::NodeType::PROGRAM:
+            visit(static_cast<ProgramNode*>(node));
+            break;
+        case ASTNode::NodeType::FUNCTION_DEFINITION:
+            visit(static_cast<FunctionDefinitionNode*>(node));
+            break;
+        case ASTNode::NodeType::VARIABLE_DECLARATION:
+            visit(static_cast<VariableDeclarationNode*>(node));
+            break;
+        case ASTNode::NodeType::VARIABLE_ASSIGNMENT:
+            visit(static_cast<VariableAssignmentNode*>(node));
+            break;
+        case ASTNode::NodeType::VARIABLE_REFERENCE:
+            visit(static_cast<VariableReferenceNode*>(node));
+            break;
+        case ASTNode::NodeType::BINARY_OPERATION_EXPRESSION:
+            visit(static_cast<BinaryOperationExpressionNode*>(node));
+            break;
+        case ASTNode::NodeType::PRINT_STATEMENT:
+            visit(static_cast<PrintStatementNode*>(node));
+            break;
+        case ASTNode::NodeType::RETURN_STATEMENT:
+            visit(static_cast<ReturnStatementNode*>(node));
+            break;
+        case ASTNode::NodeType::IF_STATEMENT:
+            visit(static_cast<IfStatementNode*>(node));
+            break;
+        case ASTNode::NodeType::WHILE_STATEMENT:
+            visit(static_cast<WhileStatementNode*>(node));
+            break;
+        case ASTNode::NodeType::FOR_STATEMENT:
+            visit(static_cast<ForStatementNode*>(node));
+            break;
+        case ASTNode::NodeType::FUNCTION_CALL:
+            visit(static_cast<FunctionCallNode*>(node));
+            break;
+        case ASTNode::NodeType::MEMBER_ACCESS_EXPRESSION:
+            visit(static_cast<MemberAccessNode*>(node));
+            break;
+        case ASTNode::NodeType::UNARY_OP_EXPRESSION:
+            visit(static_cast<UnaryOpExpressionNode*>(node));
+            break;
+        case ASTNode::NodeType::ARRAY_ACCESS_EXPRESSION:
+            visit(static_cast<ArrayAccessNode*>(node));
+            break;
+        case ASTNode::NodeType::STRUCT_DEFINITION:
+            visit(static_cast<StructDefinitionNode*>(node));
+            break;
+        case ASTNode::NodeType::INTEGER_LITERAL_EXPRESSION:
+        case ASTNode::NodeType::STRING_LITERAL_EXPRESSION:
+        case ASTNode::NodeType::BOOLEAN_LITERAL_EXPRESSION:
+        case ASTNode::NodeType::CHARACTER_LITERAL_EXPRESSION:
+            break;
+        default:
+            throw std::runtime_error("Semantic Error: Unknown AST node type encountered during analysis.");
+    }
+}
+
+void SemanticAnalyzer::visit(ProgramNode* node) {
+}
+
+void SemanticAnalyzer::visit(FunctionDefinitionNode* node) {
+    symbolTable.enterScope();
+    int param_offset = 16;
+    for (const auto& param : node->parameters) {
+        int size = getTypeSize(param->type.get());
+        symbolTable.addSymbol(Symbol(Symbol::SymbolType::VARIABLE, param->name, param->type->clone(), param_offset, size));
+        param_offset += size;
+    }
+    symbolTable.scopes.back()->currentOffset = 0;
+
+    // Analyze body statements — variables declared here
+    for (const auto& stmt : node->body_statements) {
+        visit(stmt.get());
+    }
+
+    // DO NOT exit scope here — code generator needs it!
+    // symbolTable.exitScope(); ← COMMENTED OUT
+}
+
+void SemanticAnalyzer::visit(VariableDeclarationNode* node) {
+    if (symbolTable.scopes.back()->lookup(node->name)) {
+        throw std::runtime_error("Semantic Error: Redefinition of variable '" + node->name + "'.");
+    }
+
+    int var_size = getTypeSize(node->type.get());
+
+    symbolTable.scopes.back()->currentOffset -= var_size;
+    int offset = symbolTable.scopes.back()->currentOffset;
+
+    Symbol symbol(Symbol::SymbolType::VARIABLE, node->name, node->type->clone(), offset, var_size);
+    node->resolved_symbol = symbolTable.addSymbol(std::move(symbol));
+
+    if (node->initial_value) {
+        std::unique_ptr<TypeNode> expr_type = visitExpression(node->initial_value.get());
+        if (!areTypesCompatible(expr_type.get(), node->type.get())) {
+            throw std::runtime_error("Semantic Error: Type mismatch in variable initialization for '" + node->name + "'.");
+        }
+    }
+}
+
+void SemanticAnalyzer::visit(VariableAssignmentNode* node) {
+    std::unique_ptr<TypeNode> left_type = visitExpression(node->left.get());
+    std::unique_ptr<TypeNode> right_type = visitExpression(node->right.get());
+
+    if (!areTypesCompatible(left_type.get(), right_type.get())) {
+        throw std::runtime_error("Semantic Error: Type mismatch in assignment.");
+    }
+}
+
+void SemanticAnalyzer::visit(VariableReferenceNode* node) {
+    Symbol* var_symbol = symbolTable.lookup(node->name);
+    if (!var_symbol) {
+        throw std::runtime_error("Semantic Error: Use of undeclared variable '" + node->name + "'.");
+    }
+    node->resolved_symbol = var_symbol;
+    node->resolved_offset = var_symbol->offset;
+    node->resolved_type = var_symbol->dataType->clone();
+}
+
+void SemanticAnalyzer::visit(BinaryOperationExpressionNode* node) {
+    std::unique_ptr<TypeNode> left_type = visitExpression(node->left.get());
+    std::unique_ptr<TypeNode> right_type = visitExpression(node->right.get());
+
+    if (left_type->category != right_type->category) {
+        throw std::runtime_error("Semantic Error: Type mismatch in binary operation.");
+    }
+
+    switch (node->op_type) {
+        case Token::EQUAL_EQUAL:
+        case Token::BANG_EQUAL:
+        case Token::LESS:
+        case Token::GREATER:
+        case Token::LESS_EQUAL:
+        case Token::GREATER_EQUAL:
+            node->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_BOOL);
+            break;
+        default:
+            node->resolved_type = std::move(left_type);
+            break;
+    }
+}
+
+void SemanticAnalyzer::visit(PrintStatementNode* node) {
+    for (const auto& expr : node->expressions) {
+        visitExpression(expr.get());
+    }
+}
+
+void SemanticAnalyzer::visit(ReturnStatementNode* node) {
+    visitExpression(node->expression.get());
+}
+
+void SemanticAnalyzer::visit(IfStatementNode* node) {
+    std::unique_ptr<TypeNode> cond_type = visitExpression(node->condition.get());
+    if (cond_type->category != TypeNode::TypeCategory::PRIMITIVE ||
+        static_cast<PrimitiveTypeNode*>(cond_type.get())->primitive_type != Token::KEYWORD_BOOL) {
+        throw std::runtime_error("Semantic Error: If condition must be a boolean expression.");
+    }
+
+    for (const auto& stmt : node->true_block) {
+        visit(stmt.get());
+    }
+    for (const auto& stmt : node->false_block) {
+        visit(stmt.get());
+    }
+}
+
+void SemanticAnalyzer::visit(WhileStatementNode* node) {
+    std::unique_ptr<TypeNode> cond_type = visitExpression(node->condition.get());
+    if (cond_type->category != TypeNode::TypeCategory::PRIMITIVE ||
+        static_cast<PrimitiveTypeNode*>(cond_type.get())->primitive_type != Token::KEYWORD_BOOL) {
+        throw std::runtime_error("Semantic Error: While condition must be a boolean expression.");
+    }
+
+    symbolTable.enterScope();
+    for (const auto& stmt : node->body) {
+        visit(stmt.get());
+    }
+    symbolTable.exitScope();
+}
+
+void SemanticAnalyzer::visit(ForStatementNode* node) {
+    symbolTable.enterScope(); // Scope for initializer, condition, increment, and body
+
+    if (node->initializer) {
+        visit(node->initializer.get());
+    }
+    if (node->condition) {
+        std::unique_ptr<TypeNode> cond_type = visitExpression(node->condition.get());
+        if (cond_type->category != TypeNode::TypeCategory::PRIMITIVE ||
+            static_cast<PrimitiveTypeNode*>(cond_type.get())->primitive_type != Token::KEYWORD_BOOL) {
+            throw std::runtime_error("Semantic Error: For loop condition must be a boolean expression.");
+        }
+    }
+    if (node->increment) {
+        visit(node->increment.get());
+    }
+    for (const auto& stmt : node->body) {
+        visit(stmt.get());
+    }
+
+    symbolTable.exitScope();
+}
+
+void SemanticAnalyzer::visit(FunctionCallNode* node) {
+    Symbol* func_symbol = symbolTable.lookup(node->function_name);
+    if (!func_symbol || func_symbol->type != Symbol::SymbolType::FUNCTION) {
+        throw std::runtime_error("Semantic Error: Call to undeclared function '" + node->function_name + "'.");
+    }
+    node->resolved_symbol = func_symbol;
+
+    // Check number of arguments
+    if (node->arguments.size() != func_symbol->parameterTypes.size()) {
+        throw std::runtime_error("Semantic Error: Function '" + node->function_name + "' expects " +
+                                 std::to_string(func_symbol->parameterTypes.size()) + " arguments, but " +
+                                 std::to_string(node->arguments.size()) + " were provided.");
+    }
+
+    // Check argument types
+    for (size_t i = 0; i < node->arguments.size(); ++i) {
+        std::unique_ptr<TypeNode> arg_type = visitExpression(node->arguments[i].get());
+        if (!areTypesCompatible(arg_type.get(), func_symbol->parameterTypes[i].get())) {
+            throw std::runtime_error("Semantic Error: Type mismatch in argument " + std::to_string(i + 1) +
+                                     " of function '" + node->function_name + "'.");
+        }
+    }
+}
+
+void SemanticAnalyzer::visit(MemberAccessNode* node) {
+    std::unique_ptr<TypeNode> base_type = visitExpression(node->struct_expr.get());
+
+    if (base_type->category != TypeNode::TypeCategory::STRUCT) {
+        throw std::runtime_error("Semantic Error: Member access operator '.' used on non-struct type.");
+    }
+
+    const StructTypeNode* struct_type = static_cast<const StructTypeNode*>(base_type.get());
+    Symbol* struct_def_symbol = symbolTable.lookup(struct_type->struct_name);
+
+    if (!struct_def_symbol || !struct_def_symbol->structDef) {
+        throw std::runtime_error("Semantic Error: Undefined struct '" + struct_type->struct_name + "'.");
+    }
+
+    const auto& struct_def = struct_def_symbol->structDef;
+
+    bool member_found = false;
+    for (const auto& member : struct_def->members) {
+        if (member.name == node->member_name) {
+            member_found = true;
+            node->resolved_symbol = symbolTable.lookup(member.name);
+            break;
+        }
+    }
+
+    if (!member_found) {
+        throw std::runtime_error("Semantic Error: Struct '" + struct_type->struct_name + "' has no member named '" + node->member_name + "'.");
+    }
+}
+
+void SemanticAnalyzer::visit(UnaryOpExpressionNode* node) {
+    std::unique_ptr<TypeNode> operand_type = visitExpression(node->operand.get());
+
+    if (node->op_type == Token::ADDRESSOF) {
+        if (node->operand->node_type != ASTNode::NodeType::VARIABLE_REFERENCE) {
+            throw std::runtime_error("Semantic Error: Address-of operator '&' can only be applied to variables.");
+        }
+        node->resolved_symbol = static_cast<VariableReferenceNode*>(node->operand.get())->resolved_symbol;
+        node->resolved_type = std::make_unique<PointerTypeNode>(std::move(operand_type));
+    } else if (node->op_type == Token::STAR) {
+        if (operand_type->category != TypeNode::TypeCategory::POINTER) {
+            throw std::runtime_error("Semantic Error: Dereference operator '*' can only be applied to pointer types.");
+        }
+        node->resolved_type = static_cast<PointerTypeNode*>(operand_type.get())->base_type->clone();
+    } else {
+        throw std::runtime_error("Semantic Error: Unknown unary operator.");
+    }
+}
+
+void SemanticAnalyzer::visit(ArrayAccessNode* node) {
+    std::unique_ptr<TypeNode> array_type = visitExpression(node->array_expr.get());
+    std::unique_ptr<TypeNode> index_type = visitExpression(node->index_expr.get());
+
+    if (array_type->category != TypeNode::TypeCategory::ARRAY) {
+        throw std::runtime_error("Semantic Error: Array access operator '[]' used on non-array type.");
+    }
+
+    if (index_type->category != TypeNode::TypeCategory::PRIMITIVE ||
+        static_cast<PrimitiveTypeNode*>(index_type.get())->primitive_type != Token::KEYWORD_INT) {
+        throw std::runtime_error("Semantic Error: Array index must be an integer.");
+    }
+    node->resolved_symbol = new Symbol(Symbol::SymbolType::VARIABLE, "", static_cast<ArrayTypeNode*>(array_type.get())->base_type->clone(), 0, getTypeSize(static_cast<ArrayTypeNode*>(array_type.get())->base_type.get()));
+}
+
+void SemanticAnalyzer::visit(StructDefinitionNode* node) {
+    // Calculate offsets
+    int offset = 0;
+    for (auto& member : node->members) {
+        member.offset = offset;
+        offset += getTypeSize(member.type.get());
+    }
+    node->size = offset;
+
+    // Register in symbol table
+    symbolTable.addSymbol(Symbol(Symbol::SymbolType::STRUCT_DEFINITION, node->name, node->clone()));
+}
+
+std::unique_ptr<TypeNode> SemanticAnalyzer::visitExpression(ASTNode* expr) {
+    if (!expr) {
+        throw std::runtime_error("Semantic Error: Attempted to visit a null expression.");
+    }
+
+    switch (expr->node_type) {
+        case ASTNode::NodeType::INTEGER_LITERAL_EXPRESSION:
+            return visitIntegerLiteralExpression(static_cast<IntegerLiteralExpressionNode*>(expr));
+        case ASTNode::NodeType::STRING_LITERAL_EXPRESSION:
+            return visitStringLiteralExpression(static_cast<StringLiteralExpressionNode*>(expr));
+        case ASTNode::NodeType::BOOLEAN_LITERAL_EXPRESSION:
+            return visitBooleanLiteralExpression(static_cast<BooleanLiteralExpressionNode*>(expr));
+        case ASTNode::NodeType::CHARACTER_LITERAL_EXPRESSION:
+            return visitCharacterLiteralExpression(static_cast<CharacterLiteralExpressionNode*>(expr));
+        case ASTNode::NodeType::VARIABLE_REFERENCE: {
+            visit(static_cast<VariableReferenceNode*>(expr));
+            Symbol* sym = symbolTable.lookup(static_cast<VariableReferenceNode*>(expr)->name);
+            if (!sym) throw std::runtime_error("Semantic Error: Variable '" + static_cast<VariableReferenceNode*>(expr)->name + "' not found.");
+            return sym->dataType->clone();
+        }
+        case ASTNode::NodeType::BINARY_OPERATION_EXPRESSION: {
+            visit(static_cast<BinaryOperationExpressionNode*>(expr));
+            return static_cast<BinaryOperationExpressionNode*>(expr)->resolved_type->clone();
+        }
+        case ASTNode::NodeType::FUNCTION_CALL: {
+            visit(static_cast<FunctionCallNode*>(expr));
+            Symbol* func_symbol = symbolTable.lookup(static_cast<FunctionCallNode*>(expr)->function_name);
+            if (!func_symbol) {
+                throw std::runtime_error("Semantic Error: Function '" + static_cast<FunctionCallNode*>(expr)->function_name + "' not found.");
+            }
+            return func_symbol->dataType->clone();
+        }
+        case ASTNode::NodeType::MEMBER_ACCESS_EXPRESSION: {
+            visit(static_cast<MemberAccessNode*>(expr));
+            std::unique_ptr<TypeNode> base_type = visitExpression(static_cast<MemberAccessNode*>(expr)->struct_expr.get());
+            const StructTypeNode* struct_type = static_cast<const StructTypeNode*>(base_type.get());
+            Symbol* struct_def_symbol = symbolTable.lookup(struct_type->struct_name);
+            if (!struct_def_symbol || !struct_def_symbol->structDef) {
+                throw std::runtime_error("Semantic Error: Undefined struct '" + struct_type->struct_name + "'.");
+            }
+            const auto& struct_def = struct_def_symbol->structDef;
+            for (const auto& member : struct_def->members) {
+                if (member.name == static_cast<MemberAccessNode*>(expr)->member_name) {
+                    return member.type->clone();
+                }
+            }
+            throw std::runtime_error("Semantic Error: Member '" + static_cast<MemberAccessNode*>(expr)->member_name + "' not found in struct '" + struct_type->struct_name + "'.");
+        }
+        case ASTNode::NodeType::UNARY_OP_EXPRESSION: {
+            visit(static_cast<UnaryOpExpressionNode*>(expr));
+            const UnaryOpExpressionNode* unary_node = static_cast<const UnaryOpExpressionNode*>(expr);
+            return unary_node->resolved_type->clone();
+        }
+        case ASTNode::NodeType::ARRAY_ACCESS_EXPRESSION: {
+            visit(static_cast<ArrayAccessNode*>(expr));
+            std::unique_ptr<TypeNode> array_type = visitExpression(static_cast<ArrayAccessNode*>(expr)->array_expr.get());
+            const ArrayTypeNode* arr_type = static_cast<const ArrayTypeNode*>(array_type.get());
+            return arr_type->base_type->clone();
+        }
+        case ASTNode::NodeType::VARIABLE_ASSIGNMENT: {
+            auto* assign_node = static_cast<VariableAssignmentNode*>(expr);
+            visit(assign_node);
+            return visitExpression(assign_node->left.get());
+        }
+        case ASTNode::NodeType::VARIABLE_DECLARATION: {
+            auto* decl_node = static_cast<VariableDeclarationNode*>(expr);
+            visit(decl_node);
+            return decl_node->type->clone();
+        }
+        default:
+            throw std::runtime_error("Semantic Error: Unexpected AST node type in visitExpression.");
+    }
+}
+
+std::unique_ptr<TypeNode> SemanticAnalyzer::visitIntegerLiteralExpression(IntegerLiteralExpressionNode* node) {
+    return std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_INT);
+}
+
+std::unique_ptr<TypeNode> SemanticAnalyzer::visitStringLiteralExpression(StringLiteralExpressionNode* node) {
+    return std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_STRING);
+}
+
+std::unique_ptr<TypeNode> SemanticAnalyzer::visitBooleanLiteralExpression(BooleanLiteralExpressionNode* node) {
+    return std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_BOOL);
+}
+
+std::unique_ptr<TypeNode> SemanticAnalyzer::visitCharacterLiteralExpression(CharacterLiteralExpressionNode* node) {
+    return std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_CHAR);
+}
+
+
+--- File: include/ast.hpp ---
+#ifndef AST_HPP
+#define AST_HPP
+
+#include <string>
+#include <vector>
+#include <memory> // Smart pointers
+#include "lexer.hpp"
+
+struct Symbol; // Forward declaration for Symbol
+
+// Forward declarations for type nodes
+struct TypeNode;
+struct PointerTypeNode;
+struct ArrayTypeNode;
+
+// Base node class for all AST elements
+struct ASTNode {
+    enum class NodeType {
+        PROGRAM = 0,
+        INTEGER_LITERAL_EXPRESSION = 1,
+        RETURN_STATEMENT = 2,
+        VARIABLE_DECLARATION = 3,
+        VARIABLE_ASSIGNMENT = 4,
+        VARIABLE_REFERENCE = 5,
+        FUNCTION_DEFINITION = 6,
+        BINARY_OPERATION_EXPRESSION = 7,
+        PRINT_STATEMENT = 8,
+        STRING_LITERAL_EXPRESSION = 9,
+        IF_STATEMENT = 10,
+        ELSE_STATEMENT = 11,
+        FUNCTION_CALL = 12,
+        WHILE_STATEMENT = 13,
+        BOOLEAN_LITERAL_EXPRESSION = 14,
+        CHARACTER_LITERAL_EXPRESSION = 15,
+        FOR_STATEMENT = 16,
+        UNARY_OP_EXPRESSION = 17,
+        ARRAY_ACCESS_EXPRESSION = 18,
+        STRUCT_DEFINITION = 19,
+        MEMBER_ACCESS_EXPRESSION = 20,
+    };
+
+    NodeType node_type;
+
+    // resolved_type
+    std::shared_ptr<TypeNode> resolved_type;	
+
+    int line;    // Source line position
+    int column;  // Source column position
+
+    ASTNode(NodeType type, int line = -1, int column = -1)
+        : node_type(type), line(line), column(column) {}
+
+    virtual ~ASTNode() = default;
+};
+
+// Node representing integer literals (e.g., 42)
+struct IntegerLiteralExpressionNode : public ASTNode {
+    int value;
+
+    IntegerLiteralExpressionNode(int val, int line = -1, int column = -1)
+        : ASTNode(NodeType::INTEGER_LITERAL_EXPRESSION, line, column), value(val) {}
+};
+
+// Node representing string literals (e.g., "Hello World")
+struct StringLiteralExpressionNode : public ASTNode {
+    std::string value;
+
+    StringLiteralExpressionNode(std::string val, int line = -1, int column = -1)
+        : ASTNode(NodeType::STRING_LITERAL_EXPRESSION, line, column), value(std::move(val)) {}
+};
+
+// Node representing boolean literals (e.g., true)
+struct BooleanLiteralExpressionNode : public ASTNode {
+    bool value;
+
+    BooleanLiteralExpressionNode(int val, int line = -1, int column = -1)
+        : ASTNode(NodeType::BOOLEAN_LITERAL_EXPRESSION, line, column), value(val) {}
+};
+
+// Node representing character literals (e.g., 'x')
+struct CharacterLiteralExpressionNode : public ASTNode {
+    char value;
+
+    CharacterLiteralExpressionNode(int val, int line = -1, int column = -1)
+        : ASTNode(NodeType::CHARACTER_LITERAL_EXPRESSION, line, column), value(val) {}
+};
+
+// Node for return statements (e.g., return x;)
+struct ReturnStatementNode : public ASTNode {
+    std::unique_ptr<ASTNode> expression;
+
+    ReturnStatementNode(std::unique_ptr<ASTNode> expr, int line = -1, int column = -1)
+	: ASTNode(NodeType::RETURN_STATEMENT, line, column), expression(std::move(expr)) {}
+};
+
+// Base class for type representations
+struct TypeNode {
+    enum class TypeCategory {
+        PRIMITIVE,
+        POINTER,
+        ARRAY,
+        STRUCT
+    };
+    TypeCategory category;
+    TypeNode(TypeCategory cat) : category(cat) {}
+    virtual ~TypeNode() = default;
+    virtual std::unique_ptr<TypeNode> clone() const = 0;
+};
+
+struct PrimitiveTypeNode : public TypeNode {
+    Token::Type primitive_type;
+    PrimitiveTypeNode(Token::Type type) : TypeNode(TypeCategory::PRIMITIVE), primitive_type(type) {}
+    std::unique_ptr<TypeNode> clone() const override {
+        return std::make_unique<PrimitiveTypeNode>(primitive_type);
+    }
+};
+
+struct PointerTypeNode : public TypeNode {
+    std::unique_ptr<TypeNode> base_type;
+    PointerTypeNode(std::unique_ptr<TypeNode> base) : TypeNode(TypeCategory::POINTER), base_type(std::move(base)) {}
+    std::unique_ptr<TypeNode> clone() const override {
+        return std::make_unique<PointerTypeNode>(base_type->clone());
+    }
+};
+
+struct ArrayTypeNode : public TypeNode {
+    std::unique_ptr<TypeNode> base_type;
+    int size;
+    ArrayTypeNode(std::unique_ptr<TypeNode> base, int sz) : TypeNode(TypeCategory::ARRAY), base_type(std::move(base)), size(sz) {}
+    std::unique_ptr<TypeNode> clone() const override {
+        return std::make_unique<ArrayTypeNode>(base_type->clone(), size);
+    }
+};
+
+struct StructTypeNode : public TypeNode {
+    std::string struct_name;
+    StructTypeNode(std::string name) : TypeNode(TypeCategory::STRUCT), struct_name(std::move(name)) {}
+    std::unique_ptr<TypeNode> clone() const override {
+        return std::make_unique<StructTypeNode>(struct_name);
+    }
+};
+
+struct StructMember {
+    std::unique_ptr<TypeNode> type;
+    std::string name;
+    int offset; // Add offset for each member
+};
+
+struct StructDefinitionNode : public ASTNode {
+    std::string name;
+    std::vector<StructMember> members;
+    int size; // Add size for the struct
+
+    StructDefinitionNode(std::string struct_name, int line = -1, int column = -1)
+        : ASTNode(NodeType::STRUCT_DEFINITION, line, column), name(std::move(struct_name)), size(0) {}
+
+    std::unique_ptr<StructDefinitionNode> clone() const {
+        auto new_node = std::make_unique<StructDefinitionNode>(name, line, column);
+        new_node->size = size;
+        for (const auto& member : members) {
+            new_node->members.push_back({member.type->clone(), member.name, member.offset});
+        }
+        return new_node;
+    }
+};
+
+struct MemberAccessNode : public ASTNode {
+    std::unique_ptr<ASTNode> struct_expr; // The expression representing the struct instance
+    std::string member_name;
+    Symbol* resolved_symbol; // Add resolved_symbol
+
+    MemberAccessNode(std::unique_ptr<ASTNode> expr, std::string member, int line = -1, int column = -1)
+        : ASTNode(NodeType::MEMBER_ACCESS_EXPRESSION, line, column),
+          struct_expr(std::move(expr)),
+          member_name(std::move(member)),
+          resolved_symbol(nullptr) {}
+};
+
+// Node for variable declarations (e.g., int/string x;)
+struct VariableDeclarationNode : public ASTNode {
+    std::string name;
+    std::unique_ptr<TypeNode> type;
+    std::unique_ptr<ASTNode> initial_value;
+    Symbol* resolved_symbol; // Add resolved_symbol
+
+    VariableDeclarationNode(std::string name, std::unique_ptr<TypeNode> type, std::unique_ptr<ASTNode> initial_val = nullptr, int line = -1, int column = -1)
+	: ASTNode(NodeType::VARIABLE_DECLARATION, line, column), name(std::move(name)), type(std::move(type)), initial_value(std::move(initial_val)), resolved_symbol(nullptr) {}
+};
+
+
+// Node for variable assignments (e.g., x = 5;)
+struct VariableAssignmentNode : public ASTNode {
+    std::unique_ptr<ASTNode> left;
+    std::unique_ptr<ASTNode> right;
+
+    VariableAssignmentNode(std::unique_ptr<ASTNode> left, std::unique_ptr<ASTNode> right, int line = -1, int column = -1)
+        : ASTNode(NodeType::VARIABLE_ASSIGNMENT, line, column),
+          left(std::move(left)),
+          right(std::move(right)) {}
+};
+
+// Node for variable references in expressions (e.g., x in x + 1)
+struct VariableReferenceNode : public ASTNode {
+    std::string name;
+    Symbol* resolved_symbol; // Add resolved_symbol
+    int resolved_offset; // Store the resolved offset
+    std::unique_ptr<TypeNode> resolved_type; // Store the resolved type
+
+    VariableReferenceNode(std::string var_name, int line = -1, int column = -1)
+        : ASTNode(NodeType::VARIABLE_REFERENCE, line, column), name(std::move(var_name)), resolved_symbol(nullptr), resolved_offset(0) {}
+};
+
+struct UnaryOpExpressionNode : public ASTNode {
+    Token::Type op_type;
+    std::unique_ptr<ASTNode> operand;
+    Symbol* resolved_symbol; // Add resolved_symbol
+    std::unique_ptr<TypeNode> resolved_type; // Add resolved_type
+
+    UnaryOpExpressionNode(Token::Type op, std::unique_ptr<ASTNode> operand_node, int line = -1, int column = -1)
+        : ASTNode(NodeType::UNARY_OP_EXPRESSION, line, column), op_type(op), operand(std::move(operand_node)), resolved_symbol(nullptr) {}
+};
+
+struct ArrayAccessNode : public ASTNode {
+    std::unique_ptr<ASTNode> array_expr;
+    std::unique_ptr<ASTNode> index_expr;
+    Symbol* resolved_symbol; // Add resolved_symbol
+
+    ArrayAccessNode(std::unique_ptr<ASTNode> array, std::unique_ptr<ASTNode> index, int line = -1, int column = -1)
+        : ASTNode(NodeType::ARRAY_ACCESS_EXPRESSION, line, column), array_expr(std::move(array)), index_expr(std::move(index)), resolved_symbol(nullptr) {}
+};
+
+struct ParameterNode {
+    std::unique_ptr<TypeNode> type;
+    std::string name;
+    int offset; // Add offset for parameter
+};
+
+
+// Node for function definitions (e.g., int main() {})
+struct FunctionDefinitionNode : public ASTNode {
+    std::unique_ptr<TypeNode> return_type;
+    std::string name;
+    std::vector<std::unique_ptr<ParameterNode>> parameters;
+    std::vector<std::unique_ptr<ASTNode>> body_statements;
+
+    FunctionDefinitionNode(std::unique_ptr<TypeNode> ret_type, const std::string& func_name, int line = -1, int column = -1)
+        : ASTNode(NodeType::FUNCTION_DEFINITION, line, column),
+          return_type(std::move(ret_type)),
+	            name(func_name) {}
+};
+
+// Node for function calls
+struct FunctionCallNode : public ASTNode {
+    std::string function_name;
+    std::vector<std::unique_ptr<ASTNode>> arguments;
+    Symbol* resolved_symbol; // Add resolved_symbol
+
+    FunctionCallNode(std::string name, std::vector<std::unique_ptr<ASTNode>> args, int line = -1, int column = -1)
+        : ASTNode(NodeType::FUNCTION_CALL, line, column),
+          function_name(std::move(name)),
+          arguments(std::move(args)),
+          resolved_symbol(nullptr) {}
+};
+
+// Node for while statements
+struct WhileStatementNode : public ASTNode {
+    std::unique_ptr<ASTNode> condition;
+    std::vector<std::unique_ptr<ASTNode>> body;
+
+    WhileStatementNode(std::unique_ptr<ASTNode> cond, std::vector<std::unique_ptr<ASTNode>> body_stmts, int line = -1, int column = -1)
+        : ASTNode(NodeType::WHILE_STATEMENT, line, column),
+          condition(std::move(cond)),
+          body(std::move(body_stmts)) {}
+};
+
+// Node for for statements
+struct ForStatementNode : public ASTNode {
+    std::unique_ptr<ASTNode> initializer;
+    std::unique_ptr<ASTNode> condition;
+    std::unique_ptr<ASTNode> increment;
+    std::vector<std::unique_ptr<ASTNode>> body;
+
+    ForStatementNode(std::unique_ptr<ASTNode> init, std::unique_ptr<ASTNode> cond, std::unique_ptr<ASTNode> incr, std::vector<std::unique_ptr<ASTNode>> body_stmts,
+                     int line = -1, int column = -1)
+        : ASTNode(NodeType::FOR_STATEMENT, line, column),
+          initializer(std::move(init)),
+          condition(std::move(cond)),
+          increment(std::move(incr)),
+          body(std::move(body_stmts)) {}
+};
+
+// Node for Arthemetic expression
+struct BinaryOperationExpressionNode : public ASTNode {
+    std::unique_ptr<ASTNode> left;
+    Token::Type op_type;
+    std::unique_ptr<ASTNode> right;
+    std::unique_ptr<TypeNode> resolved_type; // Add resolved_type
+
+    BinaryOperationExpressionNode(std::unique_ptr<ASTNode> left_expr, Token::Type op, std::unique_ptr<ASTNode> right_expr, int line = -1, int column = -1)
+        : ASTNode(NodeType::BINARY_OPERATION_EXPRESSION, line, column),
+          left(std::move(left_expr)),
+          op_type(op),
+          right(std::move(right_expr)) {}
+};
+
+// Node for print statements (e.g., 'print x, "hello";')
+struct PrintStatementNode : public ASTNode {
+    std::vector<std::unique_ptr<ASTNode>> expressions; // The expressions whose values will be printed
+
+    PrintStatementNode(std::vector<std::unique_ptr<ASTNode>> exprs, int line = -1, int column = -1)
+        : ASTNode(NodeType::PRINT_STATEMENT, line, column),
+          expressions(std::move(exprs)) {}
+};
+
+struct IfStatementNode : public ASTNode {
+    std::unique_ptr<ASTNode> condition;
+    std::vector<std::unique_ptr<ASTNode>> true_block;
+    std::vector<std::unique_ptr<ASTNode>> false_block;
+
+    IfStatementNode(std::unique_ptr<ASTNode> cond, std::vector<std::unique_ptr<ASTNode>> t_block,
+                    std::vector<std::unique_ptr<ASTNode>> f_block = {},
+                    int line = -1, int column = -1)
+        : ASTNode(NodeType::IF_STATEMENT, line, column),
+          condition(std::move(cond)),
+          true_block(std::move(t_block)),
+          false_block(std::move(f_block)) {}
+};
+
+// Root node that contains all program statements
+struct ProgramNode : public ASTNode {
+    std::vector<std::unique_ptr<ASTNode>> statements;
+    std::vector<std::unique_ptr<FunctionDefinitionNode>> functions;
+    std::vector<std::unique_ptr<StructDefinitionNode>> structs;
+
+    ProgramNode(int line = -1, int column = -1)
+        : ASTNode(NodeType::PROGRAM, line, column) {}
+};
+
+#endif // AST_HPP
+
+
+--- File: include/code_generator.hpp ---
+
+#ifndef CODE_GENERATOR_HPP
+#define CODE_GENERATOR_HPP
+
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <memory>
+#include <map>
+#include "ast.hpp"
+#include "symbol_table.hpp"
+
+class CodeGenerator {
+public:
+    CodeGenerator(std::unique_ptr<ProgramNode>& ast, SymbolTable& symTable);
+    void generate(const std::string& output_filename);
+
+private:
+    std::unique_ptr<ProgramNode>& program_ast;
+    SymbolTable& symbolTable;
+    std::ofstream out;
+    std::map<std::string, std::string> string_literals;
+    int string_label_counter;
+
+    void visit(ASTNode* node);
+    void visit(ProgramNode* node);
+    void visit(FunctionDefinitionNode* node);
+    void visit(VariableDeclarationNode* node);
+    void visit(VariableAssignmentNode* node);
+    void visit(VariableReferenceNode* node);
+    void visit(BinaryOperationExpressionNode* node);
+    void visit(PrintStatementNode* node);
+    void visit(ReturnStatementNode* node);
+    void visit(IfStatementNode* node);
+    void visit(WhileStatementNode* node);
+    void visit(ForStatementNode* node);
+    void visit(FunctionCallNode* node);
+    void visit(MemberAccessNode* node);
+    void visit(UnaryOpExpressionNode* node);
+    void visit(ArrayAccessNode* node);
+    void visit(StructDefinitionNode* node);
+    void visit(IntegerLiteralExpressionNode* node);
+    void visit(StringLiteralExpressionNode* node);
+    void visit(BooleanLiteralExpressionNode* node);
+    void visit(CharacterLiteralExpressionNode* node);
+
+    int getTypeSize(const TypeNode* type);
+};
+
+#endif // CODE_GENERATOR_HPP
+
+
+--- File: include/lexer.hpp ---
+#ifndef LEXER_HPP
+#define LEXER_HPP
+
+#include <string>
+#include <vector>
+
+struct Token {
+    enum Type {
+        KEYWORD_RETURN,
+        KEYWORD_PRINT,
+        KEYWORD_INT,
+        KEYWORD_STRING,
+        KEYWORD_IF,
+        KEYWORD_ELSE,
+        KEYWORD_VOID,
+	KEYWORD_WHILE,
+	KEYWORD_BOOL,
+	KEYWORD_CHAR,
+	KEYWORD_FOR,
+	KEYWORD_STRUCT,
+	KEYWORD_SWITCH,
+	KEYWORD_CASE,
+	KEYWORD_DEFAULT,
+
+        IDENTIFIER,
+        INTEGER_LITERAL,
+        STRING_LITERAL,
+	TRUE,
+	FALSE,
+	CHARACTER_LITERAL,
+
+        EQ,             // =
+        EQUAL_EQUAL,    // ==
+        BANG_EQUAL,     // !=
+        LESS,           // <
+        GREATER,        // >
+        LESS_EQUAL,     // <=
+        GREATER_EQUAL,  // >=
+
+        PLUS,           // +
+        MINUS,          // -
+        STAR,           // *
+        SLASH,          // /
+	ADDRESSOF,	// &
+
+        SEMICOLON,      // ;
+        LPAREN,         // (
+        RPAREN,         // )
+        LBRACE,         // {
+        RBRACE,         // }
+	LBRACKET,	// [
+	RBRACKET,	// ]
+	DOT,		// .
+
+        COMMA,          // ,
+
+        END_OF_FILE,
+        UNKNOWN
+    };
+
+    Type type;
+    std::string value;
+    int line;
+    int column;
+
+    std::string typeToString() const;
+};
+
+std::vector<Token> tokenize(const std::string& sourceCode);
+
+#endif // LEXER_HPP
+
+
+--- File: include/parser.hpp ---
+#ifndef NYTROGEN_PARSER_HPP
+#define NYTROGEN_PARSER_HPP
+
+#include "lexer.hpp"
+#include <vector>
+#include <memory>
+#include <string>
+#include <map>
+#include <stdexcept>
+#include "ast.hpp"
+#include "symbol_table.hpp"
+
+// Parser class handles syntax analysis and AST construction
+class Parser {
+public:
+    Parser(std::vector<Token> tokens);
+    std::unique_ptr<ProgramNode> parse();
+    SymbolTable& getSymbolTable() { return symbol_table; }
+
+private:
+    std::vector<Token> tokens;
+    size_t current_token_index;
+    std::map<std::string, int> declared_variables;
+    SymbolTable symbol_table; // Add SymbolTable member
+
+    // Token handling methods
+    const Token& peek(size_t offset = 0) const;
+    const Token& consume();
+    void expect(Token::Type expected_type, const std::string& error_msg);
+
+    std::unique_ptr<ASTNode> parseStatement(); // General statement parsing (e.g., return, var decl, assignment)
+    std::unique_ptr<VariableDeclarationNode> parseVariableDeclaration();
+    std::unique_ptr<VariableAssignmentNode> parseVariableAssignment();
+    std::unique_ptr<VariableReferenceNode> parseVariableReference();
+    std::unique_ptr<ReturnStatementNode> parseReturnStatement();
+    std::unique_ptr<PrintStatementNode> parsePrintStatement();
+    std::unique_ptr<IfStatementNode> parseIfStatement();
+    std::unique_ptr<WhileStatementNode> parseWhileStatement();
+    std::unique_ptr<ForStatementNode> parseForStatement();
+    std::unique_ptr<FunctionCallNode> parseFunctionCall();
+    std::vector<std::unique_ptr<ParameterNode>> parseParameters();
+    std::unique_ptr<TypeNode> parseType();
+    std::unique_ptr<StructDefinitionNode> parseStructDefinition();
+
+    // Expression parsing methods (now hierarchical for precedence)
+    std::unique_ptr<ASTNode> parseExpression(); 		// Handles + and - (lowest precedence)
+    std::unique_ptr<ASTNode> parseComparisonExpression(); 	// Handles == and > or < and <= or >= 
+    std::unique_ptr<ASTNode> parseTerm();       		// Handles * and / (medium precedence)
+    std::unique_ptr<ASTNode> parseFactor();     		// Handles literals, variables, and parentheses (highest precedence)
+    std::unique_ptr<ASTNode> parseAdditiveExpression();
+    std::unique_ptr<ASTNode> parseUnaryExpression();
+
+    std::unique_ptr<IntegerLiteralExpressionNode> parseIntegerLiteralExpression(); // Specific helper for int literals
+    std::unique_ptr<StringLiteralExpressionNode> parseStringLiteralExpression();
+    std::unique_ptr<BooleanLiteralExpressionNode> parseBooleanLiteralExpression();
+    std::unique_ptr<CharacterLiteralExpressionNode> parseCharacterLiteralExpression();
+    std::unique_ptr<FunctionDefinitionNode> parseFunctionDefinition();
+};
+
+#endif // NYTROGEN_PARSER_HPP
+
+
+--- File: include/semantic_analyzer.hpp ---
+#ifndef SEMANTIC_ANALYZER_HPP
+#define SEMANTIC_ANALYZER_HPP
+
+#include <memory>
+#include <string>
+#include <vector>
+#include <map>
+#include "ast.hpp"
+#include "symbol_table.hpp"
+
+class SemanticAnalyzer {
+public:
+    SemanticAnalyzer(std::unique_ptr<ProgramNode>& ast, SymbolTable& symTable)
+        : program_ast(ast), symbolTable(symTable) {}
+
+    void analyze();
+    SymbolTable& getSymbolTable() { return symbolTable; }
+    int getTypeSize(const TypeNode* type); // Helper to get size of a type
+    bool areTypesCompatible(const TypeNode* type1, const TypeNode* type2);
+
+private:
+    std::unique_ptr<ProgramNode>& program_ast;
+    SymbolTable& symbolTable;
+
+    // Visitor methods for AST nodes
+    void visit(ASTNode* node);
+    void visit(ProgramNode* node);
+    void visit(FunctionDefinitionNode* node);
+    void visit(VariableDeclarationNode* node);
+    void visit(VariableAssignmentNode* node);
+    void visit(VariableReferenceNode* node);
+    void visit(BinaryOperationExpressionNode* node);
+    void visit(PrintStatementNode* node);
+    void visit(ReturnStatementNode* node);
+    void visit(IfStatementNode* node);
+    void visit(WhileStatementNode* node);
+    void visit(ForStatementNode* node);
+    void visit(FunctionCallNode* node);
+    void visit(MemberAccessNode* node);
+    void visit(UnaryOpExpressionNode* node);
+    void visit(ArrayAccessNode* node);
+    void visit(StructDefinitionNode* node); // New visitor for struct definitions
+
+    // Expression visitors (return the type of the expression)
+    std::unique_ptr<TypeNode> visitExpression(ASTNode* expr);
+    std::unique_ptr<TypeNode> visitIntegerLiteralExpression(IntegerLiteralExpressionNode* node);
+    std::unique_ptr<TypeNode> visitStringLiteralExpression(StringLiteralExpressionNode* node);
+    std::unique_ptr<TypeNode> visitBooleanLiteralExpression(BooleanLiteralExpressionNode* node);
+    std::unique_ptr<TypeNode> visitCharacterLiteralExpression(CharacterLiteralExpressionNode* node);
+};
+
+#endif // SEMANTIC_ANALYZER_HPP
+
+
+--- File: include/symbol_table.hpp ---
+#ifndef SYMBOL_TABLE_HPP
+#define SYMBOL_TABLE_HPP
+
+#include <string>
+#include <vector>
+#include <map>
+#include <memory>
+#include <iostream> // For std::cerr and std::endl
+#include <ostream>  // For std::endl
+#include "ast.hpp" // For TypeNode and other AST types
+
+// Forward declaration for StructDefinitionNode if needed, though ast.hpp should include it
+
+// Represents information about a single symbol (variable, function, struct member)
+struct Symbol {
+    enum class SymbolType {
+        VARIABLE,
+        FUNCTION,
+        STRUCT_DEFINITION,
+        STRUCT_MEMBER // For members within a struct definition
+    };
+
+    SymbolType type;
+    std::string name;
+    std::unique_ptr<TypeNode> dataType; // The type of the symbol (e.g., int, string, Point)
+    std::unique_ptr<StructDefinitionNode> structDef; // For struct definitions
+    int offset; // For variables: offset from base pointer; for struct members: offset within struct
+    int size;   // Size in bytes (for variables or struct members)
+
+    // Constructor for variables/members
+    Symbol(SymbolType type, std::string name, std::unique_ptr<TypeNode> dataType, int offset = 0, int size = 0)
+        : type(type), name(std::move(name)), dataType(std::move(dataType)), structDef(nullptr), offset(offset), size(size) {}
+
+    // Constructor for functions
+    Symbol(SymbolType type, std::string name, std::unique_ptr<TypeNode> dataType, std::vector<std::unique_ptr<TypeNode>> paramTypes)
+        : type(type), name(std::move(name)), dataType(std::move(dataType)), structDef(nullptr), parameterTypes(std::move(paramTypes)), offset(0), size(0) {}
+
+    // Constructor for struct definitions
+    Symbol(SymbolType type, std::string name, std::unique_ptr<StructDefinitionNode> structDef)
+        : type(type), name(std::move(name)), dataType(nullptr), structDef(std::move(structDef)), offset(0), size(structDef->size) {}
+
+    std::vector<std::unique_ptr<TypeNode>> parameterTypes; // For functions: types of parameters
+};
+
+// Represents a single scope in the symbol table (e.g., global, function body)
+class Scope {
+public:
+    std::map<std::string, Symbol> symbols;
+    int currentOffset; // For local variables, tracks the current stack offset
+
+    Scope() : currentOffset(0) {}
+
+    void addSymbol(Symbol symbol) {
+        symbols.emplace(symbol.name, std::move(symbol));
+    }
+
+    Symbol* lookup(const std::string& name) {
+        auto it = symbols.find(name);
+        if (it != symbols.end()) {
+            return &it->second;
+        }
+        return nullptr;
+    }
+};
+
+// Main Symbol Table class
+class SymbolTable {
+public:
+    std::vector<std::unique_ptr<Scope>> scopes; // Stack of scopes
+    std::map<std::string, StructDefinitionNode*> struct_definitions;
+
+    SymbolTable() {
+        enterScope(); // Start with a global scope
+    }
+
+    void enterScope() {
+        scopes.push_back(std::make_unique<Scope>());
+        std::cerr << "Debug: Entered new scope. Total scopes: " << scopes.size() << std::endl;
+    }
+
+    void exitScope() {
+        if (!scopes.empty()) {
+            scopes.pop_back();
+            std::cerr << "Debug: Exited scope. Total scopes: " << scopes.size() << std::endl;
+        }
+    }
+
+    Symbol* addSymbol(Symbol symbol) {
+        if (!scopes.empty()) {
+            std::cerr << "Debug: Adding symbol '" << symbol.name << "' to scope " << scopes.size() << ". Offset: " << symbol.offset << std::endl;
+            auto result = scopes.back()->symbols.emplace(symbol.name, std::move(symbol));
+            return &(result.first->second);
+        } else {
+            // Handle error: no active scope
+            std::cerr << "Error: Attempted to add symbol '" << symbol.name << "' with no active scope." << std::endl;
+            return nullptr;
+        }
+    }
+
+    Symbol* lookup(const std::string& name) {
+        // Search from innermost to outermost scope
+        for (auto it = scopes.rbegin(); it != scopes.rend(); ++it) {
+            if (Symbol* symbol = (*it)->lookup(name)) {
+                return symbol;
+            }
+        }
+        return nullptr; // Not found
+    }
+
+    bool isStructDefined(const std::string& name) {
+        return struct_definitions.count(name) > 0;
+    }
+
+    void addStructDefinition(const std::string& name, StructDefinitionNode* node) {
+        struct_definitions[name] = node;
+    }
+
+    std::map<std::string, StructDefinitionNode*> getStructDefinitions() {
+        return struct_definitions;
+    }
+};
+
+#endif // SYMBOL_TABLE_HPP
+
+
