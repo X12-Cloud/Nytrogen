@@ -1,6 +1,9 @@
+include "printer.nyt";
+
 int main() {
-    print "Hello, World!";
-    int x = 42;
+	printer();
+    // print "Hello, World!";
+    int x = 10;
     print "x is: ", x;
     return 0;
 }

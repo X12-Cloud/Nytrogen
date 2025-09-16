@@ -1,0 +1,3 @@
+int printer() {
+	print("Hello, World");
+} // parameters in functions are fragile but fixes coming soon!!!
