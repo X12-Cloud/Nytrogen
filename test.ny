@@ -1,9 +1,7 @@
-include "printer.nyt";
+int printer(string x) {
+	print x;
+}
 
 int main() {
-	printer();
-    // print "Hello, World!";
-    int x = 10;
-    print "x is: ", x;
-    return 0;
+    printer("hello wrld");
 }

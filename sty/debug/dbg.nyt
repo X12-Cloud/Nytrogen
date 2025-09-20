@@ -1,0 +1,3 @@
+int dbg(string x) {
+	print(x);
+}
