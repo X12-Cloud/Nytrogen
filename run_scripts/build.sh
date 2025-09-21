@@ -8,6 +8,6 @@ cd "$SCRIPT_DIR/.."
 
 echo "--- Performing an incremental build of Nytrogen ---"
 
-cmake --build build
+cmake --build bootstrap/build
 
 echo "--- Incremental build complete ---"

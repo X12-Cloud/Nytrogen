@@ -2,7 +2,7 @@
 
 echo "Enter the file name without the estension"
 read input
-./build/Nytro "$input.nyt"
+./bootstrap/build/Nytro "$input.nyt"
 
 echo ""
 echo "--- Assembling out.asm ---"

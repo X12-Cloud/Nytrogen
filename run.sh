@@ -61,7 +61,7 @@ fi
 
 # Run compiler
 echo "--- Running Nytrogen Compiler ---"
-"$SCRIPT_DIR/build/Nytro" "$preprocessed_file" "$OUT_DIR"
+"$SCRIPT_DIR/bootstrap/build/Nytro" "$preprocessed_file" "$OUT_DIR"
 
 echo ""
 echo "--- Assembling out.asm ---"

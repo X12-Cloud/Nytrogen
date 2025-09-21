@@ -10,11 +10,11 @@ echo "--- Performing a clean build of Nytrogen ---"
 
 
 echo "Removing existing 'build' directory..."
-rm -rf build
+rm -rf bootstrap/build
 
 
 echo "Configuring and building Nytrogen compiler..."
-cmake -B build
-cmake --build build
+cmake -S bootstrap -B bootstrap/build
+cmake --build bootstrap/build
 
 echo "--- Clean build complete ---"
