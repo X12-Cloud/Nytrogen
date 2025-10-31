@@ -282,7 +282,7 @@ void SemanticAnalyzer::visit(BinaryOperationExpressionNode* node) {
 
 void SemanticAnalyzer::visit(PrintStatementNode* node) {
     for (const auto& expr : node->expressions) {
-        visitExpression(expr.get());
+        expr->resolved_type = visitExpression(expr.get());
     }
 }
 

@@ -271,10 +271,25 @@ void CodeGenerator::visit(PrintStatementNode* node) {
         visit(expr.get());
         out << "    mov rsi, rax" << std::endl;
 
-        // FOR NOW: Use node_type to choose format — ignore resolved_type
-        if (expr->node_type == ASTNode::NodeType::STRING_LITERAL_EXPRESSION) {
-            out << "    lea rdi, [rel _print_str_format]" << std::endl;
+        if (expr->resolved_type) {
+            if (expr->resolved_type->category == TypeNode::TypeCategory::PRIMITIVE) {
+                auto prim_type = static_cast<PrimitiveTypeNode*>(expr->resolved_type.get());
+                if (prim_type->primitive_type == Token::KEYWORD_STRING) {
+                    out << "    lea rdi, [rel _print_str_format]" << std::endl;
+                } else if (prim_type->primitive_type == Token::KEYWORD_INT) {
+                    out << "    lea rdi, [rel _print_int_format]" << std::endl;
+                } else if (prim_type->primitive_type == Token::KEYWORD_CHAR) {
+                    out << "    lea rdi, [rel _print_char_format]" << std::endl;
+                } else {
+                    // Default to int for now
+                    out << "    lea rdi, [rel _print_int_format]" << std::endl;
+                }
+            } else {
+                // Default to int for non-primitives
+                out << "    lea rdi, [rel _print_int_format]" << std::endl;
+            }
         } else {
+            // Fallback for unresolved types
             out << "    lea rdi, [rel _print_int_format]" << std::endl;
         }
 
