@@ -270,7 +270,8 @@ void CodeGenerator::visit(PrintStatementNode* node) {
     for (const auto& expr : node->expressions) {
         visit(expr.get());
         out << "    mov rsi, rax" << std::endl;
-
+	
+	// Working now
         if (expr->resolved_type) {
             if (expr->resolved_type->category == TypeNode::TypeCategory::PRIMITIVE) {
                 auto prim_type = static_cast<PrimitiveTypeNode*>(expr->resolved_type.get());
