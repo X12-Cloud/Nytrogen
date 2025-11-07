@@ -2,14 +2,12 @@
 int sys_write(int fd, string data, int count) {
     int result;
     asm {
-        "mov rax, 1"      // SYS_write = 1
-        "mov rdi, rdi"    // fd (already in rdi)
-        "mov rsi, rsi"    // data (pointer, in rsi)
-        "mov rdx, rdx"    // count (in rdx)
+        "mov rax, 1"
+        "mov rdi, [rbp + 16]"
+        "mov rsi, [rbp + 24]"
+        "mov rdx, [rbp + 32]"
         "syscall"
-        "mov rdi, rax"
-        "lea rax, [rbp - 4]"
-        "mov [rax], edi"
+        "mov [rbp - 4], eax"
     }
     return result;
 }
