@@ -94,6 +94,9 @@ void CodeGenerator::visit(ASTNode* node) {
         case ASTNode::NodeType::CHARACTER_LITERAL_EXPRESSION:
             visit(static_cast<CharacterLiteralExpressionNode*>(node));
             break;
+        case ASTNode::NodeType::ASM_STATEMENT:
+            visit(static_cast<AsmStatementNode*>(node));
+            break;
         default:
             throw std::runtime_error("Code Generation Error: Unknown AST node type.");
     }
@@ -301,7 +304,7 @@ void CodeGenerator::visit(PrintStatementNode* node) {
 
 void CodeGenerator::visit(ReturnStatementNode* node) {
     visit(node->expression.get());
-    out << "    jmp .main_epilogue" << std::endl;
+    out << "    ret" << std::endl;
 }
 
 void CodeGenerator::visit(IfStatementNode* node) {
@@ -449,6 +452,12 @@ void CodeGenerator::visit(BooleanLiteralExpressionNode* node) {
 
 void CodeGenerator::visit(CharacterLiteralExpressionNode* node) {
     out << "    mov rax, " << static_cast<int>(node->value) << std::endl;
+}
+
+void CodeGenerator::visit(AsmStatementNode* node) {
+    for (const auto& line : node->lines) {
+        out << "    " << line << "\n";
+    }
 }
 
 int CodeGenerator::getTypeSize(const TypeNode* type) {

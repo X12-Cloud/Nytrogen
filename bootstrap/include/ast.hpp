@@ -37,6 +37,7 @@ struct ASTNode {
         ARRAY_ACCESS_EXPRESSION = 18,
         STRUCT_DEFINITION = 19,
         MEMBER_ACCESS_EXPRESSION = 20,
+	ASM_STATEMENT = 21,
     };
 
     NodeType node_type;
@@ -334,6 +335,14 @@ struct ProgramNode : public ASTNode {
 
     ProgramNode(int line = -1, int column = -1)
         : ASTNode(NodeType::PROGRAM, line, column) {}
+};
+
+
+// Node for inline assembly blocks
+struct AsmStatementNode : public ASTNode {
+    std::vector<std::string> lines;
+    AsmStatementNode(std::vector<std::string> asm_lines, int line = -1, int column = -1)
+        : ASTNode(NodeType::ASM_STATEMENT, line, column), lines(std::move(asm_lines)) {}
 };
 
 #endif // AST_HPP

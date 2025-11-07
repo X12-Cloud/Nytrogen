@@ -41,6 +41,7 @@ private:
     std::vector<std::unique_ptr<ParameterNode>> parseParameters();
     std::unique_ptr<TypeNode> parseType();
     std::unique_ptr<StructDefinitionNode> parseStructDefinition();
+    std::unique_ptr<AsmStatementNode> parseAsmStatement();
 
     // Expression parsing methods (now hierarchical for precedence)
     std::unique_ptr<ASTNode> parseExpression(); 		// Handles + and - (lowest precedence)

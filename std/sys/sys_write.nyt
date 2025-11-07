@@ -1,0 +1,15 @@
+// sys_write(fd, ptr, count) → bytes written
+int sys_write(int fd, string data, int count) {
+    int result;
+    asm {
+        "mov rax, 1"      // SYS_write = 1
+        "mov rdi, rdi"    // fd (already in rdi)
+        "mov rsi, rsi"    // data (pointer, in rsi)
+        "mov rdx, rdx"    // count (in rdx)
+        "syscall"
+        "mov rdi, rax"
+        "lea rax, [rbp - 4]"
+        "mov [rax], edi"
+    }
+    return result;
+}

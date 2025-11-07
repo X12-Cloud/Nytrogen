@@ -438,6 +438,24 @@ std::unique_ptr<StructDefinitionNode> Parser::parseStructDefinition() {
     return struct_node;
 }
 
+std::unique_ptr<AsmStatementNode> Parser::parseAsmStatement() {
+    const Token& asm_token = peek();
+    expect(Token::KEYWORD_ASM, "Expected 'asm' keyword.");
+    expect(Token::LBRACE, "Expected '{' after 'asm'.");
+
+    std::vector<std::string> asm_lines;
+    while (peek().type != Token::RBRACE && peek().type != Token::END_OF_FILE) {
+        if (peek().type == Token::STRING_LITERAL) {
+            asm_lines.push_back(consume().value);
+        } else {
+            throw std::runtime_error("Parser Error: Only string literals are allowed inside asm blocks. "
+                "Example: asm { \"mov rax, 1\"; \"add rax, rbx\"; }");
+        }
+    }
+    expect(Token::RBRACE, "Expected '}' to close 'asm' block.");
+    return std::make_unique<AsmStatementNode>(std::move(asm_lines), asm_token.line, asm_token.column);
+}
+
 std::unique_ptr<ASTNode> Parser::parseStatement() {
     switch (peek().type) {
         case Token::KEYWORD_RETURN:
@@ -472,6 +490,8 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
             return parseWhileStatement();
         case Token::KEYWORD_FOR:
             return parseForStatement();
+        case Token::KEYWORD_ASM:
+            return parseAsmStatement();
         default:
             throw std::runtime_error("Parser Error: Unexpected token in statement: '" +
                                      peek().value + "' at line " + std::to_string(peek().line) +

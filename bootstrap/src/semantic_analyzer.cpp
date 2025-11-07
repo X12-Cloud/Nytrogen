@@ -190,6 +190,9 @@ void SemanticAnalyzer::visit(ASTNode* node) {
         case ASTNode::NodeType::BOOLEAN_LITERAL_EXPRESSION:
         case ASTNode::NodeType::CHARACTER_LITERAL_EXPRESSION:
             break;
+        case ASTNode::NodeType::ASM_STATEMENT:
+            visit(static_cast<AsmStatementNode*>(node));
+            break;
         default:
             throw std::runtime_error("Semantic Error: Unknown AST node type encountered during analysis.");
     }
@@ -441,6 +444,10 @@ void SemanticAnalyzer::visit(StructDefinitionNode* node) {
 
     // Register in symbol table
     symbolTable.addSymbol(Symbol(Symbol::SymbolType::STRUCT_DEFINITION, node->name, node->clone()));
+}
+
+void SemanticAnalyzer::visit(AsmStatementNode* node) {
+    // No semantic analysis needed for inline assembly
 }
 
 std::unique_ptr<TypeNode> SemanticAnalyzer::visitExpression(ASTNode* expr) {

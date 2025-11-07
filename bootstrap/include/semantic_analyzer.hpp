@@ -40,6 +40,7 @@ private:
     void visit(UnaryOpExpressionNode* node);
     void visit(ArrayAccessNode* node);
     void visit(StructDefinitionNode* node); // New visitor for struct definitions
+    void visit(AsmStatementNode* node);
 
     // Expression visitors (return the type of the expression)
     std::unique_ptr<TypeNode> visitExpression(ASTNode* expr);

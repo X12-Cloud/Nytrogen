@@ -95,6 +95,9 @@ void CodeGenerator::visit(ASTNode* node) {
         case ASTNode::NodeType::CHARACTER_LITERAL_EXPRESSION:
             visit(static_cast<CharacterLiteralExpressionNode*>(node));
             break;
+        case ASTNode::NodeType::ASM_STATEMENT:
+            visit(static_cast<AsmStatementNode*>(node));
+            break;
         default:
             throw std::runtime_error("Code Generation Error: Unknown AST node type.");
     }
@@ -131,7 +134,6 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
         throw std::runtime_error("Code generation error: No active scope in function '" + node->name + "'.");
     }
 
-    // ALLOCATE STACK SPACE BEFORE GENERATING CODE FOR STATEMENTS
     if (local_var_space > 0) {
         out << "    sub rsp, " << local_var_space << std::endl;
     }
@@ -148,9 +150,6 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
     out << "    mov rsp, rbp" << std::endl;
     out << "    pop rbp" << std::endl;
     out << "    ret" << std::endl << std::endl;
-
-    // Exit the function scope — it was left open by semantic analyzer
-    symbolTable.exitScope();
 }
 
 void CodeGenerator::visit(VariableDeclarationNode* node) {
@@ -166,7 +165,7 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
         return;
     } else if (node->initial_value) {
         visit(node->initial_value.get());
-        out << "    push rax" << std::endl;                    // Save the value (e.g., 1)
+        out << "    push rax" << std::endl;                    // Save the value
         out << "    lea rax, [rbp + " << symbol->offset << "]" << std::endl; // rax = address of variable
         out << "    pop rbx" << std::endl;                     // Restore value into rbx
 
@@ -221,7 +220,7 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
 
     switch (node->op_type) {
         case Token::PLUS:
-            out << "    add rax, rcx" << std::endl;  // rax = rcx + rax
+            out << "    add rax, rcx" << std::endl;
             break;
         case Token::MINUS:
             out << "    sub rcx, rax" << std::endl;
@@ -231,10 +230,10 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
             out << "    imul rax, rcx" << std::endl;
             break;
         case Token::SLASH:
-            out << "    mov rbx, rax" << std::endl;   // save right
-            out << "    mov rax, rcx" << std::endl;   // left into rax
-            out << "    cqo" << std::endl;            // sign-extend for idiv
-            out << "    idiv rbx" << std::endl;       // rax = rax / rbx
+            out << "    mov rbx, rax" << std::endl;
+            out << "    mov rax, rcx" << std::endl;
+            out << "    cqo" << std::endl;
+            out << "    idiv rbx" << std::endl;
             break;
         case Token::EQUAL_EQUAL:
             out << "    cmp rcx, rax" << std::endl;
@@ -274,34 +273,32 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
 void CodeGenerator::visit(PrintStatementNode* node) {
     for (const auto& expr : node->expressions) {
         visit(expr.get());
-
-        // Always pass the value in rsi
         out << "    mov rsi, rax" << std::endl;
-
-        // Select format based on resolved type
-        if (expr->resolved_type && expr->resolved_type->category == TypeNode::TypeCategory::PRIMITIVE) {
-            auto prim = static_cast<PrimitiveTypeNode*>(expr->resolved_type.get());
-            switch (prim->primitive_type) {
-                case Token::KEYWORD_BOOL:
-                case Token::KEYWORD_INT:
-                    out << "    lea rdi, [rel _print_int_format]" << std::endl;
-                    break;
-                case Token::KEYWORD_CHAR:
-                    out << "    lea rdi, [rel _print_char_format]" << std::endl;
-                    break;
-                case Token::KEYWORD_STRING:
+	
+	// Working now
+        if (expr->resolved_type) {
+            if (expr->resolved_type->category == TypeNode::TypeCategory::PRIMITIVE) {
+                auto prim_type = static_cast<PrimitiveTypeNode*>(expr->resolved_type.get());
+                if (prim_type->primitive_type == Token::KEYWORD_STRING) {
                     out << "    lea rdi, [rel _print_str_format]" << std::endl;
-                    break;
-                default:
+                } else if (prim_type->primitive_type == Token::KEYWORD_INT) {
                     out << "    lea rdi, [rel _print_int_format]" << std::endl;
-                    break;
+                } else if (prim_type->primitive_type == Token::KEYWORD_CHAR) {
+                    out << "    lea rdi, [rel _print_char_format]" << std::endl;
+                } else {
+                    // Default to int for now
+                    out << "    lea rdi, [rel _print_int_format]" << std::endl;
+                }
+            } else {
+                // Default to int for non-primitives
+                out << "    lea rdi, [rel _print_int_format]" << std::endl;
             }
         } else {
-            // Fallback: treat as int
+            // Fallback for unresolved types
             out << "    lea rdi, [rel _print_int_format]" << std::endl;
         }
 
-        out << "    xor rax, rax" << std::endl;  // No xmm regs used
+        out << "    xor rax, rax" << std::endl;
         out << "    call printf" << std::endl;
     }
 }
@@ -400,13 +397,11 @@ void CodeGenerator::visit(FunctionCallNode* node) {
 }
 
 void CodeGenerator::visit(MemberAccessNode* node) {
-    visit(node->struct_expr.get()); // Get the base address of the struct in rax
-
+    visit(node->struct_expr.get());
     Symbol* member_symbol = node->resolved_symbol;
     if (!member_symbol) {
         throw std::runtime_error("Code generation error: member symbol not resolved for '" + node->member_name + "'.");
     }
-
     out << "    mov rax, [rax + " << member_symbol->offset << "]" << std::endl;
 }
 
@@ -448,6 +443,8 @@ void CodeGenerator::visit(StringLiteralExpressionNode* node) {
     out << label << " db \"" << node->value << "\", 0" << std::endl;
     out << "section .text" << std::endl;
     out << "    lea rax, [rel " << label << "]" << std::endl;
+    // SET resolved_type so print knows it's a string
+    node->resolved_type = std::make_shared<PrimitiveTypeNode>(Token::KEYWORD_STRING);
 }
 
 void CodeGenerator::visit(BooleanLiteralExpressionNode* node) {
@@ -456,6 +453,10 @@ void CodeGenerator::visit(BooleanLiteralExpressionNode* node) {
 
 void CodeGenerator::visit(CharacterLiteralExpressionNode* node) {
     out << "    mov rax, " << static_cast<int>(node->value) << std::endl;
+}
+
+void CodeGenerator::visit(AsmStatementNode* node) {
+    out << node->code << "\n";
 }
 
 int CodeGenerator::getTypeSize(const TypeNode* type) {
@@ -527,6 +528,8 @@ std::string Token::typeToString() const {
 	case KEYWORD_SWITCH: return "KEYWORD_SWITCH";
 	case KEYWORD_CASE: return "KEYWORD_CASE";
 	case KEYWORD_DEFAULT: return "KEYWORD_DEFAULT";
+	case KEYWORD_ASM: return "KEYWORD_ASM";
+
 	case IDENTIFIER: return "IDENTIFIER";
         case EQ: return "EQ";
         case PLUS: return "PLUS";
@@ -660,6 +663,9 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
 	    else if (value == "for") tokens.push_back({Token::KEYWORD_FOR, value, line, startColumn});
 	    else if (value == "struct") tokens.push_back({Token::KEYWORD_STRUCT, value, line, startColumn});
 	    else if (value == "switch") tokens.push_back({Token::KEYWORD_SWITCH, value, line, startColumn});
+	    else if (value == "case") tokens.push_back({Token::KEYWORD_CASE, value, line, startColumn});
+	    else if (value == "default") tokens.push_back({Token::KEYWORD_DEFAULT, value, line, startColumn});
+	    else if (value == "asm") tokens.push_back({Token::KEYWORD_ASM, value, line, startColumn});
 	    else tokens.push_back({Token::IDENTIFIER, value, line, startColumn});
             continue;
         }
@@ -1313,6 +1319,26 @@ std::unique_ptr<StructDefinitionNode> Parser::parseStructDefinition() {
     return struct_node;
 }
 
+std::unique_ptr<AsmStatementNode> Parser::parseAsmStatement() {
+    const Token& asm_token = peek();
+    expect(Token::KEYWORD_ASM, "Expected 'asm' keyword.");
+    expect(Token::LBRACE, "Expected '{' after 'asm'.");
+
+    std::string asm_code;
+    while (peek().type != Token::RBRACE && peek().type != Token::END_OF_FILE) {
+        if (peek().type == Token::STRING_LITERAL || Token::INTEGER_LITERAL || Token::CHARACTER_LITERAL || Token::COMMA) {
+            const Token& current_token = consume();
+            asm_code += current_token.value;
+        } else {
+            throw std::runtime_error("Parser Error: Only string literals are allowed inside asm blocks.");
+        }
+    }
+
+    expect(Token::RBRACE, "Expected '}' to close 'asm' block.");
+
+    return std::make_unique<AsmStatementNode>(asm_code, asm_token.line, asm_token.column);
+}
+
 std::unique_ptr<ASTNode> Parser::parseStatement() {
     switch (peek().type) {
         case Token::KEYWORD_RETURN:
@@ -1347,6 +1373,8 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
             return parseWhileStatement();
         case Token::KEYWORD_FOR:
             return parseForStatement();
+        case Token::KEYWORD_ASM:
+            return parseAsmStatement();
         default:
             throw std::runtime_error("Parser Error: Unexpected token in statement: '" +
                                      peek().value + "' at line " + std::to_string(peek().line) +
@@ -1431,6 +1459,7 @@ std::unique_ptr<ProgramNode> Parser::parse() {
     }
     return program_node;
 }
+
 
 --- File: src/semantic_analyzer.cpp ---
 #include "semantic_analyzer.hpp"
@@ -1625,6 +1654,9 @@ void SemanticAnalyzer::visit(ASTNode* node) {
         case ASTNode::NodeType::BOOLEAN_LITERAL_EXPRESSION:
         case ASTNode::NodeType::CHARACTER_LITERAL_EXPRESSION:
             break;
+        case ASTNode::NodeType::ASM_STATEMENT:
+            visit(static_cast<AsmStatementNode*>(node));
+            break;
         default:
             throw std::runtime_error("Semantic Error: Unknown AST node type encountered during analysis.");
     }
@@ -1717,7 +1749,7 @@ void SemanticAnalyzer::visit(BinaryOperationExpressionNode* node) {
 
 void SemanticAnalyzer::visit(PrintStatementNode* node) {
     for (const auto& expr : node->expressions) {
-        visitExpression(expr.get());
+        expr->resolved_type = visitExpression(expr.get());
     }
 }
 
@@ -1878,6 +1910,10 @@ void SemanticAnalyzer::visit(StructDefinitionNode* node) {
     symbolTable.addSymbol(Symbol(Symbol::SymbolType::STRUCT_DEFINITION, node->name, node->clone()));
 }
 
+void SemanticAnalyzer::visit(AsmStatementNode* node) {
+    // No semantic analysis needed for inline assembly
+}
+
 std::unique_ptr<TypeNode> SemanticAnalyzer::visitExpression(ASTNode* expr) {
     if (!expr) {
         throw std::runtime_error("Semantic Error: Attempted to visit a null expression.");
@@ -2009,6 +2045,7 @@ struct ASTNode {
         ARRAY_ACCESS_EXPRESSION = 18,
         STRUCT_DEFINITION = 19,
         MEMBER_ACCESS_EXPRESSION = 20,
+	ASM_STATEMENT = 21,
     };
 
     NodeType node_type;
@@ -2308,6 +2345,15 @@ struct ProgramNode : public ASTNode {
         : ASTNode(NodeType::PROGRAM, line, column) {}
 };
 
+
+// Node for inline assembly blocks
+struct AsmStatementNode : public ASTNode {
+    std::string code;
+
+    AsmStatementNode(std::string asm_code, int line = -1, int column = -1)
+        : ASTNode(NodeType::ASM_STATEMENT, line, column), code(std::move(asm_code)) {}
+};
+
 #endif // AST_HPP
 
 
@@ -2358,6 +2404,7 @@ private:
     void visit(StringLiteralExpressionNode* node);
     void visit(BooleanLiteralExpressionNode* node);
     void visit(CharacterLiteralExpressionNode* node);
+    void visit(AsmStatementNode* node);
 
     int getTypeSize(const TypeNode* type);
 };
@@ -2389,6 +2436,7 @@ struct Token {
 	KEYWORD_SWITCH,
 	KEYWORD_CASE,
 	KEYWORD_DEFAULT,
+	KEYWORD_ASM,
 
         IDENTIFIER,
         INTEGER_LITERAL,
@@ -2483,6 +2531,7 @@ private:
     std::vector<std::unique_ptr<ParameterNode>> parseParameters();
     std::unique_ptr<TypeNode> parseType();
     std::unique_ptr<StructDefinitionNode> parseStructDefinition();
+    std::unique_ptr<AsmStatementNode> parseAsmStatement();
 
     // Expression parsing methods (now hierarchical for precedence)
     std::unique_ptr<ASTNode> parseExpression(); 		// Handles + and - (lowest precedence)
@@ -2545,6 +2594,7 @@ private:
     void visit(UnaryOpExpressionNode* node);
     void visit(ArrayAccessNode* node);
     void visit(StructDefinitionNode* node); // New visitor for struct definitions
+    void visit(AsmStatementNode* node);
 
     // Expression visitors (return the type of the expression)
     std::unique_ptr<TypeNode> visitExpression(ASTNode* expr);
