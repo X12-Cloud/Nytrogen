@@ -13,25 +13,23 @@ main:
     push rax
     mov rax, 0
     mov rbx, rax
-    mov rax, [rbp + -20]
+    lea rax, [rbp + -20]
     imul rbx, 8
     add rax, rbx
-    mov rax, [rax]
     pop rbx
     mov [rax], rbx
     mov rax, 20
     push rax
     mov rax, 1
     mov rbx, rax
-    mov rax, [rbp + -20]
+    lea rax, [rbp + -20]
     imul rbx, 8
     add rax, rbx
-    mov rax, [rax]
     pop rbx
     mov [rax], rbx
     mov rax, 0
     mov rbx, rax
-    mov rax, [rbp + -20]
+    lea rax, [rbp + -20]
     imul rbx, 8
     add rax, rbx
     mov rax, [rax]
@@ -41,7 +39,7 @@ main:
     call printf
     mov rax, 1
     mov rbx, rax
-    mov rax, [rbp + -20]
+    lea rax, [rbp + -20]
     imul rbx, 8
     add rax, rbx
     mov rax, [rax]

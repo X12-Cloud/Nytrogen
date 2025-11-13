@@ -213,8 +213,14 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
 
 void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
     visit(node->left.get());
+    if (node->left->node_type == ASTNode::NodeType::ARRAY_ACCESS_EXPRESSION) {
+        out << "    mov rax, [rax]" << std::endl;
+    }
     out << "    push rax" << std::endl;
     visit(node->right.get());
+    if (node->right->node_type == ASTNode::NodeType::ARRAY_ACCESS_EXPRESSION) {
+        out << "    mov rax, [rax]" << std::endl;
+    }
     out << "    pop rcx" << std::endl;  // left is in rcx, right in rax
 
     switch (node->op_type) {
@@ -272,6 +278,9 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
 void CodeGenerator::visit(PrintStatementNode* node) {
     for (const auto& expr : node->expressions) {
         visit(expr.get());
+        if (expr->node_type == ASTNode::NodeType::ARRAY_ACCESS_EXPRESSION) {
+            out << "    mov rax, [rax]" << std::endl;
+        }
         out << "    mov rsi, rax" << std::endl;
 	
 	// Working now
@@ -304,7 +313,6 @@ void CodeGenerator::visit(PrintStatementNode* node) {
 
 void CodeGenerator::visit(ReturnStatementNode* node) {
     visit(node->expression.get());
-    out << "    ret" << std::endl;
 }
 
 void CodeGenerator::visit(IfStatementNode* node) {
@@ -422,10 +430,21 @@ void CodeGenerator::visit(UnaryOpExpressionNode* node) {
 void CodeGenerator::visit(ArrayAccessNode* node) {
     visit(node->index_expr.get());
     out << "    mov rbx, rax" << std::endl;
-    visit(node->array_expr.get());
+
+    if (node->array_expr->node_type == ASTNode::NodeType::VARIABLE_REFERENCE) {
+        auto var_ref = static_cast<VariableReferenceNode*>(node->array_expr.get());
+        Symbol* symbol = symbolTable.lookup(var_ref->name);
+        if (symbol) {
+            out << "    lea rax, [rbp + " << symbol->offset << "]" << std::endl;
+        } else {
+            throw std::runtime_error("Code generation error: array '" + var_ref->name + "' not found in symbol table.");
+        }
+    } else {
+        visit(node->array_expr.get());
+    }
+
     out << "    imul rbx, 8" << std::endl;
     out << "    add rax, rbx" << std::endl;
-    out << "    mov rax, [rax]" << std::endl;
 }
 
 void CodeGenerator::visit(StructDefinitionNode* node) {
