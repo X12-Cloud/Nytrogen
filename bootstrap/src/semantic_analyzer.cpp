@@ -35,11 +35,10 @@ int SemanticAnalyzer::getTypeSize(const TypeNode* type) {
         }
         case TypeNode::TypeCategory::STRUCT: {
             const StructTypeNode* struct_type = static_cast<const StructTypeNode*>(type);
-            Symbol* struct_def_symbol = symbolTable.lookup(struct_type->struct_name);
-            if (!struct_def_symbol || !struct_def_symbol->structDef) {
+            if (!symbolTable.isStructDefined(struct_type->struct_name)) {
                 throw std::runtime_error("Semantic Error: Undefined struct '" + struct_type->struct_name + "'.");
             }
-            return struct_def_symbol->structDef->size;
+            return symbolTable.getStructDefinitions()[struct_type->struct_name]->size;
         }
         default:
             throw std::runtime_error("Semantic Error: Unknown type category for size calculation.");
@@ -377,19 +376,17 @@ void SemanticAnalyzer::visit(MemberAccessNode* node) {
     }
 
     const StructTypeNode* struct_type = static_cast<const StructTypeNode*>(base_type.get());
-    Symbol* struct_def_symbol = symbolTable.lookup(struct_type->struct_name);
-
-    if (!struct_def_symbol || !struct_def_symbol->structDef) {
+    if (!symbolTable.isStructDefined(struct_type->struct_name)) {
         throw std::runtime_error("Semantic Error: Undefined struct '" + struct_type->struct_name + "'.");
     }
 
-    const auto& struct_def = struct_def_symbol->structDef;
+    const auto& struct_def = symbolTable.getStructDefinitions()[struct_type->struct_name];
 
     bool member_found = false;
     for (const auto& member : struct_def->members) {
         if (member.name == node->member_name) {
             member_found = true;
-            node->resolved_symbol = symbolTable.lookup(member.name);
+            node->resolved_symbol = new Symbol(Symbol::SymbolType::STRUCT_MEMBER, member.name, member.type->clone(), member.offset, getTypeSize(member.type.get()));
             break;
         }
     }
@@ -443,7 +440,7 @@ void SemanticAnalyzer::visit(StructDefinitionNode* node) {
     node->size = offset;
 
     // Register in symbol table
-    symbolTable.addSymbol(Symbol(Symbol::SymbolType::STRUCT_DEFINITION, node->name, node->clone()));
+    symbolTable.addStructDefinition(node->name, node);
 }
 
 void SemanticAnalyzer::visit(AsmStatementNode* node) {
@@ -486,11 +483,10 @@ std::unique_ptr<TypeNode> SemanticAnalyzer::visitExpression(ASTNode* expr) {
             visit(static_cast<MemberAccessNode*>(expr));
             std::unique_ptr<TypeNode> base_type = visitExpression(static_cast<MemberAccessNode*>(expr)->struct_expr.get());
             const StructTypeNode* struct_type = static_cast<const StructTypeNode*>(base_type.get());
-            Symbol* struct_def_symbol = symbolTable.lookup(struct_type->struct_name);
-            if (!struct_def_symbol || !struct_def_symbol->structDef) {
+            if (!symbolTable.isStructDefined(struct_type->struct_name)) {
                 throw std::runtime_error("Semantic Error: Undefined struct '" + struct_type->struct_name + "'.");
             }
-            const auto& struct_def = struct_def_symbol->structDef;
+            const auto& struct_def = symbolTable.getStructDefinitions()[struct_type->struct_name];
             for (const auto& member : struct_def->members) {
                 if (member.name == static_cast<MemberAccessNode*>(expr)->member_name) {
                     return member.type->clone();

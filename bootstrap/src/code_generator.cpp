@@ -213,12 +213,12 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
 
 void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
     visit(node->left.get());
-    if (node->left->node_type == ASTNode::NodeType::ARRAY_ACCESS_EXPRESSION) {
+    if (node->left->node_type == ASTNode::NodeType::ARRAY_ACCESS_EXPRESSION || node->left->node_type == ASTNode::NodeType::MEMBER_ACCESS_EXPRESSION) {
         out << "    mov rax, [rax]" << std::endl;
     }
     out << "    push rax" << std::endl;
     visit(node->right.get());
-    if (node->right->node_type == ASTNode::NodeType::ARRAY_ACCESS_EXPRESSION) {
+    if (node->right->node_type == ASTNode::NodeType::ARRAY_ACCESS_EXPRESSION || node->right->node_type == ASTNode::NodeType::MEMBER_ACCESS_EXPRESSION) {
         out << "    mov rax, [rax]" << std::endl;
     }
     out << "    pop rcx" << std::endl;  // left is in rcx, right in rax
@@ -278,7 +278,7 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
 void CodeGenerator::visit(PrintStatementNode* node) {
     for (const auto& expr : node->expressions) {
         visit(expr.get());
-        if (expr->node_type == ASTNode::NodeType::ARRAY_ACCESS_EXPRESSION) {
+        if (expr->node_type == ASTNode::NodeType::ARRAY_ACCESS_EXPRESSION || expr->node_type == ASTNode::NodeType::MEMBER_ACCESS_EXPRESSION) {
             out << "    mov rax, [rax]" << std::endl;
         }
         out << "    mov rsi, rax" << std::endl;
@@ -404,12 +404,23 @@ void CodeGenerator::visit(FunctionCallNode* node) {
 }
 
 void CodeGenerator::visit(MemberAccessNode* node) {
-    visit(node->struct_expr.get());
+    if (node->struct_expr->node_type == ASTNode::NodeType::VARIABLE_REFERENCE) {
+        auto var_ref = static_cast<VariableReferenceNode*>(node->struct_expr.get());
+        Symbol* symbol = symbolTable.lookup(var_ref->name);
+        if (symbol) {
+            out << "    lea rax, [rbp + " << symbol->offset << "]" << std::endl;
+        } else {
+            throw std::runtime_error("Code generation error: struct '" + var_ref->name + "' not found in symbol table.");
+        }
+    } else {
+        visit(node->struct_expr.get());
+    }
+
     Symbol* member_symbol = node->resolved_symbol;
     if (!member_symbol) {
         throw std::runtime_error("Code generation error: member symbol not resolved for '" + node->member_name + "'.");
     }
-    out << "    mov rax, [rax + " << member_symbol->offset << "]" << std::endl;
+    out << "    add rax, " << member_symbol->offset << std::endl;
 }
 
 void CodeGenerator::visit(UnaryOpExpressionNode* node) {

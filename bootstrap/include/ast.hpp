@@ -155,8 +155,8 @@ struct StructDefinitionNode : public ASTNode {
     StructDefinitionNode(std::string struct_name, int line = -1, int column = -1)
         : ASTNode(NodeType::STRUCT_DEFINITION, line, column), name(std::move(struct_name)), size(0) {}
 
-    std::unique_ptr<StructDefinitionNode> clone() const {
-        auto new_node = std::make_unique<StructDefinitionNode>(name, line, column);
+    std::shared_ptr<StructDefinitionNode> clone() const {
+        auto new_node = std::make_shared<StructDefinitionNode>(name, line, column);
         new_node->size = size;
         for (const auto& member : members) {
             new_node->members.push_back({member.type->clone(), member.name, member.offset});

@@ -23,7 +23,7 @@ struct Symbol {
     SymbolType type;
     std::string name;
     std::unique_ptr<TypeNode> dataType; // The type of the symbol (e.g., int, string, Point)
-    std::unique_ptr<StructDefinitionNode> structDef; // For struct definitions
+    std::shared_ptr<StructDefinitionNode> structDef; // For struct definitions
     int offset; // For variables: offset from base pointer; for struct members: offset within struct
     int size;   // Size in bytes (for variables or struct members)
 
@@ -36,7 +36,7 @@ struct Symbol {
         : type(type), name(std::move(name)), dataType(std::move(dataType)), structDef(nullptr), parameterTypes(std::move(paramTypes)), offset(0), size(0) {}
 
     // Constructor for struct definitions
-    Symbol(SymbolType type, std::string name, std::unique_ptr<StructDefinitionNode> structDef)
+    Symbol(SymbolType type, std::string name, std::shared_ptr<StructDefinitionNode> structDef)
         : type(type), name(std::move(name)), dataType(nullptr), structDef(std::move(structDef)), offset(0), size(structDef->size) {}
 
     std::vector<std::unique_ptr<TypeNode>> parameterTypes; // For functions: types of parameters
@@ -50,7 +50,7 @@ public:
 
     Scope() : currentOffset(0) {}
 
-    void addSymbol(Symbol symbol) {
+    void addSymbol(Symbol&& symbol) {
         symbols.emplace(symbol.name, std::move(symbol));
     }
 
@@ -85,7 +85,7 @@ public:
         }
     }
 
-    Symbol* addSymbol(Symbol symbol) {
+    Symbol* addSymbol(Symbol&& symbol) {
         if (!scopes.empty()) {
             std::cerr << "Debug: Adding symbol '" << symbol.name << "' to scope " << scopes.size() << ". Offset: " << symbol.offset << std::endl;
             auto result = scopes.back()->symbols.emplace(symbol.name, std::move(symbol));
