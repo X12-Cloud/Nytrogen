@@ -1,0 +1,5 @@
+int main() {
+    print("Hello from syscalls!\n");
+    return 0;
+}
+

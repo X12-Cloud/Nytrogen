@@ -1,0 +1,117 @@
+include "std/fio/fio.nyt";
+include "std/io/printf.nyt";
+
+// Main test function
+int main() {
+    string filename = "test_output.txt";
+    int fd;
+    int result;
+    char byte_buffer[1];
+
+    printf("--- Testing File I/O ---\n", 23);
+
+    // Test 1: Open file for writing, create if not exists, truncate if exists
+    printf("Test 1: Opening file for writing...\n", 36);
+    fd = open_file(filename, 577, 420); // 577 = FileMode.WRITE | FileMode.CREATE | FileMode.TRUNCATE
+    if (fd < 0) {
+        printf("Error: Could not open file for writing.\n", 35);
+        return 1;
+    }
+    printf("File opened for writing.\n", 27);
+
+    // Test 2: Write some bytes
+    printf("Test 2: Writing bytes 'Hello' to file...\n", 41);
+    result = write_byte(fd, 'H');
+    if (result != 1) { printf("Error writing 'H'.\n", 21); return 1; }
+    result = write_byte(fd, 'e');
+    if (result != 1) { printf("Error writing 'e'.\n", 21); return 1; }
+    result = write_byte(fd, 'l');
+    if (result != 1) { printf("Error writing 'l'. Result: %d\n", result); return 1; }
+    result = write_byte(fd, 'l');
+    if (result != 1) { printf("Error writing 'l'. Result: %d\n", result); return 1; }
+    result = write_byte(fd, 'o');
+    if (result != 1) { printf("Error writing 'o'. Result: %d\n", result); return 1; }
+    printf("Bytes written successfully.\n");
+
+    // Test 3: Close the file
+    printf("Test 3: Closing file...\n");
+    result = close_file(fd);
+    if (result < 0) {
+        printf("Error: Could not close file. Result: %d\n", result);
+        return 1;
+    }
+    printf("File closed successfully.\n");
+
+    // Test 4: Open file for reading
+    printf("Test 4: Opening file for reading...\n");
+    fd = open_file(filename, FileMode_READ, 0);
+    if (fd < 0) {
+        printf("Error: Could not open file for reading. FD: %d\n", fd);
+        return 1;
+    }
+    printf("File opened for reading with FD: %d\n", fd);
+
+    // Test 5: Read bytes and verify
+    printf("Test 5: Reading bytes from file...\n");
+    result = read_byte(fd, byte_buffer);
+    if (result != 1) {
+        printf("Error reading 'H'. Result: %d, Char: %c\n", result, byte_buffer[0]);
+        return 1;
+    }
+    if (byte_buffer[0] != 'H') {
+        printf("Error reading 'H'. Result: %d, Char: %c\n", result, byte_buffer[0]);
+        return 1;
+    }
+
+    result = read_byte(fd, byte_buffer);
+    if (result != 1) {
+        printf("Error reading 'e'. Result: %d, Char: %c\n", result, byte_buffer[0]);
+        return 1;
+    }
+    if (byte_buffer[0] != 'e') {
+        printf("Error reading 'e'. Result: %d, Char: %c\n", result, byte_buffer[0]);
+        return 1;
+    }    result = read_byte(fd, byte_buffer);
+    if (result != 1) {
+        printf("Error reading 'l'. Result: %d, Char: %c\\n", result, byte_buffer[0]);
+        return 1;
+    }
+    if (byte_buffer[0] != 'l') {
+        printf("Error reading 'l'. Result: %d, Char: %c\\n", result, byte_buffer[0]);
+        return 1;
+    }
+    result = read_byte(fd, byte_buffer);
+    if (result != 1) {
+        printf("Error reading 'l'. Result: %d, Char: %c\\n", result, byte_buffer[0]);
+        return 1;
+    }
+    if (byte_buffer[0] != 'l') {
+        printf("Error reading 'l'. Result: %d, Char: %c\\n", result, byte_buffer[0]);
+        return 1;
+    }
+    result = read_byte(fd, byte_buffer);
+    if (result != 1) {
+        printf("Error reading 'o'. Result: %d, Char: %c\\n", result, byte_buffer[0]);
+        return 1;
+    }
+    if (byte_buffer[0] != 'o') {
+        printf("Error reading 'o'. Result: %d, Char: %c\\n", result, byte_buffer[0]);
+        return 1;
+    }
+    result = read_byte(fd, byte_buffer); // Try to read past end
+    if (result != 0) { printf("Error: Expected EOF (0 bytes read), got %d\n", result); return 1; }
+    printf("Bytes read and verified successfully.\n");
+
+    // Test 6: Close the file
+    printf("Test 6: Closing file...\n");
+    result = close_file(fd);
+    if (result < 0) {
+        printf("Error: Could not close file. Result: %d\n", result);
+        return 1;
+    }
+    printf("File closed successfully.\n");
+
+    printf("--- All File I/O tests passed! ---\n");
+
+    return 0;
+}

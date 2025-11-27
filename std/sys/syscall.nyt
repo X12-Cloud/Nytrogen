@@ -1,0 +1,90 @@
+int syscall0(int syscall_number) {
+    int ret;
+    asm {
+        "mov rax, [rbp + 16]"
+        "syscall"
+        "mov [rbp - 8], rax"
+    }
+    return ret;
+}
+
+int syscall1(int syscall_number, int arg1) {
+    int ret;
+    asm {
+        "mov rax, [rbp + 16]"
+        "mov rdi, [rbp + 24]"
+        "syscall"
+        "mov [rbp - 8], rax"
+    }
+    return ret;
+}
+
+int syscall2(int syscall_number, int arg1, int arg2) {
+    int ret;
+    asm {
+        "mov rax, [rbp + 16]"
+        "mov rdi, [rbp + 24]"
+        "mov rsi, [rbp + 32]"
+        "syscall"
+        "mov [rbp - 8], rax"
+    }
+    return ret;
+}
+
+int syscall3(int syscall_number, int arg1, int arg2, int arg3) {
+    int ret;
+    asm {
+        "mov rax, [rbp + 16]"
+        "mov rdi, [rbp + 24]"
+        "mov rsi, [rbp + 32]"
+        "mov rdx, [rbp + 40]"
+        "syscall"
+        "mov [rbp - 8], rax"
+    }
+    return ret;
+}
+
+int syscall4(int syscall_number, int arg1, int arg2, int arg3, int arg4) {
+    int ret;
+    asm {
+        "mov rax, [rbp + 16]"
+        "mov rdi, [rbp + 24]"
+        "mov rsi, [rbp + 32]"
+        "mov rdx, [rbp + 40]"
+        "mov r10, [rbp + 48]"
+        "syscall"
+        "mov [rbp - 8], rax"
+    }
+    return ret;
+}
+
+int syscall5(int syscall_number, int arg1, int arg2, int arg3, int arg4, int arg5) {
+    int ret;
+    asm {
+        "mov rax, [rbp + 16]"
+        "mov rdi, [rbp + 24]"
+        "mov rsi, [rbp + 32]"
+        "mov rdx, [rbp + 40]"
+        "mov r10, [rbp + 48]"
+        "mov r8, [rbp + 56]"
+        "syscall"
+        "mov [rbp - 8], rax"
+    }
+    return ret;
+}
+
+int syscall6(int syscall_number, int arg1, int arg2, int arg3, int arg4, int arg5, int arg6) {
+    int ret;
+    asm {
+        "mov rax, [rbp + 16]"
+        "mov rdi, [rbp + 24]"
+        "mov rsi, [rbp + 32]"
+        "mov rdx, [rbp + 40]"
+        "mov r10, [rbp + 48]"
+        "mov r8, [rbp + 56]"
+        "mov r9, [rbp + 64]"
+        "syscall"
+        "mov [rbp - 8], rax"
+    }
+    return ret;
+}
