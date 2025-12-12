@@ -454,6 +454,39 @@ std::unique_ptr<StructDefinitionNode> Parser::parseStructDefinition() {
     return struct_node;
 }
 
+std::unique_ptr<EnumStatementNode> Parser::parseEnumStatement() {
+    const Token& enum_start_token = peek(); // For line/column info of the enum statement
+    expect(Token::KEYWORD_ENUM, "Expected 'enum' keyword.");
+
+    const Token& name_token_val = peek(); // Peek at the potential enum name
+    expect(Token::IDENTIFIER, "Expected enum name."); // Ensure it's an identifier, also consumes it
+
+    expect(Token::LBRACE, "Expected '{' after enum name.");
+
+    std::vector<std::unique_ptr<EnumMemberNode>> members;
+    while (peek().type != Token::RBRACE) {
+        const Token& member_name_token = peek(); // Peek for the member name token
+        expect(Token::IDENTIFIER, "Expected enum member name."); // Consume the identifier (member name)
+
+        std::unique_ptr<ASTNode> value = nullptr;
+        if (peek().type == Token::EQ) {
+            consume(); // consume '='
+            value = parseExpression();
+        }
+
+        members.push_back(std::make_unique<EnumMemberNode>(member_name_token.value, std::move(value)));
+
+        if (peek().type == Token::COMMA) {
+            consume();
+        } else if (peek().type != Token::RBRACE) {
+            throw std::runtime_error("Expected ',' or '}' after enum member.");
+        }
+    }
+    expect(Token::RBRACE, "Expected '}' to close enum declaration.");
+
+    return std::make_unique<EnumStatementNode>(name_token_val.value, std::move(members), enum_start_token.line, enum_start_token.column);
+}
+
 std::unique_ptr<AsmStatementNode> Parser::parseAsmStatement() {
     const Token& asm_token = peek();
     expect(Token::KEYWORD_ASM, "Expected 'asm' keyword.");
@@ -513,6 +546,8 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
             return parseForStatement();
         case Token::KEYWORD_ASM:
             return parseAsmStatement();
+        case Token::KEYWORD_ENUM:
+            return parseEnumStatement();
         default:
             throw std::runtime_error("Parser Error: Unexpected token in statement: '" +
                                      peek().value + "' at line " + std::to_string(peek().line) +
@@ -583,7 +618,7 @@ std::unique_ptr<ProgramNode> Parser::parse() {
     while (peek().type != Token::END_OF_FILE) {
         if (peek(1).type == Token::IDENTIFIER && peek(2).type == Token::LPAREN) {
             program_node->functions.push_back(parseFunctionDefinition());
-        } else if (peek().type == Token::KEYWORD_STRUCT) {
+        } else if (peek().type == Token::KEYWORD_STRUCT) { // This is for struct definition
             auto struct_def = parseStructDefinition();
             if (struct_def) {
                 program_node->structs.push_back(std::move(struct_def));
@@ -591,7 +626,13 @@ std::unique_ptr<ProgramNode> Parser::parse() {
             if (peek().type == Token::SEMICOLON) {
                 consume(); // Consume optional semicolon after struct definition
             }
-        } else {
+        } else if (peek().type == Token::KEYWORD_ENUM) { // This is for enum definition
+            program_node->statements.push_back(parseEnumStatement());
+            if (peek().type == Token::SEMICOLON) {
+                consume(); // Consume optional semicolon after enum definition
+            }
+        }
+        else { // Everything else is a statement
             program_node->statements.push_back(parseStatement());
         }
     }

@@ -100,6 +100,9 @@ void CodeGenerator::visit(ASTNode* node) {
         case ASTNode::NodeType::CONSTANT_DECLARATION:
             visit(static_cast<ConstantDeclarationNode*>(node));
             break;
+        case ASTNode::NodeType::ENUM_STATEMENT:
+            visit(static_cast<EnumStatementNode*>(node));
+            break;
         default:
             throw std::runtime_error("Code Generation Error: Unknown AST node type.");
     }
@@ -156,6 +159,10 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
 
 void CodeGenerator::visit(ConstantDeclarationNode* node) {
     // No code generation needed for constant declarations
+}
+
+void CodeGenerator::visit(EnumStatementNode* node) {
+    // No code generation needed for enum declarations
 }
 
 void CodeGenerator::visit(VariableDeclarationNode* node) {

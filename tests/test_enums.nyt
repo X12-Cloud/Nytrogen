@@ -1,0 +1,14 @@
+enum Color {
+    RED,
+    GREEN,
+    BLUE = 10,
+    YELLOW
+};
+
+int main() {
+    print RED;
+    print GREEN;
+    print BLUE;
+    print YELLOW;
+    return 0;
+}

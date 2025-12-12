@@ -359,4 +359,20 @@ struct ConstantDeclarationNode : public ASTNode {
         : ASTNode(NodeType::CONSTANT_DECLARATION, line, column), name(std::move(name)), type(std::move(type)), initial_value(std::move(initial_val)), resolved_symbol(nullptr) {}
 };
 
+struct EnumMemberNode {
+    std::string name;
+    std::unique_ptr<ASTNode> value; // Can be nullptr for implicit values
+
+    EnumMemberNode(std::string name, std::unique_ptr<ASTNode> value = nullptr)
+        : name(std::move(name)), value(std::move(value)) {}
+};
+
+struct EnumStatementNode : public ASTNode {
+    std::string name;
+    std::vector<std::unique_ptr<EnumMemberNode>> members;
+
+    EnumStatementNode(std::string name, std::vector<std::unique_ptr<EnumMemberNode>> members, int line = -1, int column = -1)
+        : ASTNode(NodeType::ENUM_STATEMENT, line, column), name(std::move(name)), members(std::move(members)) {}
+};
+
 #endif // AST_HPP

@@ -10,6 +10,12 @@
 #include "ast.hpp" // For TypeNode and other AST types
 
 // Forward declaration for StructDefinitionNode if needed, though ast.hpp should include it
+struct EnumStatementNode;
+
+struct EnumInfo {
+    std::string name;
+    std::shared_ptr<EnumStatementNode> node; // The AST node for the enum
+};
 
 // Represents information about a single symbol (variable, function, struct member)
 struct Symbol {
@@ -18,7 +24,9 @@ struct Symbol {
         FUNCTION,
         STRUCT_DEFINITION,
         STRUCT_MEMBER, // For members within a struct definition
-        CONSTANT
+        CONSTANT,
+        ENUM_TYPE,
+        ENUM_MEMBER
     };
 
     SymbolType type;
@@ -28,23 +36,27 @@ struct Symbol {
     int offset; // For variables: offset from base pointer; for struct members: offset within struct
     int size;   // Size in bytes (for variables or struct members)
     std::unique_ptr<ASTNode> value; // For constants
+    std::shared_ptr<EnumInfo> enumInfo; // For enum types
 
     // Constructor for variables/members
     Symbol(SymbolType type, std::string name, std::unique_ptr<TypeNode> dataType, int offset = 0, int size = 0)
-        : type(type), name(std::move(name)), dataType(std::move(dataType)), structDef(nullptr), offset(offset), size(size), value(nullptr) {}
+        : type(type), name(std::move(name)), dataType(std::move(dataType)), structDef(nullptr), offset(offset), size(size), value(nullptr), enumInfo(nullptr) {}
 
     // Constructor for functions
     Symbol(SymbolType type, std::string name, std::unique_ptr<TypeNode> dataType, std::vector<std::unique_ptr<TypeNode>> paramTypes)
-        : type(type), name(std::move(name)), dataType(std::move(dataType)), structDef(nullptr), parameterTypes(std::move(paramTypes)), offset(0), size(0), value(nullptr) {}
+        : type(type), name(std::move(name)), dataType(std::move(dataType)), structDef(nullptr), parameterTypes(std::move(paramTypes)), offset(0), size(0), value(nullptr), enumInfo(nullptr) {}
 
     // Constructor for struct definitions
     Symbol(SymbolType type, std::string name, std::shared_ptr<StructDefinitionNode> structDef)
-        : type(type), name(std::move(name)), dataType(nullptr), structDef(std::move(structDef)), offset(0), size(structDef->size), value(nullptr) {}
+        : type(type), name(std::move(name)), dataType(nullptr), structDef(std::move(structDef)), offset(0), size(structDef->size), value(nullptr), enumInfo(nullptr) {}
 
     // Constructor for constants
     Symbol(SymbolType type, std::string name, std::unique_ptr<TypeNode> dataType, std::unique_ptr<ASTNode> value)
-        : type(type), name(std::move(name)), dataType(std::move(dataType)), structDef(nullptr), offset(0), size(0), value(std::move(value)) {}
+        : type(type), name(std::move(name)), dataType(std::move(dataType)), structDef(nullptr), offset(0), size(0), value(std::move(value)), enumInfo(nullptr) {}
 
+    // Constructor for enum types
+    Symbol(SymbolType type, std::string name, std::shared_ptr<EnumInfo> enumInfo)
+        : type(type), name(std::move(name)), dataType(nullptr), structDef(nullptr), offset(0), size(0), value(nullptr), enumInfo(std::move(enumInfo)) {}
 
     std::vector<std::unique_ptr<TypeNode>> parameterTypes; // For functions: types of parameters
 };

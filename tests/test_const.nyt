@@ -1,6 +1,8 @@
 int main() {
     const int var = 123;
+    const string var2 = "hey";
     print var;
+    print var2;
 
     // The following line should fail to compile
     // var = 456;

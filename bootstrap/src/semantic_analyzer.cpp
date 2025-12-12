@@ -195,6 +195,9 @@ void SemanticAnalyzer::visit(ASTNode* node) {
         case ASTNode::NodeType::CONSTANT_DECLARATION:
             visit(static_cast<ConstantDeclarationNode*>(node));
             break;
+        case ASTNode::NodeType::ENUM_STATEMENT:
+            visit(static_cast<EnumStatementNode*>(node));
+            break;
         default:
             throw std::runtime_error("Semantic Error: Unknown AST node type encountered during analysis.");
     }
@@ -498,6 +501,39 @@ void SemanticAnalyzer::visit(ConstantDeclarationNode* node) {
     Symbol symbol(Symbol::SymbolType::CONSTANT, node->name, node->type->clone(), std::move(value_clone));
     node->resolved_symbol = symbolTable.addSymbol(std::move(symbol));
 }
+
+void SemanticAnalyzer::visit(EnumStatementNode* node) {
+    if (symbolTable.scopes.back()->lookup(node->name)) {
+        throw std::runtime_error("Semantic Error: Redefinition of symbol '" + node->name + "'.");
+    }
+
+    auto enum_info = std::make_shared<EnumInfo>();
+    enum_info->name = node->name;
+
+    symbolTable.addSymbol(Symbol(Symbol::SymbolType::ENUM_TYPE, node->name, enum_info));
+
+    int current_value = 0;
+    for (const auto& member : node->members) {
+        if (symbolTable.scopes.back()->lookup(member->name)) {
+            throw std::runtime_error("Semantic Error: Redefinition of symbol '" + member->name + "'.");
+        }
+
+        if (member->value) {
+            // TODO: for now, we only support integer literals as enum values
+            if (member->value->node_type != ASTNode::NodeType::INTEGER_LITERAL_EXPRESSION) {
+                throw std::runtime_error("Semantic Error: Enum member value must be an integer literal.");
+            }
+            current_value = static_cast<IntegerLiteralExpressionNode*>(member->value.get())->value;
+        }
+
+        auto value_node = std::make_unique<IntegerLiteralExpressionNode>(current_value);
+        auto type_node = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_INT);
+        symbolTable.addSymbol(Symbol(Symbol::SymbolType::CONSTANT, member->name, std::move(type_node), std::move(value_node)));
+
+        current_value++;
+    }
+}
+
 
 std::unique_ptr<TypeNode> SemanticAnalyzer::visitExpression(ASTNode* expr) {
     if (!expr) {
