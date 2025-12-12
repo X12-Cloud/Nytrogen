@@ -1,10 +1,10 @@
 #!/bin/bash
+cd "$(dirname "$0")"
 set -e
 
 echo "--- Performing a clean build of Nytrogen ---"
 
 echo "Removing existing 'build' directory..."
-rm -rf out/*
 rm -rf build
 
 echo "Configuring and building Nytrogen compiler..."

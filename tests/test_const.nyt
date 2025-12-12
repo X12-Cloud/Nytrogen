@@ -1,11 +1,9 @@
 int main() {
-    const int MY_CONST = 10;
-    int a = MY_CONST;
+    const int var = 123;
+    print var;
 
-    print a; // Expected output: 10
-
-    // The following line would cause a semantic error
-    // MY_CONST = 20; 
+    // The following line should fail to compile
+    // var = 456;
 
     return 0;
 }

@@ -34,12 +34,10 @@ int main(int argc, char* argv[]) {
     }
 
     std::string input_filepath = argv[1];
-    std::string output_dir = ".";
+    std::string output_asm_filename = "out.asm";
     if (argc > 2) {
-        output_dir = argv[2];
+        output_asm_filename = argv[2];
     }
-
-    std::string output_asm_filename = output_dir + "/out.asm";
 
 
     std::string ext = input_filepath.substr(input_filepath.find_last_of(".") + 1);

@@ -45,6 +45,7 @@ private:
     void visit(BooleanLiteralExpressionNode* node);
     void visit(CharacterLiteralExpressionNode* node);
     void visit(AsmStatementNode* node);
+    void visit(ConstantDeclarationNode* node);
 
     int getTypeSize(const TypeNode* type);
 };

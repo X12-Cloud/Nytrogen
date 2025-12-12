@@ -192,6 +192,9 @@ void SemanticAnalyzer::visit(ASTNode* node) {
         case ASTNode::NodeType::ASM_STATEMENT:
             visit(static_cast<AsmStatementNode*>(node));
             break;
+        case ASTNode::NodeType::CONSTANT_DECLARATION:
+            visit(static_cast<ConstantDeclarationNode*>(node));
+            break;
         default:
             throw std::runtime_error("Semantic Error: Unknown AST node type encountered during analysis.");
     }
@@ -241,6 +244,14 @@ void SemanticAnalyzer::visit(VariableDeclarationNode* node) {
 }
 
 void SemanticAnalyzer::visit(VariableAssignmentNode* node) {
+    if (node->left->node_type == ASTNode::NodeType::VARIABLE_REFERENCE) {
+        auto* var_ref = static_cast<VariableReferenceNode*>(node->left.get());
+        Symbol* symbol = symbolTable.lookup(var_ref->name);
+        if (symbol && symbol->type == Symbol::SymbolType::CONSTANT) {
+            throw std::runtime_error("Semantic Error: Cannot assign to constant '" + var_ref->name + "'.");
+        }
+    }
+
     std::unique_ptr<TypeNode> left_type = visitExpression(node->left.get());
     std::unique_ptr<TypeNode> right_type = visitExpression(node->right.get());
 
@@ -445,6 +456,47 @@ void SemanticAnalyzer::visit(StructDefinitionNode* node) {
 
 void SemanticAnalyzer::visit(AsmStatementNode* node) {
     // No semantic analysis needed for inline assembly
+}
+
+void SemanticAnalyzer::visit(ConstantDeclarationNode* node) {
+    if (symbolTable.scopes.back()->lookup(node->name)) {
+        throw std::runtime_error("Semantic Error: Redefinition of symbol '" + node->name + "'.");
+    }
+
+    // Ensure the initializer is a literal
+    if (node->initial_value->node_type != ASTNode::NodeType::INTEGER_LITERAL_EXPRESSION &&
+        node->initial_value->node_type != ASTNode::NodeType::STRING_LITERAL_EXPRESSION &&
+        node->initial_value->node_type != ASTNode::NodeType::BOOLEAN_LITERAL_EXPRESSION &&
+        node->initial_value->node_type != ASTNode::NodeType::CHARACTER_LITERAL_EXPRESSION) {
+        throw std::runtime_error("Semantic Error: Constant initializer must be a literal value.");
+    }
+
+    std::unique_ptr<TypeNode> expr_type = visitExpression(node->initial_value.get());
+    if (!areTypesCompatible(expr_type.get(), node->type.get())) {
+        throw std::runtime_error("Semantic Error: Type mismatch in constant initialization for '" + node->name + "'.");
+    }
+
+    std::unique_ptr<ASTNode> value_clone;
+    switch (node->initial_value->node_type) {
+        case ASTNode::NodeType::INTEGER_LITERAL_EXPRESSION:
+            value_clone = std::make_unique<IntegerLiteralExpressionNode>(static_cast<IntegerLiteralExpressionNode*>(node->initial_value.get())->value);
+            break;
+        case ASTNode::NodeType::STRING_LITERAL_EXPRESSION:
+            value_clone = std::make_unique<StringLiteralExpressionNode>(static_cast<StringLiteralExpressionNode*>(node->initial_value.get())->value);
+            break;
+        case ASTNode::NodeType::BOOLEAN_LITERAL_EXPRESSION:
+            value_clone = std::make_unique<BooleanLiteralExpressionNode>(static_cast<BooleanLiteralExpressionNode*>(node->initial_value.get())->value);
+            break;
+        case ASTNode::NodeType::CHARACTER_LITERAL_EXPRESSION:
+            value_clone = std::make_unique<CharacterLiteralExpressionNode>(static_cast<CharacterLiteralExpressionNode*>(node->initial_value.get())->value);
+            break;
+        default:
+            // Should not happen due to the check above
+            break;
+    }
+
+    Symbol symbol(Symbol::SymbolType::CONSTANT, node->name, node->type->clone(), std::move(value_clone));
+    node->resolved_symbol = symbolTable.addSymbol(std::move(symbol));
 }
 
 std::unique_ptr<TypeNode> SemanticAnalyzer::visitExpression(ASTNode* expr) {

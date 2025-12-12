@@ -40,6 +40,7 @@ struct ASTNode {
 	ASM_STATEMENT = 21,
 	CONSTANT_LITERAL_EXPRESSION = 22,
 	ENUM_STATEMENT = 23,
+	CONSTANT_DECLARATION = 24,
     };
 
     NodeType node_type;
@@ -347,11 +348,15 @@ struct AsmStatementNode : public ASTNode {
         : ASTNode(NodeType::ASM_STATEMENT, line, column), lines(std::move(asm_lines)) {}
 };
 
-// Node for constant statements/literals
-struct ConstStatementNode : public ASTnode {
-    std::vector<std::string> type;
-    ConstStatementNode(std::vector<std::string> const_type; int line = -1, int column = -1)
-	: ASTnode(NodeType::CONST_LITERAL, line, column), lines(std::move(asm lines)) {}
-}
+// Node for constant declarations (e.g., const int x = 5;)
+struct ConstantDeclarationNode : public ASTNode {
+    std::string name;
+    std::unique_ptr<TypeNode> type;
+    std::unique_ptr<ASTNode> initial_value;
+    Symbol* resolved_symbol;
+
+    ConstantDeclarationNode(std::string name, std::unique_ptr<TypeNode> type, std::unique_ptr<ASTNode> initial_val, int line = -1, int column = -1)
+        : ASTNode(NodeType::CONSTANT_DECLARATION, line, column), name(std::move(name)), type(std::move(type)), initial_value(std::move(initial_val)), resolved_symbol(nullptr) {}
+};
 
 #endif // AST_HPP

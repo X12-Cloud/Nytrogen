@@ -41,6 +41,7 @@ private:
     void visit(ArrayAccessNode* node);
     void visit(StructDefinitionNode* node); // New visitor for struct definitions
     void visit(AsmStatementNode* node);
+    void visit(ConstantDeclarationNode* node);
 
     // Expression visitors (return the type of the expression)
     std::unique_ptr<TypeNode> visitExpression(ASTNode* expr);

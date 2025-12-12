@@ -17,7 +17,8 @@ struct Symbol {
         VARIABLE,
         FUNCTION,
         STRUCT_DEFINITION,
-        STRUCT_MEMBER // For members within a struct definition
+        STRUCT_MEMBER, // For members within a struct definition
+        CONSTANT
     };
 
     SymbolType type;
@@ -26,18 +27,24 @@ struct Symbol {
     std::shared_ptr<StructDefinitionNode> structDef; // For struct definitions
     int offset; // For variables: offset from base pointer; for struct members: offset within struct
     int size;   // Size in bytes (for variables or struct members)
+    std::unique_ptr<ASTNode> value; // For constants
 
     // Constructor for variables/members
     Symbol(SymbolType type, std::string name, std::unique_ptr<TypeNode> dataType, int offset = 0, int size = 0)
-        : type(type), name(std::move(name)), dataType(std::move(dataType)), structDef(nullptr), offset(offset), size(size) {}
+        : type(type), name(std::move(name)), dataType(std::move(dataType)), structDef(nullptr), offset(offset), size(size), value(nullptr) {}
 
     // Constructor for functions
     Symbol(SymbolType type, std::string name, std::unique_ptr<TypeNode> dataType, std::vector<std::unique_ptr<TypeNode>> paramTypes)
-        : type(type), name(std::move(name)), dataType(std::move(dataType)), structDef(nullptr), parameterTypes(std::move(paramTypes)), offset(0), size(0) {}
+        : type(type), name(std::move(name)), dataType(std::move(dataType)), structDef(nullptr), parameterTypes(std::move(paramTypes)), offset(0), size(0), value(nullptr) {}
 
     // Constructor for struct definitions
     Symbol(SymbolType type, std::string name, std::shared_ptr<StructDefinitionNode> structDef)
-        : type(type), name(std::move(name)), dataType(nullptr), structDef(std::move(structDef)), offset(0), size(structDef->size) {}
+        : type(type), name(std::move(name)), dataType(nullptr), structDef(std::move(structDef)), offset(0), size(structDef->size), value(nullptr) {}
+
+    // Constructor for constants
+    Symbol(SymbolType type, std::string name, std::unique_ptr<TypeNode> dataType, std::unique_ptr<ASTNode> value)
+        : type(type), name(std::move(name)), dataType(std::move(dataType)), structDef(nullptr), offset(0), size(0), value(std::move(value)) {}
+
 
     std::vector<std::unique_ptr<TypeNode>> parameterTypes; // For functions: types of parameters
 };

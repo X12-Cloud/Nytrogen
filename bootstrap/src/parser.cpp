@@ -39,11 +39,20 @@ void Parser::expect(Token::Type expected_type, const std::string& error_msg) {
     }
 }
 
-std::unique_ptr<ConstantStatementNode> Parser::parse::ConstantStatementNode() {
-    const Token& const_token = peek()
-    expect(Token::CONST_LITERAL, "Expected a constant statement.");
-    int value = std:stoi(const_token.value);
-    return std::make_unique<ConstantStatementNode>(value, const_token.line, const_token.column)
+std::unique_ptr<ConstantDeclarationNode> Parser::parseConstantDeclaration() {
+    const Token& const_token = peek();
+    expect(Token::KEYWORD_CONST, "Expected 'const' keyword.");
+
+    auto type = parseType();
+
+    const Token& id_token = peek();
+    expect(Token::IDENTIFIER, "Expected constant name after type.");
+
+    expect(Token::EQ, "Expected '=' after constant name.");
+
+    auto initial_value = parseExpression();
+
+    return std::make_unique<ConstantDeclarationNode>(id_token.value, std::move(type), std::move(initial_value), const_token.line, const_token.column);
 }
 
 std::unique_ptr<IntegerLiteralExpressionNode> Parser::parseIntegerLiteralExpression() {
@@ -465,6 +474,11 @@ std::unique_ptr<AsmStatementNode> Parser::parseAsmStatement() {
 
 std::unique_ptr<ASTNode> Parser::parseStatement() {
     switch (peek().type) {
+        case Token::KEYWORD_CONST: {
+            auto decl_node = parseConstantDeclaration();
+            expect(Token::SEMICOLON, "Expected ';' after constant declaration.");
+            return decl_node;
+        }
         case Token::KEYWORD_RETURN:
             return parseReturnStatement();
         case Token::KEYWORD_INT:

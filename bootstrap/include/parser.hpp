@@ -42,7 +42,7 @@ private:
     std::unique_ptr<TypeNode> parseType();
     std::unique_ptr<StructDefinitionNode> parseStructDefinition();
     std::unique_ptr<AsmStatementNode> parseAsmStatement();
-    std::unique_ptr<ConstantStatementNode> parseConstantStatementNode();
+    std::unique_ptr<ConstantDeclarationNode> parseConstantDeclaration();
 
     // Expression parsing methods (now hierarchical for precedence)
     std::unique_ptr<ASTNode> parseExpression(); 		// Handles + and - (lowest precedence)

@@ -8,27 +8,7 @@ extern printf
 main:
     push rbp
     mov rbp, rsp
-    sub rsp, 8
-    mov rax, 10
-    push rax
-    mov rax, [rbp + -8]
-    mov rax, [rax + 0]
-    pop rbx
-    mov [rax], rbx
-    mov rax, 20
-    push rax
-    mov rax, [rbp + -8]
-    mov rax, [rax + 4]
-    pop rbx
-    mov [rax], rbx
-    mov rax, [rbp + -8]
-    mov rax, [rax + 0]
-    mov rsi, rax
-    lea rdi, [rel _print_int_format]
-    xor rax, rax
-    call printf
-    mov rax, [rbp + -8]
-    mov rax, [rax + 4]
+    mov rax, 123
     mov rsi, rax
     lea rdi, [rel _print_int_format]
     xor rax, rax

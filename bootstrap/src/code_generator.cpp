@@ -97,6 +97,9 @@ void CodeGenerator::visit(ASTNode* node) {
         case ASTNode::NodeType::ASM_STATEMENT:
             visit(static_cast<AsmStatementNode*>(node));
             break;
+        case ASTNode::NodeType::CONSTANT_DECLARATION:
+            visit(static_cast<ConstantDeclarationNode*>(node));
+            break;
         default:
             throw std::runtime_error("Code Generation Error: Unknown AST node type.");
     }
@@ -149,6 +152,10 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
     out << "    mov rsp, rbp" << std::endl;
     out << "    pop rbp" << std::endl;
     out << "    ret" << std::endl << std::endl;
+}
+
+void CodeGenerator::visit(ConstantDeclarationNode* node) {
+    // No code generation needed for constant declarations
 }
 
 void CodeGenerator::visit(VariableDeclarationNode* node) {
@@ -207,7 +214,11 @@ void CodeGenerator::visit(VariableAssignmentNode* node) {
 void CodeGenerator::visit(VariableReferenceNode* node) {
     Symbol* symbol = symbolTable.lookup(node->name);
     if (symbol) {
-        out << "    mov rax, [rbp + " << symbol->offset << "]" << std::endl;
+        if (symbol->type == Symbol::SymbolType::CONSTANT) {
+            visit(symbol->value.get());
+        } else {
+            out << "    mov rax, [rbp + " << symbol->offset << "]" << std::endl;
+        }
     }
 }
 
