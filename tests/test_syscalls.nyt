@@ -1,5 +1,5 @@
-int main() {
-    print("Hello from syscalls!\n");
-    return 0;
-}
+include "../std/sys/syscall.nyt";
 
+int main() {
+	syscall1(60, 50);
+}

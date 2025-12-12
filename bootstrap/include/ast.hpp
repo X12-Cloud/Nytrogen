@@ -38,6 +38,8 @@ struct ASTNode {
         STRUCT_DEFINITION = 19,
         MEMBER_ACCESS_EXPRESSION = 20,
 	ASM_STATEMENT = 21,
+	CONSTANT_LITERAL_EXPRESSION = 22,
+	ENUM_STATEMENT = 23,
     };
 
     NodeType node_type;
@@ -344,5 +346,12 @@ struct AsmStatementNode : public ASTNode {
     AsmStatementNode(std::vector<std::string> asm_lines, int line = -1, int column = -1)
         : ASTNode(NodeType::ASM_STATEMENT, line, column), lines(std::move(asm_lines)) {}
 };
+
+// Node for constant statements/literals
+struct ConstStatementNode : public ASTnode {
+    std::vector<std::string> type;
+    ConstStatementNode(std::vector<std::string> const_type; int line = -1, int column = -1)
+	: ASTnode(NodeType::CONST_LITERAL, line, column), lines(std::move(asm lines)) {}
+}
 
 #endif // AST_HPP

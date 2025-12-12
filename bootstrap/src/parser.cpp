@@ -39,6 +39,13 @@ void Parser::expect(Token::Type expected_type, const std::string& error_msg) {
     }
 }
 
+std::unique_ptr<ConstantStatementNode> Parser::parse::ConstantStatementNode() {
+    const Token& const_token = peek()
+    expect(Token::CONST_LITERAL, "Expected a constant statement.");
+    int value = std:stoi(const_token.value);
+    return std::make_unique<ConstantStatementNode>(value, const_token.line, const_token.column)
+}
+
 std::unique_ptr<IntegerLiteralExpressionNode> Parser::parseIntegerLiteralExpression() {
     const Token& int_token = peek();
     expect(Token::INTEGER_LITERAL, "Expected an integer literal.");
