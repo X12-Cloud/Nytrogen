@@ -1,0 +1,21 @@
+include <fio/fio.nyt>
+include "local_include.nyt"
+
+int main() {
+    print LOCAL_CONSTANT; // From local_include.nyt
+    print get_local_constant(); // From local_include.nyt
+    
+    // Use a function from fio.nyt to ensure it's included
+    string filename = "temp.txt";
+    int fd = open_file(filename, FileMode_READ_WRITE | FileMode_CREATE | FileMode_TRUNCATE, 0644);
+    if (is_error(fd)) {
+        print "Error opening temp.txt";
+        return 1;
+    }
+    print "Opened temp.txt, FD:";
+    print fd;
+    close_file(fd);
+    print "Closed temp.txt";
+
+    return 0;
+}

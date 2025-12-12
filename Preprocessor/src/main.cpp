@@ -29,21 +29,37 @@ void processFile(const std::string& input_filepath, std::ostream& output_stream)
 
     std::string line;
     while (std::getline(input_file, line)) {
-        if (line.find("include \"" ) == 0) {
-            size_t start_quote = line.find('"');
-            size_t end_quote = line.find('"', start_quote + 1);
-            if (start_quote != std::string::npos && end_quote != std::string::npos) {
-                std::string include_path = line.substr(start_quote + 1, end_quote - start_quote - 1);
-                
-                // To handle relative paths correctly, we resolve the path of the included file
-                // relative to the file that is including it.
-                fs::path current_file_path(input_filepath);
-                fs::path included_file_path = current_file_path.parent_path() / include_path;
+        if (line.find("include ") == 0) {
+            std::string include_path;
+            fs::path current_file_path(input_filepath);
+            fs::path included_file_path;
 
-                std::string included_content = readFileContent(included_file_path.string());
-                if (!included_content.empty()) {
-                    output_stream << included_content << std::endl;
-                }
+            size_t start_delim;
+            size_t end_delim;
+
+            if ((start_delim = line.find('<')) != std::string::npos && (end_delim = line.find('>')) != std::string::npos && start_delim == (line.find("include ") + 8)) {
+                // Handle <...> inclusion
+                include_path = line.substr(start_delim + 1, end_delim - start_delim - 1);
+                // Prepend "std/" to the path. Assuming "std" is at the root of the project
+                // The preprocessor currently runs from the project root.
+                // We need to resolve relative to the project root, not the current file's parent path.
+                included_file_path = fs::path("std/") / include_path; // Use fs::path for concatenation
+            } else if ((start_delim = line.find('"')) != std::string::npos && (end_delim = line.find('"', start_delim + 1)) != std::string::npos && start_delim == (line.find("include ") + 8)) {
+                // Handle "..." inclusion
+                include_path = line.substr(start_delim + 1, end_delim - start_delim - 1);
+                // Resolve relative to the file that is including it.
+                included_file_path = current_file_path.parent_path() / include_path;
+            } else {
+                std::cerr << "Preprocessor Error: Invalid include directive: " << line << std::endl;
+                output_stream << line << std::endl; // Output original line to not break compilation
+                continue;
+            }
+            
+            std::string included_content = readFileContent(included_file_path.string());
+            if (!included_content.empty()) {
+                output_stream << included_content << std::endl;
+            } else {
+                std::cerr << "Preprocessor Warning: Could not find included file: " << included_file_path.string() << std::endl;
             }
         } else {
             output_stream << line << std::endl;

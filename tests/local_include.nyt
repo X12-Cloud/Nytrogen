@@ -1,0 +1,5 @@
+// local_include.nyt
+const int LOCAL_CONSTANT = 42;
+int get_local_constant() {
+    return LOCAL_CONSTANT;
+}
