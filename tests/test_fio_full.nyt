@@ -1,0 +1,247 @@
+// Global constants for file modes and seek origins
+const int FileMode_READ_WRITE = 2;
+const int FileMode_CREATE = 64;
+const int FileMode_TRUNCATE = 512;
+
+const int SEEK_SET = 0; // Seek from beginning of file
+
+// Global buffer for read/write operations
+char global_buffer[50]; // Max 50 bytes
+
+// Global character array for the message content
+char MESSAGE_CONTENT[23]; // Declare without initialization
+
+// Function to check if a syscall result indicates an error
+// bool is_error(int result)
+bool is_error(int result) {
+    return result < 0;
+}
+
+// Function to open a file
+// int open_file(string path, int flags, int mode)
+int open_file(string path, int flags, int mode) {
+    int fd;
+    asm {
+        "mov rax, 2"          // syscall number for sys_open
+        "mov rdi, [rbp + 16]" // path
+        "mov rsi, [rbp + 24]" // flags
+        "mov rdx, [rbp + 32]" // mode (permissions)
+        "syscall"
+        "mov [rbp - 4], eax"  // store return value (file descriptor)
+    }
+    return fd;
+}
+
+// Function to close a file
+// int close_file(int fd)
+int close_file(int fd) {
+    int result;
+    asm {
+        "mov rax, 3"          // syscall number for sys_close
+        "mov rdi, [rbp + 16]" // fd
+        "syscall"
+        "mov [rbp - 4], eax"  // store return value
+    }
+    return result;
+}
+
+// Function to read a single byte from a file
+// int read_byte(int fd, char* buffer)
+int read_byte(int fd, char* buffer) {
+    int bytes_read;
+    asm {
+        "mov rax, 0"          // syscall number for sys_read
+        "mov rdi, [rbp + 16]" // fd
+        "mov rsi, [rbp + 24]" // buffer
+        "mov rdx, 1"          // count = 1 byte
+        "syscall"
+        "mov [rbp - 4], eax"  // store return value (bytes read)
+    }
+    return bytes_read;
+}
+
+// Function to write a single byte to a file
+// int write_byte(int fd, char byte_to_write)
+int write_byte(int fd, char byte_to_write) {
+    int bytes_written;
+    char temp_buffer[1]; // Create a temporary buffer for the byte
+    temp_buffer[0] = byte_to_write; // Place the byte in the buffer
+
+    asm {
+        "mov rax, 1"          // syscall number for sys_write
+        "mov rdi, [rbp + 16]" // fd
+        "lea rsi, [rbp - 1]"  // Address of temp_buffer[0] (assuming it's at rbp - 1)
+        "mov rdx, 1"          // count = 1 byte
+        "syscall"
+        "mov [rbp - 4], eax"  // store return value (bytes written)
+    }
+    return bytes_written;
+}
+
+// Function to read a block of data from a file
+// int read_block(int fd, char[] buffer, int count)
+int read_block(int fd, char[] buffer, int count) {
+    int bytes_read;
+    asm {
+        "mov rax, 0"          // syscall number for sys_read
+        "mov rdi, [rbp + 16]" // fd
+        "mov rsi, [rbp + 24]" // buffer (address of first element of array)
+        "mov rdx, [rbp + 32]" // count
+        "syscall"
+        "mov [rbp - 4], eax"  // store return value (bytes read)
+    }
+    return bytes_read;
+}
+
+// Function to write a block of data to a file
+// int write_block(int fd, char[] buffer, int count)
+int write_block(int fd, char[] buffer, int count) {
+    int bytes_written;
+    asm {
+        "mov rax, 1"          // syscall number for sys_write
+        "mov rdi, [rbp + 16]" // fd
+        "mov rsi, [rbp + 24]" // buffer (address of first element of array)
+        "mov rdx, [rbp + 32]" // count
+        "syscall"
+        "mov [rbp - 4], eax"  // store return value (bytes written)
+    }
+    return bytes_written;
+}
+
+// Function to set the file offset
+// int seek_file(int fd, int offset, int whence)
+int seek_file(int fd, int offset, int whence) {
+    int result;
+    asm {
+        "mov rax, 8"          // syscall number for sys_lseek
+        "mov rdi, [rbp + 16]" // fd
+        "mov rsi, [rbp + 24]" // offset
+        "mov rdx, [rbp + 32]" // whence
+        "syscall"
+        "mov [rbp - 4], eax"  // store return value (new offset)
+    }
+    return result;
+}
+
+
+int main() {
+    string filename = "test_file.txt";
+    int fd;
+    int result;
+    int i;
+
+    // Initialize MESSAGE_CONTENT character by character
+    MESSAGE_CONTENT[0] = 'H';
+    MESSAGE_CONTENT[1] = 'e';
+    MESSAGE_CONTENT[2] = 'l';
+    MESSAGE_CONTENT[3] = 'l';
+    MESSAGE_CONTENT[4] = 'o';
+    MESSAGE_CONTENT[5] = ' ';
+    MESSAGE_CONTENT[6] = 'N';
+    MESSAGE_CONTENT[7] = 'y';
+    MESSAGE_CONTENT[8] = 't';
+    MESSAGE_CONTENT[9] = 'r';
+    MESSAGE_CONTENT[10] = 'o';
+    MESSAGE_CONTENT[11] = 'g';
+    MESSAGE_CONTENT[12] = 'e';
+    MESSAGE_CONTENT[13] = 'n';
+    MESSAGE_CONTENT[14] = ' ';
+    MESSAGE_CONTENT[15] = 'F';
+    MESSAGE_CONTENT[16] = 'i';
+    MESSAGE_CONTENT[17] = 'l';
+    MESSAGE_CONTENT[18] = 'e';
+    MESSAGE_CONTENT[19] = ' ';
+    MESSAGE_CONTENT[20] = 'I';
+    MESSAGE_CONTENT[21] = 'O';
+    MESSAGE_CONTENT[22] = '!';
+
+
+    // --- Test 1: Create and write to a file ---
+    print "--- Test 1: Create and write ---";
+    // Open file with READ_WRITE, CREATE, TRUNCATE modes
+    fd = open_file(filename, FileMode_READ_WRITE | FileMode_CREATE | FileMode_TRUNCATE, 0644);
+    if (is_error(fd)) {
+        print "Error opening file for write: ";
+        print fd; // Print the error code
+        return 1;
+    }
+    print "File opened successfully for writing. FD: ";
+    print fd;
+
+    int message_len = 23; // Length of "Hello Nytrogen File IO!"
+
+    // Write message to file
+    result = write_block(fd, MESSAGE_CONTENT, message_len); // Pass array name directly
+
+    if (is_error(result)) {
+        print "Error writing to file: ";
+        print result;
+        close_file(fd);
+        return 1;
+    }
+    print "Wrote ";
+    print result;
+    print " bytes.";
+
+    // --- Test 2: Seek to beginning and read ---
+    print "--- Test 2: Seek and read ---";
+    result = seek_file(fd, 0, SEEK_SET);
+    if (is_error(result)) {
+        print "Error seeking file: ";
+        print result;
+        close_file(fd);
+        return 1;
+    }
+    print "Seeked to offset: ";
+    print result;
+
+    // Read data back into buffer
+    result = read_block(fd, global_buffer, message_len); // Pass array name directly
+    if (is_error(result)) {
+        print "Error reading from file: ";
+        print result;
+        close_file(fd);
+        return 1;
+    }
+    print "Read ";
+    print result;
+    print " bytes.";
+
+    // Print read data (assuming it's a null-terminated string for print)
+    global_buffer[result] = 0; // Null-terminate with integer 0
+    print "Read data: ";
+    print global_buffer;
+
+    // --- Test 3: Close file ---
+    print "--- Test 3: Close file ---";
+    result = close_file(fd);
+    if (is_error(result)) {
+        print "Error closing file: ";
+        print result;
+        return 1;
+    }
+    print "File closed successfully.";
+
+    // --- Test 4: Open a non-existent file (should fail) ---
+    print "--- Test 4: Open non-existent (fail) ---";
+    fd = open_file("non_existent.txt", FileMode_READ_WRITE, 0);
+    if (is_error(fd)) {
+        print "Correctly failed to open non_existent.txt. Error: ";
+        print fd;
+        // Specific error codes not available here as they were part of the stdlib that was reverted.
+        // if (fd == -ENOENT) { // Check for specific error
+        //     print " (ENOENT)";
+        // }
+    } else {
+        print "Error: Opened non_existent.txt unexpectedly. FD: ";
+        print fd;
+        close_file(fd);
+        return 1;
+    }
+
+    // --- Cleanup (requires unlink syscall, not yet wrapped) ---
+    // For now, manual deletion of test_file.txt is required after running this test.
+    print "Test complete. Please manually delete 'test_file.txt'";
+
+    return 0;
+}

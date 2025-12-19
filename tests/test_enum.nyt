@@ -1,12 +1,12 @@
-int main() {
-    enum Color {
+enum Color {
         RED,        // 0
         GREEN = 5,  // 5
         BLUE,       // 6
         YELLOW = 10 // 10
-    };
+};
 
-    const int my_color_red = RED;
+int main() {
+    const int my_color_red = RED; // cannot cuz it aint a value (its a variable)
     const int my_color_green = GREEN;
     const int my_color_blue = BLUE;
     const int my_color_yellow = YELLOW;
