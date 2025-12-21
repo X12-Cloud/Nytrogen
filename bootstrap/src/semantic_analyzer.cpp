@@ -400,7 +400,14 @@ void SemanticAnalyzer::visit(MemberAccessNode* node) {
     for (const auto& member : struct_def->members) {
         if (member.name == node->member_name) {
             member_found = true;
-            node->resolved_symbol = new Symbol(Symbol::SymbolType::STRUCT_MEMBER, member.name, member.type->clone(), member.offset, getTypeSize(member.type.get()));
+
+            // Check visibility
+            if (member.visibility == StructMember::Visibility::PRIVATE) {
+                // A more complex check would be needed for friend classes or member functions
+                throw std::runtime_error("Semantic Error: Cannot access private member '" + node->member_name + "' of struct '" + struct_type->struct_name + "'.");
+            }
+
+            node->resolved_symbol = new Symbol(Symbol::SymbolType::STRUCT_MEMBER, member.name, member.type->clone(), member.offset, getTypeSize(member.type.get()), member.visibility);
             break;
         }
     }

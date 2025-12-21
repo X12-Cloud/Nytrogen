@@ -24,6 +24,8 @@ struct Token {
 	KEYWORD_DEFAULT,
 	KEYWORD_ASM,
 	KEYWORD_ENUM,
+	KEYWORD_PUBLIC,
+	KEYWORD_PRIVATE,
 
         IDENTIFIER,
         INTEGER_LITERAL,
@@ -54,6 +56,7 @@ struct Token {
 	LBRACKET,	// [
 	RBRACKET,	// ]
 	DOT,		// .
+	COLON,          // :
 
         COMMA,          // ,
 

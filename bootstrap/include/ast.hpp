@@ -145,9 +145,15 @@ struct StructTypeNode : public TypeNode {
 };
 
 struct StructMember {
+    enum class Visibility {
+        PUBLIC,
+        PRIVATE
+    };
+
     std::unique_ptr<TypeNode> type;
     std::string name;
     int offset; // Add offset for each member
+    Visibility visibility = Visibility::PUBLIC; // Default to public
 };
 
 struct StructDefinitionNode : public ASTNode {
@@ -162,7 +168,7 @@ struct StructDefinitionNode : public ASTNode {
         auto new_node = std::make_shared<StructDefinitionNode>(name, line, column);
         new_node->size = size;
         for (const auto& member : members) {
-            new_node->members.push_back({member.type->clone(), member.name, member.offset});
+            new_node->members.push_back({member.type->clone(), member.name, member.offset, member.visibility});
         }
         return new_node;
     }

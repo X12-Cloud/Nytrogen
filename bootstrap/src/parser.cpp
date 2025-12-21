@@ -418,8 +418,24 @@ std::unique_ptr<StructDefinitionNode> Parser::parseStructDefinition() {
 
     auto struct_node = std::make_unique<StructDefinitionNode>(struct_name);
     int current_offset = 0;
+    
+    StructMember::Visibility current_visibility = StructMember::Visibility::PUBLIC; // Default to public
 
     while (peek().type != Token::RBRACE && peek().type != Token::END_OF_FILE) {
+        // Check for access specifiers
+        if (peek().type == Token::KEYWORD_PUBLIC) {
+            consume(); // Consume 'public'
+            expect(Token::COLON, "Expected ':' after 'public' specifier.");
+            current_visibility = StructMember::Visibility::PUBLIC;
+            continue; // Continue to the next token
+        }
+        if (peek().type == Token::KEYWORD_PRIVATE) {
+            consume(); // Consume 'private'
+            expect(Token::COLON, "Expected ':' after 'private' specifier.");
+            current_visibility = StructMember::Visibility::PRIVATE;
+            continue; // Continue to the next token
+        }
+
         auto member_type = parseType();
         std::string member_name = consume().value;
         expect(Token::SEMICOLON, "Expected ';' after struct member declaration.");
@@ -445,7 +461,7 @@ std::unique_ptr<StructDefinitionNode> Parser::parseStructDefinition() {
             member_size = 0; 
         }
 
-        struct_node->members.push_back({std::move(member_type), member_name, current_offset});
+        struct_node->members.push_back({std::move(member_type), member_name, current_offset, current_visibility});
         current_offset += member_size;
     }
 

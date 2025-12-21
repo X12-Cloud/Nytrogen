@@ -28,6 +28,8 @@ std::string Token::typeToString() const {
 	case KEYWORD_DEFAULT: return "KEYWORD_DEFAULT";
 	case KEYWORD_ASM: return "KEYWORD_ASM";
 	case KEYWORD_ENUM: return "KEYWORD_ENUM";
+	case KEYWORD_PUBLIC: return "KEYWORD_PUBLIC";
+	case KEYWORD_PRIVATE: return "KEYWORD_PRIVATE";
 
 	case IDENTIFIER: return "IDENTIFIER";
         case EQ: return "EQ";
@@ -51,6 +53,7 @@ std::string Token::typeToString() const {
         case RBRACKET: return "RBRACKET";
 	case COMMA: return "COMMA";
 	case DOT: return "DOT";
+	case COLON: return "COLON";
         case END_OF_FILE: return "END_OF_FILE";
         case UNKNOWN: return "UNKNOWN";
     }
@@ -167,6 +170,8 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
 	    else if (value == "asm") tokens.push_back({Token::KEYWORD_ASM, value, line, startColumn});
 	    else if (value == "enum") tokens.push_back({Token::KEYWORD_ENUM, value, line, startColumn});
 	    else if (value == "const") tokens.push_back({Token::KEYWORD_CONST, value, line, startColumn});
+	    else if (value == "public") tokens.push_back({Token::KEYWORD_PUBLIC, value, line, startColumn});
+	    else if (value == "private") tokens.push_back({Token::KEYWORD_PRIVATE, value, line, startColumn});
 	    else tokens.push_back({Token::IDENTIFIER, value, line, startColumn});
             continue;
         }
@@ -277,6 +282,11 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
 
         if (currentChar == '.') {
             tokens.push_back({Token::DOT, ".", line, column});
+            currentPos++; column++; continue;
+        }
+
+        if (currentChar == ':') {
+            tokens.push_back({Token::COLON, ":", line, column});
             currentPos++; column++; continue;
         }
 
