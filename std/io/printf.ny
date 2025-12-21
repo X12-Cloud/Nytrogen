@@ -1,5 +1,0 @@
-int printf(string str, char type) {
-	if (type == "s") {
-	print(str);
-
-}
