@@ -1,0 +1,82 @@
+// The Nytrogen Standard Library
+
+// --- Struct Definitions ---
+
+struct NYTRO_FILE {
+    public: // Explicitly set to public as default is public
+        int fd;
+        char* buffer;
+        int pos;
+        int size;
+        int flags;
+};
+
+// --- Global Variables ---
+
+const int BUFFER_SIZE = 1024;
+
+NYTRO_FILE __stdout_struct;
+NYTRO_FILE* n_stdout;
+
+// --- Layer 0: System Calls (sys) ---
+
+// sys_write(fd, ptr, count) -> bytes written
+int sys_write(int fd, char* data, int count) {
+    int ret;
+    asm {
+        "mov rax, 1"             // syscall number for write
+        "mov rdi, [rbp + 16]"    // fd (first argument, rbp+16)
+        "mov rsi, [rbp + 24]"    // data (second argument, rbp+24)
+        "mov rdx, [rbp + 32]"    // count (third argument, rbp+32)
+        "syscall"
+        "mov [rbp - 8], rax"     // store return value in 'ret' (local variable at rbp-8)
+    }
+    return ret;
+}
+
+// sys_read(fd, buf, count) -> bytes read
+int sys_read(int fd, char* buf, int count) {
+    int ret;
+    asm {
+        "mov rax, 0"             // syscall number for read
+        "mov rdi, [rbp + 16]"    // fd
+        "mov rsi, [rbp + 24]"    // buf
+        "mov rdx, [rbp + 32]"    // count
+        "syscall"
+        "mov [rbp - 8], rax"
+    }
+    return ret;
+}
+
+// sys_open(pathname, flags, mode) -> file descriptor
+int sys_open(char* pathname, int flags, int mode) {
+    int ret;
+    asm {
+        "mov rax, 2"             // syscall number for open
+        "mov rdi, [rbp + 16]"    // pathname
+        "mov rsi, [rbp + 24]"    // flags
+        "mov rdx, [rbp + 32]"    // mode
+        "syscall"
+        "mov [rbp - 8], rax"
+    }
+    return ret;
+}
+
+// sys_close(fd) -> 0 on success
+int sys_close(int fd) {
+    int ret;
+    asm {
+        "mov rax, 3"             // syscall number for close
+        "mov rdi, [rbp + 16]"    // fd
+        "syscall"
+        "mov [rbp - 8], rax"
+    }
+    return ret;
+}
+
+// --- Layer 1: Unbuffered File I/O (fio) ---
+
+// Writes a block of data to a given file descriptor.
+int fio_write_raw(int fd, char* buf, int count) {
+    return sys_write(fd, buf, count); 
+}

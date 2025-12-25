@@ -17,6 +17,13 @@ sudo apt-get update
 sudo apt-get install build-essential cmake git
 ```
 
+And on an arch based distribution (Nytrogen was fully made on arch btw), you can run:
+
+```bash
+sudo pacman -Syyu # or -Syy
+sudo pacman -S base-devel gcc cmake git
+```
+
 ## Building the Compiler
 
 The Nytrogen compiler can be built using CMake or the provided helper scripts.
@@ -30,6 +37,9 @@ The easiest way to build the compiler is to use the `build.sh` script located in
 ```
 
 This script will create a `build` directory, run CMake to configure the project, and then compile the source code. The final executable will be placed in the `build` directory.
+
+`Note` You can use run.sh to build or clean build the compiler by passing the arguments
+-clean or -build (both would be the same for the first build)
 
 ### Manual Build with CMake
 
