@@ -1,4 +1,4 @@
-include "../std/sys/syscall.nyt";
+include <sys/syscall.nyt>;
 
 int main() {
 	syscall1(60, 50);

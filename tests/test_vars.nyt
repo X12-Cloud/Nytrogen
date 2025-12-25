@@ -5,7 +5,9 @@ int main() {
     print(result);
 
     bool x;
-    x = true;
+    x = false; // 0
+    print(x);
+    x = true; // 1
     print(x);
 
     return 0;

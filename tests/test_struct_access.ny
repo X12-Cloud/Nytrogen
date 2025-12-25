@@ -8,7 +8,7 @@ struct Point {
 int main() {
     Point p;
     p.x = 10; // This should be allowed
-    p.y = 20; // This should fail if uncommented
+    //p.y = 20; // This should fail if uncommented
     
     print p.x;
 

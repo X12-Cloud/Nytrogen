@@ -5,9 +5,10 @@ struct Point {
 
 int main() {
     Point p;
-    p.x = 10;
-    p.y = 20;
+    p.x = 15;
+    p.y = 30;
     print p.x;
     print p.y;
+    print p.y + p.x;
     return 0;
 }

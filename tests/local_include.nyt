@@ -1,5 +1,7 @@
 // local_include.nyt
 const int LOCAL_CONSTANT = 42;
 int get_local_constant() {
+    //const int LOCAL_CONSTANT = 42;
     return LOCAL_CONSTANT;
 }
+// NO MAIN FUNTION DEFINED this will be included <-----

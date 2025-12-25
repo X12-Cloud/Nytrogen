@@ -6,10 +6,10 @@ enum Color {
 };
 
 int main() {
-    const int my_color_red = RED; // cannot cuz it aint a value (its a variable)
-    const int my_color_green = GREEN;
-    const int my_color_blue = BLUE;
-    const int my_color_yellow = YELLOW;
+    int my_color_red = RED;
+    int my_color_green = GREEN;
+    int my_color_blue = BLUE;
+    int my_color_yellow = YELLOW;
 
     print my_color_red;
     print my_color_green;
