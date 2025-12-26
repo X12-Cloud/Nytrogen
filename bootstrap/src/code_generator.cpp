@@ -123,6 +123,11 @@ void CodeGenerator::visit(ProgramNode* node) {
 }
 
 void CodeGenerator::visit(FunctionDefinitionNode* node) {
+    if (node->is_extern) {
+        out << "extern " << node->name << std::endl;
+        return; // No further code generation for extern functions
+    }
+
     out << node->name << ":" << std::endl;
     out << "    push rbp" << std::endl;
     out << "    mov rbp, rsp" << std::endl;

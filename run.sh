@@ -7,6 +7,7 @@ SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 disable_preprocessor=false
 clean_build=false
 build=false
+object_file_only=false
 input_file=""
 
 # Parse command-line arguments
@@ -15,6 +16,7 @@ while [[ "$#" -gt 0 ]]; do
         -dp|--disable-preprocessor) disable_preprocessor=true ;;
         -clean|--clean-build) clean_build=true ;;
         -build|--build) build=true ;;
+        -obj|--object-file) object_file_only=true ;;
         *) input_file="$1" ;;
     esac
     shift
@@ -65,11 +67,17 @@ echo "--- Running Nytrogen Compiler ---"
 
 echo ""
 echo "--- Assembling out.asm ---"
-nasm -f elf64 "$OUT_DIR/out.asm" -o "$OUT_DIR/out.o"
+output_obj_file="$OUT_DIR/$(basename "${input_file%.nyt}.o")"
+nasm -f elf64 "$OUT_DIR/out.asm" -o "$output_obj_file"
+
+if [ "$object_file_only" = true ]; then
+    echo "--- Object file generated: $output_obj_file ---"
+    exit 0
+fi
 
 echo ""
 echo "--- Linking ---"
-ld -o "$OUT_DIR/out" "$OUT_DIR/out.o" -lc --dynamic-linker /usr/lib64/ld-linux-x86-64.so.2
+ld -o "$OUT_DIR/out" "$output_obj_file" -lc --dynamic-linker /usr/lib64/ld-linux-x86-64.so.2
 
 echo ""
 echo "--- Running output program ---"

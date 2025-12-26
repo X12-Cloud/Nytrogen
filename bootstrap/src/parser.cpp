@@ -595,6 +595,12 @@ std::vector<std::unique_ptr<ParameterNode>> Parser::parseParameters() {
 }
 
 std::unique_ptr<FunctionDefinitionNode> Parser::parseFunctionDefinition() {
+    bool is_extern_func = false;
+    if (peek().type == Token::KEYWORD_EXTERN) {
+        consume(); // Consume 'extern'
+        is_extern_func = true;
+    }
+
     auto return_type = parseType();
 
     const Token& function_name_token = peek();
@@ -604,24 +610,31 @@ std::unique_ptr<FunctionDefinitionNode> Parser::parseFunctionDefinition() {
         std::move(return_type), function_name_token.value,
         function_name_token.line, function_name_token.column
     );
+    func_def_node->is_extern = is_extern_func; // Set the flag
 
-    // Enter a new scope for the function body
+    // Enter a new scope for the function body (even for extern, for parameters)
     symbol_table.enterScope();
 
     func_def_node->parameters = parseParameters();
 
     // Add parameters to the symbol table
     for (const auto& param : func_def_node->parameters) {
-        symbol_table.addSymbol(Symbol(Symbol::SymbolType::VARIABLE, param->name, param->type->clone(), 0, 0)); // Placeholder offset/size
+        // Placeholder offset/size - semantic analyzer will calculate
+        symbol_table.addSymbol(Symbol(Symbol::SymbolType::VARIABLE, param->name, param->type->clone(), 0, 0));
     }
 
-    expect(Token::LBRACE, "Expected '{' to begin function body.");
+    if (is_extern_func) {
+        expect(Token::SEMICOLON, "Expected ';' after extern function declaration.");
+    } else {
+        expect(Token::LBRACE, "Expected '{' to begin function body.");
 
-    while (peek().type != Token::RBRACE && peek().type != Token::END_OF_FILE) {
-        func_def_node->body_statements.push_back(parseStatement());
+        while (peek().type != Token::RBRACE && peek().type != Token::END_OF_FILE) {
+            func_def_node->body_statements.push_back(parseStatement());
+        }
+
+        expect(Token::RBRACE, "Expected '}' to end function body.");
     }
 
-    expect(Token::RBRACE, "Expected '}' to end function body.");
 
     // Exit the scope for the function body
     symbol_table.exitScope();
@@ -632,7 +645,7 @@ std::unique_ptr<FunctionDefinitionNode> Parser::parseFunctionDefinition() {
 std::unique_ptr<ProgramNode> Parser::parse() {
     auto program_node = std::make_unique<ProgramNode>();
     while (peek().type != Token::END_OF_FILE) {
-        if (peek(1).type == Token::IDENTIFIER && peek(2).type == Token::LPAREN) {
+        if (peek().type == Token::KEYWORD_EXTERN || (peek(1).type == Token::IDENTIFIER && peek(2).type == Token::LPAREN)) {
             program_node->functions.push_back(parseFunctionDefinition());
         } else if (peek().type == Token::KEYWORD_STRUCT) { // This is for struct definition
             auto struct_def = parseStructDefinition();

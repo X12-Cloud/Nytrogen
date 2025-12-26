@@ -226,9 +226,11 @@ void SemanticAnalyzer::visit(FunctionDefinitionNode* node) {
     }
     symbolTable.scopes.back()->currentOffset = register_param_offset;
 
-    // Analyze body statements — variables declared here
-    for (const auto& stmt : node->body_statements) {
-        visit(stmt.get());
+    // Only analyze body statements if it's not an extern function
+    if (!node->is_extern) {
+        for (const auto& stmt : node->body_statements) {
+            visit(stmt.get());
+        }
     }
 
     // DO NOT exit scope here — code generator needs it!

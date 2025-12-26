@@ -256,7 +256,8 @@ struct FunctionDefinitionNode : public ASTNode {
     FunctionDefinitionNode(std::unique_ptr<TypeNode> ret_type, const std::string& func_name, int line = -1, int column = -1)
         : ASTNode(NodeType::FUNCTION_DEFINITION, line, column),
           return_type(std::move(ret_type)),
-	            name(func_name) {}
+	            name(func_name), is_extern(false) {}
+    bool is_extern;
 };
 
 // Node for function calls
