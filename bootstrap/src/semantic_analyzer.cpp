@@ -208,13 +208,23 @@ void SemanticAnalyzer::visit(ProgramNode* node) {
 
 void SemanticAnalyzer::visit(FunctionDefinitionNode* node) {
     symbolTable.enterScope();
-    int param_offset = 16;
-    for (const auto& param : node->parameters) {
+
+    const std::vector<std::string> arg_registers = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+    int param_offset = 16; // Stack arguments start at rbp + 16
+    int register_param_offset = 0;
+
+    for (int i = 0; i < node->parameters.size(); ++i) {
+        const auto& param = node->parameters[i];
         int size = getTypeSize(param->type.get());
-        symbolTable.addSymbol(Symbol(Symbol::SymbolType::VARIABLE, param->name, param->type->clone(), param_offset, size));
-        param_offset += size;
+        if (i < arg_registers.size()) {
+            register_param_offset -= 8; // We push 8 bytes for each register
+            symbolTable.addSymbol(Symbol(Symbol::SymbolType::VARIABLE, param->name, param->type->clone(), register_param_offset, size));
+        } else {
+            symbolTable.addSymbol(Symbol(Symbol::SymbolType::VARIABLE, param->name, param->type->clone(), param_offset, size));
+            param_offset += size;
+        }
     }
-    symbolTable.scopes.back()->currentOffset = 0;
+    symbolTable.scopes.back()->currentOffset = register_param_offset;
 
     // Analyze body statements — variables declared here
     for (const auto& stmt : node->body_statements) {

@@ -127,20 +127,27 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
     out << "    push rbp" << std::endl;
     out << "    mov rbp, rsp" << std::endl;
 
+    // Push register arguments onto the stack
+    const std::vector<std::string> arg_registers = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+    int register_args_size = 0;
+    for (int i = 0; i < node->parameters.size() && i < arg_registers.size(); ++i) {
+        out << "    push " << arg_registers[i] << std::endl;
+        register_args_size += 8;
+    }
+
     // Calculate total local variable space from current scope
     int local_var_space = 0;
     if (!symbolTable.scopes.empty()) {
-        for (const auto& [name, symbol] : symbolTable.scopes.back()->symbols) {
-            if (symbol.type == Symbol::SymbolType::VARIABLE) {
-                local_var_space += symbol.size;
-            }
-        }
+        // The total space for local variables and register parameters pushed to the stack
+        local_var_space = -symbolTable.scopes.back()->currentOffset;
     } else {
         throw std::runtime_error("Code generation error: No active scope in function '" + node->name + "'.");
     }
 
-    if (local_var_space > 0) {
-        out << "    sub rsp, " << local_var_space << std::endl;
+    // We only need to allocate space for local variables, not the register parameters
+    // that we've already pushed.
+    if (local_var_space > register_args_size) {
+        out << "    sub rsp, " << (local_var_space - register_args_size) << std::endl;
     }
 
     // Generate code for all statements
@@ -411,13 +418,25 @@ void CodeGenerator::visit(ForStatementNode* node) {
 }
 
 void CodeGenerator::visit(FunctionCallNode* node) {
-    for (int i = node->arguments.size() - 1; i >= 0; --i) {
+    const std::vector<std::string> arg_registers = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+    int arg_count = node->arguments.size();
+
+    // Handle arguments passed on the stack (arguments > 6)
+    for (int i = arg_count - 1; i >= arg_registers.size(); --i) {
         visit(node->arguments[i].get());
         out << "    push rax" << std::endl;
     }
+
+    // Handle arguments passed in registers
+    for (int i = std::min(arg_count, (int)arg_registers.size()) - 1; i >= 0; --i) {
+        visit(node->arguments[i].get());
+        out << "    mov " << arg_registers[i] << ", rax" << std::endl;
+    }
+
     out << "    call " << node->function_name << std::endl;
-    if (!node->arguments.empty()) {
-        out << "    add rsp, " << node->arguments.size() * 8 << std::endl;
+
+    if (arg_count > arg_registers.size()) {
+        out << "    add rsp, " << (arg_count - arg_registers.size()) * 8 << std::endl;
     }
 }
 
