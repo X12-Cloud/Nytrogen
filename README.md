@@ -21,6 +21,7 @@ The Nytrogen language supports a variety of essential and advanced programming f
 *   **Memory Management:** Manual memory management with pointers, giving you full control over memory allocation and deallocation.
 *   **Inline Assembly:** Seamlessly embed assembly code within your Nytrogen source for low-level optimizations.
 *   **Modules and Imports:** Organize your code into modules and import them as needed.
+*   **Extern:** Makes for very good C (possibly C++) compatibility.
 
 For a complete list of features and syntax, please refer to the [Language Grammar](./docs/grammer.md) document.
 
