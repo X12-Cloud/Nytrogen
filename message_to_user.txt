@@ -1,0 +1,1 @@
+The `nytrogen.jpg` image is no longer present in the `assets` directory due to the `git reset --hard HEAD^` command. Could you please provide the `nytrogen.jpg` image again, or specify its location if it's external? Once the image is available, I can proceed with resizing it and updating the `README.md`.
