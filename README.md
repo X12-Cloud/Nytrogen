@@ -1,3 +1,4 @@
+![Nytrogen Logo](assets/nytrogen.jpg)
 # Nytrogen Compiler
 
 **Nytrogen** is a powerful, statically-typed, compiled programming language designed for performance and reliability. This repository contains the official Nytrogen compiler, which translates Nytrogen source code into highly optimized machine code.
