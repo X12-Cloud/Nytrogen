@@ -178,6 +178,9 @@ for (int i = 0; i < 5; i = i + 1) {
 }
 ```
 
+## Extern 
+Makes for very good C (possibly C++) compatibility.
+
 ## Expressions
 
 Expressions are combinations of values, variables, and operators that are evaluated to produce a new value.
