@@ -4,7 +4,11 @@
 #include <sstream>
 #include <vector>
 #include <filesystem>
-
+#include <chrono>
+#include <ctime>
+#include <iomanip>
+#include <regex>
+#include <map>
 namespace fs = std::filesystem;
 
 // Function to read the entire content of a file into a string
@@ -19,7 +23,7 @@ std::string readFileContent(const std::string& filepath) {
     return buffer.str();
 }
 
-// Function to process a single file, handling includes
+// Function to process a single file, handling includes and macros
 void processFile(const std::string& input_filepath, std::ostream& output_stream) {
     std::ifstream input_file(input_filepath);
     if (!input_file.is_open()) {
@@ -27,41 +31,79 @@ void processFile(const std::string& input_filepath, std::ostream& output_stream)
         return;
     }
 
+    // Prepare macro values
+    std::map<std::string, std::string> macroValues;
+    
+    // Time-based macros
+    auto now = std::chrono::system_clock::now();
+    std::time_t now_time = std::chrono::system_clock::to_time_t(now);
+    std::tm* local_tm = std::localtime(&now_time);
+    
+    std::stringstream ss_datetime, ss_date, ss_time;
+    ss_datetime << std::put_time(local_tm, "\"%Y-%m-%d %H:%M:%S\"");
+    ss_date << std::put_time(local_tm, "\"%Y-%m-%d\"");
+    ss_time << std::put_time(local_tm, "\"%H:%M:%S\"");
+    
+    macroValues["__DATE_TIME__"] = ss_datetime.str();
+    macroValues["__DATE__"] = ss_date.str();
+    macroValues["__TIME__"] = ss_time.str();
+
+    // Static macros
+    macroValues["__VERSION__"] = "\"0.1 beta\"";
+#if defined(__linux__)
+    macroValues["__SYSTEM__"] = "\"Linux\"";
+#elif defined(_WIN32)
+    macroValues["__SYSTEM__"] = "\"Windows\"";
+#elif defined(__APPLE__)
+    macroValues["__SYSTEM__"] = "\"macOS\"";
+#else
+    macroValues["__SYSTEM__"] = "\"Unknown\"";
+#endif
+
     std::string line;
+    std::regex macro_regex("__([A-Z_]+)__");
+
     while (std::getline(input_file, line)) {
-        if (line.find("include ") == 0) {
+        if (line.rfind("include ", 0) == 0) {
             std::string include_path;
             fs::path current_file_path(input_filepath);
             fs::path included_file_path;
 
-            size_t start_delim;
-            size_t end_delim;
+            size_t start_delim = line.find_first_of("\"<");
+            size_t end_delim = line.find_last_of("\">");
 
-            if ((start_delim = line.find('<')) != std::string::npos && (end_delim = line.find('>')) != std::string::npos && start_delim == (line.find("include ") + 8)) {
-                // Handle <...> inclusion
+            if (start_delim != std::string::npos && end_delim != std::string::npos) {
                 include_path = line.substr(start_delim + 1, end_delim - start_delim - 1);
-                // Prepend "std/" to the path. Assuming "std" is at the root of the project
-                // The preprocessor currently runs from the project root.
-                // We need to resolve relative to the project root, not the current file's parent path.
-                included_file_path = fs::path("std/") / include_path; // Use fs::path for concatenation
-            } else if ((start_delim = line.find('"')) != std::string::npos && (end_delim = line.find('"', start_delim + 1)) != std::string::npos && start_delim == (line.find("include ") + 8)) {
-                // Handle "..." inclusion
-                include_path = line.substr(start_delim + 1, end_delim - start_delim - 1);
-                // Resolve relative to the file that is including it.
-                included_file_path = current_file_path.parent_path() / include_path;
+                if (line[start_delim] == '<') {
+                    included_file_path = fs::path("std/") / include_path;
+                } else {
+                    included_file_path = current_file_path.parent_path() / include_path;
+                }
+                
+                std::string included_content = readFileContent(included_file_path.string());
+                if (!included_content.empty()) {
+                    output_stream << included_content << std::endl;
+                } else {
+                    std::cerr << "Preprocessor Warning: Could not find included file: " << included_file_path.string() << std::endl;
+                }
             } else {
                 std::cerr << "Preprocessor Error: Invalid include directive: " << line << std::endl;
-                output_stream << line << std::endl; // Output original line to not break compilation
-                continue;
-            }
-            
-            std::string included_content = readFileContent(included_file_path.string());
-            if (!included_content.empty()) {
-                output_stream << included_content << std::endl;
-            } else {
-                std::cerr << "Preprocessor Warning: Could not find included file: " << included_file_path.string() << std::endl;
+                output_stream << line << std::endl;
             }
         } else {
+            auto matches = std::sregex_iterator(line.begin(), line.end(), macro_regex);
+            std::vector<std::smatch> all_matches;
+            for (auto i = matches; i != std::sregex_iterator(); ++i) {
+                all_matches.push_back(*i);
+            }
+
+            for (auto i = all_matches.rbegin(); i != all_matches.rend(); ++i) {
+                const std::smatch& match = *i;
+                std::string full_macro = match.str(0);
+                if (macroValues.count(full_macro)) {
+                    line.replace(match.position(), match.length(), macroValues[full_macro]);
+                }
+            }
             output_stream << line << std::endl;
         }
     }
