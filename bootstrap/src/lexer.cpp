@@ -173,6 +173,7 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
 	    else if (value == "public") tokens.push_back({Token::KEYWORD_PUBLIC, value, line, startColumn});
 	    else if (value == "private") tokens.push_back({Token::KEYWORD_PRIVATE, value, line, startColumn});
 	    else if (value == "extern") tokens.push_back({Token::KEYWORD_EXTERN, value, line, startColumn});
+	    else if (value == "auto") tokens.push_back({Token::KEYWORD_AUTO, value, line, startColumn});
 	    else tokens.push_back({Token::IDENTIFIER, value, line, startColumn});
             continue;
         }

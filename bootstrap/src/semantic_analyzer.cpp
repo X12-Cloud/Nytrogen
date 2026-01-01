@@ -242,17 +242,32 @@ void SemanticAnalyzer::visit(VariableDeclarationNode* node) {
         throw std::runtime_error("Semantic Error: Redefinition of variable '" + node->name + "'.");
     }
 
-    int var_size = getTypeSize(node->type.get());
+    std::unique_ptr<TypeNode> actual_type;
+
+    if (dynamic_cast<AutoTypeNode*>(node->type.get())) {
+        if (!node->initial_value) {
+            throw std::runtime_error("Semantic Error: 'auto' variable '" + node->name + "' requires an initializer.");
+        }
+        actual_type = visitExpression(node->initial_value.get());
+        if (!actual_type) {
+            throw std::runtime_error("Semantic Error: Could not deduce type for 'auto' variable '" + node->name + "'.");
+        }
+        node->type = actual_type->clone(); // Update the node's type with the deduced type
+    } else {
+        actual_type = node->type->clone();
+    }
+
+    int var_size = getTypeSize(actual_type.get());
 
     symbolTable.scopes.back()->currentOffset -= var_size;
     int offset = symbolTable.scopes.back()->currentOffset;
 
-    Symbol symbol(Symbol::SymbolType::VARIABLE, node->name, node->type->clone(), offset, var_size);
+    Symbol symbol(Symbol::SymbolType::VARIABLE, node->name, actual_type->clone(), offset, var_size);
     node->resolved_symbol = symbolTable.addSymbol(std::move(symbol));
 
     if (node->initial_value) {
         std::unique_ptr<TypeNode> expr_type = visitExpression(node->initial_value.get());
-        if (!areTypesCompatible(expr_type.get(), node->type.get())) {
+        if (!areTypesCompatible(expr_type.get(), actual_type.get())) {
             throw std::runtime_error("Semantic Error: Type mismatch in variable initialization for '" + node->name + "'.");
         }
     }

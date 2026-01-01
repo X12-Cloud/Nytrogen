@@ -144,6 +144,13 @@ struct StructTypeNode : public TypeNode {
     }
 };
 
+struct AutoTypeNode : public TypeNode {
+    AutoTypeNode() : TypeNode(TypeCategory::PRIMITIVE) {} // Treat as primitive for simplicity, actual type deduced later
+    std::unique_ptr<TypeNode> clone() const override {
+        return std::make_unique<AutoTypeNode>();
+    }
+};
+
 struct StructMember {
     enum class Visibility {
         PUBLIC,

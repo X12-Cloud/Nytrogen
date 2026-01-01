@@ -86,6 +86,7 @@ std::unique_ptr<CharacterLiteralExpressionNode> Parser::parseCharacterLiteralExp
     return std::make_unique<CharacterLiteralExpressionNode>(char_token.value[0], char_token.line, char_token.column);
 }
 
+
 std::unique_ptr<ReturnStatementNode> Parser::parseReturnStatement() {
     const Token& return_token = peek();
     expect(Token::KEYWORD_RETURN, "Expected 'return' keyword.");
@@ -232,6 +233,9 @@ std::unique_ptr<TypeNode> Parser::parseType() {
         type_token.type == Token::KEYWORD_CHAR) {
         consume();
         type = std::make_unique<PrimitiveTypeNode>(type_token.type);
+    } else if (type_token.type == Token::KEYWORD_AUTO) {
+        consume();
+        type = std::make_unique<AutoTypeNode>();
     } else if (type_token.type == Token::IDENTIFIER) {
         consume();
         type = std::make_unique<StructTypeNode>(type_token.value);
@@ -533,7 +537,8 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
         case Token::KEYWORD_INT:
         case Token::KEYWORD_STRING:
         case Token::KEYWORD_BOOL:
-        case Token::KEYWORD_CHAR: {
+        case Token::KEYWORD_CHAR:
+        case Token::KEYWORD_AUTO: {
             auto decl_node = parseVariableDeclaration();
             expect(Token::SEMICOLON, "Expected ';' after variable declaration.");
             return decl_node;
