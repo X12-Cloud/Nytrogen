@@ -72,7 +72,3 @@ Contributions are highly encouraged! If you would like to contribute, please fee
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](./LICENSE) file for details.
-
----
-
-> 🔧 **Note:** Replace `OWNER/REPO` in the badge URLs with your actual GitHub repository path (e.g. `segfault/nytrogen`).
