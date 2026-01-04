@@ -1,8 +1,0 @@
-int main() {
-    print "Version: ", __VERSION__;
-    print "System: ", __SYSTEM__;
-    print "Date: ", __DATE__;
-    print "Time: ", __TIME__;
-    print "Date and Time: ", __DATE_TIME__;
-    return 0;
-}

@@ -23,47 +23,52 @@ std::string readFileContent(const std::string& filepath) {
     return buffer.str();
 }
 
-// Function to process a single file, handling includes and macros
-void processFile(const std::string& input_filepath, std::ostream& output_stream) {
+void processFile(const std::string& input_filepath, std::ostream& output_stream, std::map<std::string, std::string>& defined_macros) {
     std::ifstream input_file(input_filepath);
     if (!input_file.is_open()) {
         std::cerr << "Error: Could not open input file: " << input_filepath << std::endl;
         return;
     }
 
-    // Prepare macro values
-    std::map<std::string, std::string> macroValues;
-    
-    // Time-based macros
-    auto now = std::chrono::system_clock::now();
-    std::time_t now_time = std::chrono::system_clock::to_time_t(now);
-    std::tm* local_tm = std::localtime(&now_time);
-    
-    std::stringstream ss_datetime, ss_date, ss_time;
-    ss_datetime << std::put_time(local_tm, "\"%Y-%m-%d %H:%M:%S\"");
-    ss_date << std::put_time(local_tm, "\"%Y-%m-%d\"");
-    ss_time << std::put_time(local_tm, "\"%H:%M:%S\"");
-    
-    macroValues["__DATE_TIME__"] = ss_datetime.str();
-    macroValues["__DATE__"] = ss_date.str();
-    macroValues["__TIME__"] = ss_time.str();
-
-    // Static macros
-    macroValues["__VERSION__"] = "\"0.1 beta\"";
-#if defined(__linux__)
-    macroValues["__SYSTEM__"] = "\"Linux\"";
-#elif defined(_WIN32)
-    macroValues["__SYSTEM__"] = "\"Windows\"";
-#elif defined(__APPLE__)
-    macroValues["__SYSTEM__"] = "\"macOS\"";
-#else
-    macroValues["__SYSTEM__"] = "\"Unknown\"";
-#endif
-
+    bool skipping = false;
     std::string line;
-    std::regex macro_regex("__([A-Z_]+)__");
-
     while (std::getline(input_file, line)) {
+        std::string trimmed_line = line;
+        size_t first = trimmed_line.find_first_not_of(" \t");
+        if (first != std::string::npos) {
+            trimmed_line = trimmed_line.substr(first);
+        }
+
+        if (trimmed_line.rfind("#ifndef", 0) == 0) {
+            std::istringstream iss(trimmed_line);
+            std::string directive, macro_name;
+            iss >> directive >> macro_name;
+            if (defined_macros.count(macro_name)) {
+                skipping = true;
+            }
+            continue;
+        } else if (trimmed_line.rfind("#endif", 0) == 0) {
+            skipping = false;
+            continue;
+        }
+
+        if (skipping) {
+            continue;
+        }
+
+        if (trimmed_line.rfind("#define", 0) == 0) {
+            std::istringstream iss(trimmed_line);
+            std::string directive, macro_name, macro_value;
+            iss >> directive >> macro_name;
+            std::getline(iss, macro_value);
+            size_t val_first = macro_value.find_first_not_of(" \t");
+            if (std::string::npos != val_first) {
+                macro_value = macro_value.substr(val_first);
+            }
+            defined_macros[macro_name] = macro_value;
+            continue;
+        }
+
         if (line.rfind("include ", 0) == 0) {
             std::string include_path;
             fs::path current_file_path(input_filepath);
@@ -79,29 +84,17 @@ void processFile(const std::string& input_filepath, std::ostream& output_stream)
                 } else {
                     included_file_path = current_file_path.parent_path() / include_path;
                 }
-                
-                std::string included_content = readFileContent(included_file_path.string());
-                if (!included_content.empty()) {
-                    output_stream << included_content << std::endl;
-                } else {
-                    std::cerr << "Preprocessor Warning: Could not find included file: " << included_file_path.string() << std::endl;
-                }
+                processFile(included_file_path.string(), output_stream, defined_macros);
             } else {
                 std::cerr << "Preprocessor Error: Invalid include directive: " << line << std::endl;
                 output_stream << line << std::endl;
             }
         } else {
-            auto matches = std::sregex_iterator(line.begin(), line.end(), macro_regex);
-            std::vector<std::smatch> all_matches;
-            for (auto i = matches; i != std::sregex_iterator(); ++i) {
-                all_matches.push_back(*i);
-            }
-
-            for (auto i = all_matches.rbegin(); i != all_matches.rend(); ++i) {
-                const std::smatch& match = *i;
-                std::string full_macro = match.str(0);
-                if (macroValues.count(full_macro)) {
-                    line.replace(match.position(), match.length(), macroValues[full_macro]);
+            // Macro replacement
+            for (const auto& pair : defined_macros) {
+                 if (!pair.first.empty()) {
+                    std::regex re("\\b" + pair.first + "\\b");
+                    line = std::regex_replace(line, re, pair.second);
                 }
             }
             output_stream << line << std::endl;
@@ -116,8 +109,32 @@ int main(int argc, char* argv[]) {
     }
 
     std::string input_filepath = argv[1];
+    std::map<std::string, std::string> defined_macros;
 
-    processFile(input_filepath, std::cout);
+    // Pre-define __BUILT_IN__ macros
+    auto now = std::chrono::system_clock::now();
+    std::time_t now_time = std::chrono::system_clock::to_time_t(now);
+    std::tm* local_tm = std::localtime(&now_time);
+    std::stringstream ss_datetime, ss_date, ss_time;
+    ss_datetime << std::put_time(local_tm, "\"%Y-%m-%d %H:%M:%S\"");
+    ss_date << std::put_time(local_tm, "\"%Y-%m-%d\"");
+    ss_time << std::put_time(local_tm, "\"%H:%M:%S\"");
+    defined_macros["__DATE_TIME__"] = ss_datetime.str();
+    defined_macros["__DATE__"] = ss_date.str();
+    defined_macros["__TIME__"] = ss_time.str();
+    defined_macros["__VERSION__"] = "\"0.1 beta\"";
+#if defined(__linux__)
+    defined_macros["__SYSTEM__"] = "\"Linux\"";
+#elif defined(_WIN32)
+    defined_macros["__SYSTEM__"] = "\"Windows\"";
+#elif defined(__APPLE__)
+    defined_macros["__SYSTEM__"] = "\"macOS\"";
+#else
+    defined_macros["__SYSTEM__"] = "\"Unknown\"";
+#endif
+
+    processFile(input_filepath, std::cout, defined_macros);
 
     return 0;
 }
+
