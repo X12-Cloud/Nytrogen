@@ -18,6 +18,7 @@ void CodeGenerator::generate(const std::string& output_filename) {
     out << "section .text" << std::endl;
     out << "global _start" << std::endl;
     out << "extern printf" << std::endl;
+    out << "extern strcmp" << std::endl;
 
     visit(program_ast.get());
 
@@ -271,14 +272,36 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
             out << "    idiv rbx" << std::endl;
             break;
         case Token::EQUAL_EQUAL:
-            out << "    cmp rcx, rax" << std::endl;
-            out << "    sete al" << std::endl;
-            out << "    movzx rax, al" << std::endl;
+            if (node->left->resolved_type && node->left->resolved_type->category == TypeNode::TypeCategory::PRIMITIVE && static_cast<PrimitiveTypeNode*>(node->left->resolved_type.get())->primitive_type == Token::KEYWORD_STRING) {
+                // String comparison
+                out << "    mov rdi, rcx" << std::endl;
+                out << "    mov rsi, rax" << std::endl;
+                out << "    call strcmp" << std::endl;
+                out << "    test rax, rax" << std::endl;
+                out << "    sete al" << std::endl;
+                out << "    movzx rax, al" << std::endl;
+            } else {
+                // Integer/pointer comparison
+                out << "    cmp rcx, rax" << std::endl;
+                out << "    sete al" << std::endl;
+                out << "    movzx rax, al" << std::endl;
+            }
             break;
         case Token::BANG_EQUAL:
-            out << "    cmp rcx, rax" << std::endl;
-            out << "    setne al" << std::endl;
-            out << "    movzx rax, al" << std::endl;
+            if (node->left->resolved_type && node->left->resolved_type->category == TypeNode::TypeCategory::PRIMITIVE && static_cast<PrimitiveTypeNode*>(node->left->resolved_type.get())->primitive_type == Token::KEYWORD_STRING) {
+                // String comparison
+                out << "    mov rdi, rcx" << std::endl;
+                out << "    mov rsi, rax" << std::endl;
+                out << "    call strcmp" << std::endl;
+                out << "    test rax, rax" << std::endl;
+                out << "    setne al" << std::endl;
+                out << "    movzx rax, al" << std::endl;
+            } else {
+                // Integer/pointer comparison
+                out << "    cmp rcx, rax" << std::endl;
+                out << "    setne al" << std::endl;
+                out << "    movzx rax, al" << std::endl;
+            }
             break;
         case Token::LESS:
             out << "    cmp rcx, rax" << std::endl;
@@ -349,9 +372,9 @@ void CodeGenerator::visit(IfStatementNode* node) {
     static int if_counter = 0;
     int label_id = if_counter++;
 
-    std::string true_label = ".if_true_" + std::to_string(label_id);
-    std::string false_label = ".if_false_" + std::to_string(label_id);
-    std::string end_label = ".if_end_" + std::to_string(label_id);
+    std::string true_label = "_if_true_" + std::to_string(label_id);
+    std::string false_label = "_if_false_" + std::to_string(label_id);
+    std::string end_label = "_if_end_" + std::to_string(label_id);
 
     visit(node->condition.get());
     out << "    cmp rax, 0" << std::endl;
@@ -375,8 +398,8 @@ void CodeGenerator::visit(WhileStatementNode* node) {
     static int while_counter = 0;
     int label_id = while_counter++;
 
-    std::string start_label = ".while_start_" + std::to_string(label_id);
-    std::string end_label = ".while_end_" + std::to_string(label_id);
+    std::string start_label = "_while_start_" + std::to_string(label_id);
+    std::string end_label = "_while_end_" + std::to_string(label_id);
 
     out << start_label << ":" << std::endl;
     visit(node->condition.get());
@@ -395,9 +418,9 @@ void CodeGenerator::visit(ForStatementNode* node) {
     static int for_counter = 0;
     int label_id = for_counter++;
 
-    std::string loop_start_label = ".for_loop_start_" + std::to_string(label_id);
-    std::string loop_condition_label = ".for_loop_condition_" + std::to_string(label_id);
-    std::string loop_end_label = ".for_loop_end_" + std::to_string(label_id);
+    std::string loop_start_label = "_for_loop_start_" + std::to_string(label_id);
+    std::string loop_condition_label = "_for_loop_condition_" + std::to_string(label_id);
+    std::string loop_end_label = "_for_loop_end_" + std::to_string(label_id);
 
     if (node->initializer) {
         visit(node->initializer.get());

@@ -587,6 +587,7 @@ std::unique_ptr<TypeNode> SemanticAnalyzer::visitExpression(ASTNode* expr) {
             visit(static_cast<VariableReferenceNode*>(expr));
             Symbol* sym = symbolTable.lookup(static_cast<VariableReferenceNode*>(expr)->name);
             if (!sym) throw std::runtime_error("Semantic Error: Variable '" + static_cast<VariableReferenceNode*>(expr)->name + "' not found.");
+            expr->resolved_type = sym->dataType->clone();
             return sym->dataType->clone();
         }
         case ASTNode::NodeType::BINARY_OPERATION_EXPRESSION: {
@@ -643,17 +644,21 @@ std::unique_ptr<TypeNode> SemanticAnalyzer::visitExpression(ASTNode* expr) {
 }
 
 std::unique_ptr<TypeNode> SemanticAnalyzer::visitIntegerLiteralExpression(IntegerLiteralExpressionNode* node) {
-    return std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_INT);
+    node->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_INT);
+    return node->resolved_type->clone();
 }
 
 std::unique_ptr<TypeNode> SemanticAnalyzer::visitStringLiteralExpression(StringLiteralExpressionNode* node) {
-    return std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_STRING);
+    node->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_STRING);
+    return node->resolved_type->clone();
 }
 
 std::unique_ptr<TypeNode> SemanticAnalyzer::visitBooleanLiteralExpression(BooleanLiteralExpressionNode* node) {
-    return std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_BOOL);
+    node->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_BOOL);
+    return node->resolved_type->clone();
 }
 
 std::unique_ptr<TypeNode> SemanticAnalyzer::visitCharacterLiteralExpression(CharacterLiteralExpressionNode* node) {
-    return std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_CHAR);
+    node->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_CHAR);
+    return node->resolved_type->clone();
 }
