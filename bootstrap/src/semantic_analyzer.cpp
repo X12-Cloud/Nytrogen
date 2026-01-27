@@ -184,6 +184,8 @@ void SemanticAnalyzer::visit(ASTNode* node) {
         case ASTNode::NodeType::STRUCT_DEFINITION:
             visit(static_cast<StructDefinitionNode*>(node));
             break;
+	case ASTNode::NodeType::NAMESPACE_DEFINITION:
+	                visit(static_cast<NamespaceDefinitionNode*>(node));	    break;
         case ASTNode::NodeType::INTEGER_LITERAL_EXPRESSION:
         case ASTNode::NodeType::STRING_LITERAL_EXPRESSION:
         case ASTNode::NodeType::BOOLEAN_LITERAL_EXPRESSION:
@@ -429,7 +431,7 @@ void SemanticAnalyzer::visit(MemberAccessNode* node) {
             member_found = true;
 
             // Check visibility
-            if (member.visibility == StructMember::Visibility::PRIVATE) {
+            if (member.visibility == Visibility::PRIVATE) {
                 // A more complex check would be needed for friend classes or member functions
                 throw std::runtime_error("Semantic Error: Cannot access private member '" + node->member_name + "' of struct '" + struct_type->struct_name + "'.");
             }
@@ -489,6 +491,19 @@ void SemanticAnalyzer::visit(StructDefinitionNode* node) {
 
     // Register in symbol table
     symbolTable.addStructDefinition(node->name, node);
+}
+
+void SemanticAnalyzer::visit(NamespaceDefinitionNode* node) {
+    symbolTable.enterScope(); 
+
+    for (auto& member : node->members) {
+        // Access the 'type' field inside the NamespaceMember struct
+        if (member.type) {
+            //visit(member.type.get()); 
+        }
+    }
+
+    symbolTable.exitScope(); 
 }
 
 void SemanticAnalyzer::visit(AsmStatementNode* node) {

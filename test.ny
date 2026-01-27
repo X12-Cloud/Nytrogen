@@ -1,9 +1,8 @@
-// include "std/sys/sys_write.nyt";
-include "std/io/printf.nyt";
-
+namespace name {
+	int x;
+}
 int main() {
-	printf(hi, s);
-
-    // string msg = "Hello from raw syscall!\n";
-    // sys_write(1, msg, 24);
+	name::x = 12;
+	print x;
+	return 0;
 }

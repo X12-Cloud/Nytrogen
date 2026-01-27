@@ -41,6 +41,7 @@ struct ASTNode {
 	CONSTANT_LITERAL_EXPRESSION = 22,
 	ENUM_STATEMENT = 23,
 	CONSTANT_DECLARATION = 24,
+	NAMESPACE_DEFINITION = 25,
     };
 
     NodeType node_type;
@@ -103,7 +104,8 @@ struct TypeNode {
         PRIMITIVE,
         POINTER,
         ARRAY,
-        STRUCT
+        STRUCT,
+        NAMESPACE
     };
     TypeCategory category;
     TypeNode(TypeCategory cat) : category(cat) {}
@@ -144,6 +146,14 @@ struct StructTypeNode : public TypeNode {
     }
 };
 
+struct NamespaceTypeNode : public TypeNode {
+    std::string namespace_name;
+    NamespaceTypeNode(std::string name) : TypeNode(TypeCategory::NAMESPACE), namespace_name(std::move(name)) {}
+    std::unique_ptr<TypeNode> clone() const override {
+        return std::make_unique<NamespaceTypeNode>(namespace_name);
+    }
+};
+
 struct AutoTypeNode : public TypeNode {
     AutoTypeNode() : TypeNode(TypeCategory::PRIMITIVE) {} // Treat as primitive for simplicity, actual type deduced later
     std::unique_ptr<TypeNode> clone() const override {
@@ -151,12 +161,19 @@ struct AutoTypeNode : public TypeNode {
     }
 };
 
-struct StructMember {
-    enum class Visibility {
-        PUBLIC,
-        PRIVATE
-    };
 
+enum class Visibility {
+    PUBLIC,
+    PRIVATE
+};
+
+struct NamespaceMember {
+    std::unique_ptr<TypeNode> type;
+    std::string name;
+    Visibility visibility = Visibility::PUBLIC; // Default to public
+};
+
+struct StructMember {
     std::unique_ptr<TypeNode> type;
     std::string name;
     int offset; // Add offset for each member
@@ -176,6 +193,24 @@ struct StructDefinitionNode : public ASTNode {
         new_node->size = size;
         for (const auto& member : members) {
             new_node->members.push_back({member.type->clone(), member.name, member.offset, member.visibility});
+        }
+        return new_node;
+    }
+};
+
+struct NamespaceDefinitionNode : public ASTNode {
+    std::string name;
+    std::vector<NamespaceMember> members;
+    int size; // Add size for the namespace
+
+    NamespaceDefinitionNode(std::string namespace_name, int line = -1, int column = -1)
+        : ASTNode(NodeType::NAMESPACE_DEFINITION, line, column), name(std::move(namespace_name)), size(0) {}
+
+    std::shared_ptr<NamespaceDefinitionNode> clone() const {
+        auto new_node = std::make_shared<NamespaceDefinitionNode>(name, line, column);
+        new_node->size = size;
+        for (const auto& member : members) {
+            new_node->members.push_back({member.type->clone(), member.name, member.visibility});
         }
         return new_node;
     }

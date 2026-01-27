@@ -423,20 +423,20 @@ std::unique_ptr<StructDefinitionNode> Parser::parseStructDefinition() {
     auto struct_node = std::make_unique<StructDefinitionNode>(struct_name);
     int current_offset = 0;
     
-    StructMember::Visibility current_visibility = StructMember::Visibility::PUBLIC; // Default to public
+    Visibility current_visibility = Visibility::PUBLIC; // Default to public
 
     while (peek().type != Token::RBRACE && peek().type != Token::END_OF_FILE) {
         // Check for access specifiers
         if (peek().type == Token::KEYWORD_PUBLIC) {
             consume(); // Consume 'public'
             expect(Token::COLON, "Expected ':' after 'public' specifier.");
-            current_visibility = StructMember::Visibility::PUBLIC;
+            current_visibility = Visibility::PUBLIC;
             continue; // Continue to the next token
         }
         if (peek().type == Token::KEYWORD_PRIVATE) {
             consume(); // Consume 'private'
             expect(Token::COLON, "Expected ':' after 'private' specifier.");
-            current_visibility = StructMember::Visibility::PRIVATE;
+            current_visibility = Visibility::PRIVATE;
             continue; // Continue to the next token
         }
 
@@ -472,6 +472,31 @@ std::unique_ptr<StructDefinitionNode> Parser::parseStructDefinition() {
     struct_node->size = current_offset;
     expect(Token::RBRACE, "Expected '}' after struct definition.");
     return struct_node;
+}
+
+std::unique_ptr<NamespaceDefinitionNode> Parser::parseNamespaceDefinition() {
+    consume(); // Consume 'namespace' keyword
+    std::string namespace_name = consume().value; 
+    expect(Token::LBRACE, "Expected '{' after namespace name.");
+    
+    auto namespace_node = std::make_unique<NamespaceDefinitionNode>(namespace_name);
+    
+    while (peek().type != Token::RBRACE && peek().type != Token::END_OF_FILE) {
+        
+        auto member_type = parseType();
+        std::string member_name = consume().value;
+        expect(Token::SEMICOLON, "Expected ';' after namespace member.");
+
+        NamespaceMember member;
+        member.type = std::move(member_type);
+        member.name = member_name;
+        member.visibility = Visibility::PUBLIC;
+
+        namespace_node->members.push_back(std::move(member));
+    }
+    
+    expect(Token::RBRACE, "Expected '}' after namespace definition.");
+    return namespace_node;
 }
 
 std::unique_ptr<EnumStatementNode> Parser::parseEnumStatement() {
@@ -664,6 +689,11 @@ std::unique_ptr<ProgramNode> Parser::parse() {
             program_node->statements.push_back(parseEnumStatement());
             if (peek().type == Token::SEMICOLON) {
                 consume(); // Consume optional semicolon after enum definition
+            }
+        } else if (peek().type == Token::KEYWORD_NAMESPACE) { // This is for namespace definition
+            program_node->statements.push_back(parseNamespaceDefinition());
+            if (peek().type == Token::SEMICOLON) {
+                consume(); // Consume optional semicolon after namespace definition
             }
         }
         else { // Everything else is a statement

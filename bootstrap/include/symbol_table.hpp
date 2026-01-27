@@ -26,38 +26,44 @@ struct Symbol {
         STRUCT_MEMBER, // For members within a struct definition
         CONSTANT,
         ENUM_TYPE,
-        ENUM_MEMBER
+        ENUM_MEMBER,
+	NAMESPACE_MEMBER
     };
 
     SymbolType type;
     std::string name;
     std::unique_ptr<TypeNode> dataType; // The type of the symbol (e.g., int, string, Point)
     std::shared_ptr<StructDefinitionNode> structDef; // For struct definitions
+	std::shared_ptr<NamespaceDefinitionNode> namespaceDef;
     int offset; // For variables: offset from base pointer; for struct members: offset within struct
     int size;   // Size in bytes (for variables or struct members)
     std::unique_ptr<ASTNode> value; // For constants
     std::shared_ptr<EnumInfo> enumInfo; // For enum types
-    StructMember::Visibility visibility; // For struct members
+    Visibility visibility; // For struct members
 
     // Constructor for variables/members
-    Symbol(SymbolType type, std::string name, std::unique_ptr<TypeNode> dataType, int offset = 0, int size = 0, StructMember::Visibility visibility = StructMember::Visibility::PUBLIC)
-        : type(type), name(std::move(name)), dataType(std::move(dataType)), structDef(nullptr), offset(offset), size(size), value(nullptr), enumInfo(nullptr), visibility(visibility) {}
+    Symbol(SymbolType type, std::string name, std::unique_ptr<TypeNode> dataType, int offset = 0, int size = 0, Visibility visibility = Visibility::PUBLIC)
+        : type(type), name(std::move(name)), dataType(std::move(dataType)), structDef(nullptr), namespaceDef(nullptr), offset(offset), size(size), value(nullptr), enumInfo(nullptr), visibility(visibility) {}
 
     // Constructor for functions
     Symbol(SymbolType type, std::string name, std::unique_ptr<TypeNode> dataType, std::vector<std::unique_ptr<TypeNode>> paramTypes)
-        : type(type), name(std::move(name)), dataType(std::move(dataType)), structDef(nullptr), parameterTypes(std::move(paramTypes)), offset(0), size(0), value(nullptr), enumInfo(nullptr), visibility(StructMember::Visibility::PUBLIC) {}
+        : type(type), name(std::move(name)), dataType(std::move(dataType)), structDef(nullptr), namespaceDef(nullptr), parameterTypes(std::move(paramTypes)), offset(0), size(0), value(nullptr), enumInfo(nullptr), visibility(Visibility::PUBLIC) {}
 
     // Constructor for struct definitions
     Symbol(SymbolType type, std::string name, std::shared_ptr<StructDefinitionNode> structDef)
-        : type(type), name(std::move(name)), dataType(nullptr), structDef(std::move(structDef)), offset(0), size(structDef->size), value(nullptr), enumInfo(nullptr), visibility(StructMember::Visibility::PUBLIC) {}
+        : type(type), name(std::move(name)), dataType(nullptr), structDef(std::move(structDef)), namespaceDef(nullptr), offset(0), size(structDef->size), value(nullptr), enumInfo(nullptr), visibility(Visibility::PUBLIC) {}
+    
+    // Constructor for namespace definitions
+    Symbol(SymbolType type, std::string name, std::shared_ptr<NamespaceDefinitionNode> namespaceDef)
+        : type(type), name(std::move(name)), dataType(nullptr), structDef(nullptr), namespaceDef(std::move(namespaceDef)), offset(0), size(namespaceDef->size), value(nullptr), enumInfo(nullptr), visibility(Visibility::PUBLIC) {}
 
     // Constructor for constants
     Symbol(SymbolType type, std::string name, std::unique_ptr<TypeNode> dataType, std::unique_ptr<ASTNode> value)
-        : type(type), name(std::move(name)), dataType(std::move(dataType)), structDef(nullptr), offset(0), size(0), value(std::move(value)), enumInfo(nullptr), visibility(StructMember::Visibility::PUBLIC) {}
+        : type(type), name(std::move(name)), dataType(std::move(dataType)), structDef(nullptr), namespaceDef(nullptr), offset(0), size(0), value(std::move(value)), enumInfo(nullptr), visibility(Visibility::PUBLIC) {}
 
     // Constructor for enum types
     Symbol(SymbolType type, std::string name, std::shared_ptr<EnumInfo> enumInfo)
-        : type(type), name(std::move(name)), dataType(nullptr), structDef(nullptr), offset(0), size(0), value(nullptr), enumInfo(std::move(enumInfo)), visibility(StructMember::Visibility::PUBLIC) {}
+        : type(type), name(std::move(name)), dataType(nullptr), structDef(nullptr), namespaceDef(nullptr), offset(0), size(0), value(nullptr), enumInfo(std::move(enumInfo)), visibility(Visibility::PUBLIC) {}
 
 
     std::vector<std::unique_ptr<TypeNode>> parameterTypes; // For functions: types of parameters

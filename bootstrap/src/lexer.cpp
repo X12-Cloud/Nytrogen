@@ -30,7 +30,7 @@ std::string Token::typeToString() const {
 	case KEYWORD_ENUM: return "KEYWORD_ENUM";
 	case KEYWORD_PUBLIC: return "KEYWORD_PUBLIC";
 	case KEYWORD_PRIVATE: return "KEYWORD_PRIVATE";
-
+	case KEYWORD_NAMESPACE: return "KEYWORD_NAMESPACE";
 	case IDENTIFIER: return "IDENTIFIER";
         case EQ: return "EQ";
         case PLUS: return "PLUS";
@@ -54,6 +54,7 @@ std::string Token::typeToString() const {
 	case COMMA: return "COMMA";
 	case DOT: return "DOT";
 	case COLON: return "COLON";
+	case DOUBLE_COLON: return "DOUBLE_COLON";
         case END_OF_FILE: return "END_OF_FILE";
         case UNKNOWN: return "UNKNOWN";
     }
@@ -174,6 +175,7 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
 	    else if (value == "private") tokens.push_back({Token::KEYWORD_PRIVATE, value, line, startColumn});
 	    else if (value == "extern") tokens.push_back({Token::KEYWORD_EXTERN, value, line, startColumn});
 	    else if (value == "auto") tokens.push_back({Token::KEYWORD_AUTO, value, line, startColumn});
+	    else if (value == "namespace") tokens.push_back({Token::KEYWORD_NAMESPACE, value, line, startColumn});
 	    else tokens.push_back({Token::IDENTIFIER, value, line, startColumn});
             continue;
         }
@@ -221,6 +223,18 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
                 currentPos += 2; column += 2;
             } else {
                 tokens.push_back({Token::GREATER, ">", line, column});
+                currentPos++; column++;
+            }
+            continue;
+        }
+
+	// : or ::
+	if (currentChar == ':') {
+            if (currentPos + 1 < sourceCode.length() && sourceCode[currentPos + 1] == ':') {
+                tokens.push_back({Token::DOUBLE_COLON, "::", line, column});
+                currentPos += 2; column += 2;
+            } else {
+                tokens.push_back({Token::COLON, ":", line, column});
                 currentPos++; column++;
             }
             continue;
@@ -287,10 +301,10 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
             currentPos++; column++; continue;
         }
 
-        if (currentChar == ':') {
+       /* if (currentChar == ':') {
             tokens.push_back({Token::COLON, ":", line, column});
             currentPos++; column++; continue;
-        }
+        } */
 
         if (currentChar == ',') {
             tokens.push_back({Token::COMMA, ",", line, column});

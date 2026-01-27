@@ -58,6 +58,7 @@ private:
     std::unique_ptr<BooleanLiteralExpressionNode> parseBooleanLiteralExpression();
     std::unique_ptr<CharacterLiteralExpressionNode> parseCharacterLiteralExpression();
     std::unique_ptr<FunctionDefinitionNode> parseFunctionDefinition();
+    std::unique_ptr<NamespaceDefinitionNode> parseNamespaceDefinition();
 };
 
 #endif // NYTROGEN_PARSER_HPP
