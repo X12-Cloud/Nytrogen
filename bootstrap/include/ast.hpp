@@ -230,12 +230,17 @@ struct MemberAccessNode : public ASTNode {
 };
 
 struct ScopeAccessNode : public ASTNode {
-    std::string scope_name;  // "MyNS"
-    std::string member_name; // "x"
-    
-    ScopeAccessNode(std::string scope, std::string member, int l, int c)
-        : ASTNode(NodeType::SCOPE_ACCESS, l, c), 
-          scope_name(std::move(scope)), member_name(std::move(member)) {}
+    std::string scope_name;
+    std::string member_name;
+    std::string mangled_name;
+    Symbol* resolved_symbol;
+
+    ScopeAccessNode(std::string scope, std::string member, int line, int col)
+        : ASTNode(NodeType::SCOPE_ACCESS, line, col), 
+          scope_name(std::move(scope)), member_name(std::move(member)),
+          resolved_symbol(nullptr) { // Initialize it
+              mangled_name = scope_name + "_" + member_name;
+          }
 };
 
 // Node for variable declarations (e.g., int/string x;)

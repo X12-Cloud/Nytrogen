@@ -172,7 +172,7 @@ std::unique_ptr<WhileStatementNode> Parser::parseWhileStatement() {
     );
 }
 
-    std::unique_ptr<ForStatementNode> Parser::parseForStatement() {
+std::unique_ptr<ForStatementNode> Parser::parseForStatement() {
     const Token& for_token = peek();
     expect(Token::KEYWORD_FOR, "Expected 'for' keyword.");
     expect(Token::LPAREN, "Expected '(' after 'for'.");
@@ -301,18 +301,16 @@ std::unique_ptr<ASTNode> Parser::parseFactor() {
     if (current_token.type == Token::INTEGER_LITERAL) {
         node = parseIntegerLiteralExpression();
     } else if (current_token.type == Token::IDENTIFIER) {
-	if (peek().type == Token::DOUBLE_COLON) {
-	    std::string scope_name = current_token.value; // current_token is already the first identifier
-            consume(); // eat ::
-    	    // 1. Peek the next token to get its value
-    	    const auto& member_token = peek(); 
-    	    // 2. Run expect to verify it's actually an identifier
-    	    expect(Token::IDENTIFIER, "Expected name after ::");
-    	    // 3. Use the value we peeked
-    	    std::string member_name = member_token.value;
+        // Fix: Check peek(1) because we haven't consumed current_token yet
+        if (peek(1).type == Token::DOUBLE_COLON) {
+            const auto& scope_token = consume(); // Consume the scope name
+            consume(); // consume '::'
 
-    	    return std::make_unique<ScopeAccessNode>(scope_name, member_name, current_token.line, current_token.column);
-	} else if (peek(1).type == Token::LPAREN) {
+            const auto& member_token = peek();
+            expect(Token::IDENTIFIER, "Expected identifier after '::'");
+            
+            node = std::make_unique<ScopeAccessNode>(scope_token.value, member_token.value, scope_token.line, scope_token.column);
+        } else if (peek(1).type == Token::LPAREN) {
             node = parseFunctionCall();
         } else if (peek(1).type == Token::LBRACKET) {
             const auto& id_token = consume();
@@ -416,7 +414,10 @@ std::unique_ptr<ASTNode> Parser::parseExpression() {
         consume(); // consume '='
         auto right = parseExpression();
         
-        if (dynamic_cast<VariableReferenceNode*>(left.get()) || dynamic_cast<MemberAccessNode*>(left.get()) || dynamic_cast<ArrayAccessNode*>(left.get())) {
+        if (dynamic_cast<VariableReferenceNode*>(left.get()) || 
+            dynamic_cast<MemberAccessNode*>(left.get()) || 
+            dynamic_cast<ArrayAccessNode*>(left.get()) || 
+            dynamic_cast<ScopeAccessNode*>(left.get())) {
             return std::make_unique<VariableAssignmentNode>(std::move(left), std::move(right));
         } else {
             throw std::runtime_error("Invalid left-hand side in assignment expression.");
@@ -580,6 +581,12 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
             return decl_node;
         }
         case Token::IDENTIFIER: {
+            // Fix: Consistency check for DOUBLE_COLON.
+            if (peek(1).type == Token::DOUBLE_COLON) {
+                auto expr = parseExpression();
+                expect(Token::SEMICOLON, "Expected ';' after scope access statement.");
+                return expr;
+            } 
             if (peek(1).type == Token::LPAREN) {
                 auto func_call = parseFunctionCall();
                 expect(Token::SEMICOLON, "Expected ';' after function call statement.");

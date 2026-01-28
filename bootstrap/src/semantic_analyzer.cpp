@@ -506,6 +506,22 @@ void SemanticAnalyzer::visit(NamespaceDefinitionNode* node) {
     symbolTable.exitScope(); 
 }
 
+void SemanticAnalyzer::visit(ScopeAccessNode* node) {
+    Symbol* sym = symbolTable.lookup(node->mangled_name);
+    
+    if (!sym) {
+        throw std::runtime_error("Semantic Error: Symbol '" + node->member_name + 
+                                 "' not found in namespace '" + node->scope_name + "'");
+    }
+
+    node->resolved_symbol = sym;
+
+    // Use .dataType and clone it to match the shared_ptr expectations
+    if (sym->dataType) {
+        node->resolved_type = sym->dataType->clone(); 
+    }
+}
+
 void SemanticAnalyzer::visit(AsmStatementNode* node) {
     // No semantic analysis needed for inline assembly
 }
