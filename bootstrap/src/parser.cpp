@@ -301,7 +301,18 @@ std::unique_ptr<ASTNode> Parser::parseFactor() {
     if (current_token.type == Token::INTEGER_LITERAL) {
         node = parseIntegerLiteralExpression();
     } else if (current_token.type == Token::IDENTIFIER) {
-        if (peek(1).type == Token::LPAREN) {
+	if (peek().type == Token::DOUBLE_COLON) {
+	    std::string scope_name = current_token.value; // current_token is already the first identifier
+            consume(); // eat ::
+    	    // 1. Peek the next token to get its value
+    	    const auto& member_token = peek(); 
+    	    // 2. Run expect to verify it's actually an identifier
+    	    expect(Token::IDENTIFIER, "Expected name after ::");
+    	    // 3. Use the value we peeked
+    	    std::string member_name = member_token.value;
+
+    	    return std::make_unique<ScopeAccessNode>(scope_name, member_name, current_token.line, current_token.column);
+	} else if (peek(1).type == Token::LPAREN) {
             node = parseFunctionCall();
         } else if (peek(1).type == Token::LBRACKET) {
             const auto& id_token = consume();

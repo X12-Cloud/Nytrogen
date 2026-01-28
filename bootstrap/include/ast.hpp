@@ -42,6 +42,7 @@ struct ASTNode {
 	ENUM_STATEMENT = 23,
 	CONSTANT_DECLARATION = 24,
 	NAMESPACE_DEFINITION = 25,
+	SCOPE_ACCESS = 26,
     };
 
     NodeType node_type;
@@ -226,6 +227,15 @@ struct MemberAccessNode : public ASTNode {
           struct_expr(std::move(expr)),
           member_name(std::move(member)),
           resolved_symbol(nullptr) {}
+};
+
+struct ScopeAccessNode : public ASTNode {
+    std::string scope_name;  // "MyNS"
+    std::string member_name; // "x"
+    
+    ScopeAccessNode(std::string scope, std::string member, int l, int c)
+        : ASTNode(NodeType::SCOPE_ACCESS, l, c), 
+          scope_name(std::move(scope)), member_name(std::move(member)) {}
 };
 
 // Node for variable declarations (e.g., int/string x;)
