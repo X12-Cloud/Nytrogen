@@ -1,6 +1,14 @@
 #include "code_generator.hpp"
 #include <stdexcept>
 
+std::string sanitizeName(std::string name) {
+    size_t pos;
+    while ((pos = name.find("::")) != std::string::npos) {
+        name.replace(pos, 2, "_"); // Replace :: with _
+    }
+    return name;
+}
+
 CodeGenerator::CodeGenerator(std::unique_ptr<ProgramNode>& ast, SymbolTable& symTable)
 : program_ast(ast), symbolTable(symTable), string_label_counter(0) {}
 
@@ -114,7 +122,8 @@ void CodeGenerator::visit(ProgramNode* node) {
         if (stmt->node_type == ASTNode::NodeType::VARIABLE_DECLARATION) {
             auto decl = static_cast<VariableDeclarationNode*>(stmt.get());
             out << "section .bss" << std::endl;
-            out << decl->name << ": resb " << getTypeSize(decl->type.get()) << std::endl;
+            // sanitize the name
+            out << sanitizeName(decl->name) << ": resb " << getTypeSize(decl->type.get()) << std::endl;
             out << "section .text" << std::endl;
         }
     }
@@ -129,7 +138,7 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
         return; // No further code generation for extern functions
     }
 
-    out << node->name << ":" << std::endl;
+    out << sanitizeName(node->name) << ":" << std::endl;
     out << "    push rbp" << std::endl;
     out << "    mov rbp, rsp" << std::endl;
 
@@ -466,7 +475,7 @@ void CodeGenerator::visit(FunctionCallNode* node) {
         out << "    mov " << arg_regs_32[i] << ", eax" << std::endl;
     }
 
-    out << "    call " << node->function_name << std::endl;
+	out << "    call " << sanitizeName(node->function_name) << std::endl;
 
     if (arg_count > arg_regs_64.size()) {
         out << "    add rsp, " << (arg_count - arg_regs_64.size()) * 8 << std::endl;

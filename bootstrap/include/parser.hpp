@@ -18,6 +18,9 @@ public:
     SymbolTable& getSymbolTable() { return symbol_table; }
 
 private:
+    // Namespace state
+    std::string current_namespace;
+
     std::vector<Token> tokens;
     size_t current_token_index;
     std::map<std::string, int> declared_variables;
@@ -44,6 +47,7 @@ private:
     std::unique_ptr<AsmStatementNode> parseAsmStatement();
     std::unique_ptr<ConstantDeclarationNode> parseConstantDeclaration();
     std::unique_ptr<EnumStatementNode> parseEnumStatement();
+    void parseNamespace(ProgramNode* program);
 
     // Expression parsing methods (now hierarchical for precedence)
     std::unique_ptr<ASTNode> parseExpression(); 		// Handles + and - (lowest precedence)

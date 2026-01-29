@@ -12,6 +12,7 @@ struct Symbol; // Forward declaration for Symbol
 struct TypeNode;
 struct PointerTypeNode;
 struct ArrayTypeNode;
+class Visitor;
 
 // Base node class for all AST elements
 struct ASTNode {
@@ -46,7 +47,7 @@ struct ASTNode {
     NodeType node_type;
 
     // resolved_type
-    std::shared_ptr<TypeNode> resolved_type;	
+    std::shared_ptr<TypeNode> resolved_type;
 
     int line;    // Source line position
     int column;  // Source column position

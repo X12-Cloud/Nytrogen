@@ -251,11 +251,42 @@ std::unique_ptr<TypeNode> Parser::parseType() {
     return type;
 }
 
+void Parser::parseNamespace(ProgramNode* program) {
+    consume(); // consume 'namespace'
+    std::string ns_name = consume().value; // get name
+    
+    std::string old_ns = current_namespace;
+    current_namespace = current_namespace.empty() ? ns_name : current_namespace + "::" + ns_name;
+
+    expect(Token::LBRACE, "Expected '{'");
+
+    while (peek().type != Token::RBRACE && peek().type != Token::END_OF_FILE) {
+        // Just copy your logic from Parser::parse() here!
+        if (peek().type == Token::KEYWORD_EXTERN || (peek(1).type == Token::IDENTIFIER && peek(2).type == Token::LPAREN)) {
+            program->functions.push_back(parseFunctionDefinition());
+        } else if (peek().type == Token::KEYWORD_STRUCT) {
+            program->structs.push_back(parseStructDefinition());
+            if (peek().type == Token::SEMICOLON) consume();
+        } else if (peek().type == Token::KEYWORD_NAMESPACE) {
+            parseNamespace(program); // Recursive namespaces!
+        } else {
+            program->statements.push_back(parseStatement());
+        }
+    }
+
+    expect(Token::RBRACE, "Expected '}'");
+    current_namespace = old_ns;
+}
+
 std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
     auto type = parseType();
-
     const Token& id_token = peek();
     expect(Token::IDENTIFIER, "Expected variable name after type.");
+    
+    std::string final_var_name = id_token.value;
+    if (!current_namespace.empty()) { 
+        final_var_name = current_namespace + "::" + final_var_name; 
+    }
 
     if (peek().type == Token::LBRACKET) {
         consume(); // Consume '['
@@ -272,7 +303,7 @@ std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
         initial_value = parseExpression();
     }
 
-    return std::make_unique<VariableDeclarationNode>(id_token.value, std::move(type), std::move(initial_value), id_token.line, id_token.column);
+    return std::make_unique<VariableDeclarationNode>(final_var_name, std::move(type), std::move(initial_value), id_token.line, id_token.column);
 }
 
 std::unique_ptr<FunctionCallNode> Parser::parseFunctionCall() {
@@ -568,7 +599,7 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
         case Token::KEYWORD_ASM:
             return parseAsmStatement();
         case Token::KEYWORD_ENUM:
-            return parseEnumStatement();
+            return parseEnumStatement();        
         default:
             throw std::runtime_error("Parser Error: Unexpected token in statement: '" +
                                      peek().value + "' at line " + std::to_string(peek().line) +
@@ -665,8 +696,9 @@ std::unique_ptr<ProgramNode> Parser::parse() {
             if (peek().type == Token::SEMICOLON) {
                 consume(); // Consume optional semicolon after enum definition
             }
-        }
-        else { // Everything else is a statement
+        } else if (peek().type == Token::KEYWORD_NAMESPACE) {
+        	parseNamespace(program_node.get());
+	} else { // Everything else is a statement
             program_node->statements.push_back(parseStatement());
         }
     }

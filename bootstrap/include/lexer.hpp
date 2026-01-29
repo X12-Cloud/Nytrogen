@@ -28,6 +28,7 @@ struct Token {
 	KEYWORD_PRIVATE,
 	KEYWORD_EXTERN,
 	KEYWORD_AUTO,
+	KEYWORD_NAMESPACE,
 
         IDENTIFIER,
         INTEGER_LITERAL,
@@ -59,6 +60,7 @@ struct Token {
 	RBRACKET,	// ]
 	DOT,		// .
 	COLON,          // :
+	DOUBLE_COLON,
 
         COMMA,          // ,
 
