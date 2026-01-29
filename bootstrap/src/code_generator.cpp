@@ -241,16 +241,27 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
 }
 
 void CodeGenerator::visit(VariableAssignmentNode* node) {
-    visit(node->right.get());
+    visit(node->right.get()); // Evaluate the expression, result in rax
     out << "    push rax" << std::endl;
+
     if (node->left->node_type == ASTNode::NodeType::VARIABLE_REFERENCE) {
-        Symbol* symbol = symbolTable.lookup(static_cast<VariableReferenceNode*>(node->left.get())->name);
+        auto* ref = static_cast<VariableReferenceNode*>(node->left.get());
+        Symbol* symbol = symbolTable.lookup(ref->name);
+        
         if (symbol) {
-            out << "    lea rax, [rbp + " << symbol->offset << "]" << std::endl;
+            // If it's a namespace/global variable (Offset 0 or contains ::)
+            if (ref->name.find("::") != std::string::npos || symbol->offset == 0) {
+                // Use RIP-relative addressing for the global label
+                out << "    lea rax, [rel " << sanitizeName(ref->name) << "]" << std::endl;
+            } else {
+                // Use RBP-relative addressing for local variables
+                out << "    lea rax, [rbp + " << symbol->offset << "]" << std::endl;
+            }
         }
     } else {
-        visit(node->left.get());
+        visit(node->left.get()); // Handle complex LHS like array/struct access
     }
+
     out << "    pop rbx" << std::endl;
     out << "    mov [rax], rbx" << std::endl;
 }

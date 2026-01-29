@@ -3,7 +3,7 @@ namespace math {
 }
 
 int main() {
-    // math::x = 10; // This will trigger the assignment code
+    math::x = 20; // This will trigger the assignment code
     int y = math::x;
     print y;
     return 0;
