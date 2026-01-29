@@ -39,6 +39,17 @@ void Parser::expect(Token::Type expected_type, const std::string& error_msg) {
     }
 }
 
+std::string Parser::parseQualifiedName() {
+    std::string name = consume().value; // Get the first part (e.g., "math")
+    while (peek().type == Token::DOUBLE_COLON) {
+        consume(); // eat the '::'
+        // Now get the next part
+        name += "::" + peek().value;
+        expect(Token::IDENTIFIER, "Expected name after '::'");
+    }
+    return name;
+}
+
 std::unique_ptr<ConstantDeclarationNode> Parser::parseConstantDeclaration() {
     const Token& const_token = peek();
     expect(Token::KEYWORD_CONST, "Expected 'const' keyword.");
@@ -306,8 +317,8 @@ std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
     return std::make_unique<VariableDeclarationNode>(final_var_name, std::move(type), std::move(initial_value), id_token.line, id_token.column);
 }
 
-std::unique_ptr<FunctionCallNode> Parser::parseFunctionCall() {
-    const Token& id_token = consume(); // Consume the function name identifier
+std::unique_ptr<FunctionCallNode> Parser::parseFunctionCall(std::string name) {
+    // const Token& id_token = consume(); // Consume the function name identifier
 
     expect(Token::LPAREN, "Expected '(' after function name for a function call.");
 
@@ -322,31 +333,26 @@ std::unique_ptr<FunctionCallNode> Parser::parseFunctionCall() {
 
     expect(Token::RPAREN, "Expected ')' after function call arguments.");
 
-    return std::make_unique<FunctionCallNode>(id_token.value, std::move(arguments), id_token.line, id_token.column);
+    return std::make_unique<FunctionCallNode>(name, std::move(arguments), peek().line, peek().column);
 }
 
 std::unique_ptr<ASTNode> Parser::parseFactor() {
     std::unique_ptr<ASTNode> node;
+    const auto& id_token = peek();
     const Token& current_token = peek();
+    std::string full_name = id_token.value;
 
     if (current_token.type == Token::INTEGER_LITERAL) {
         node = parseIntegerLiteralExpression();
     } else if (current_token.type == Token::IDENTIFIER) {
-        if (peek(1).type == Token::LPAREN) {
-            node = parseFunctionCall();
-        } else if (peek(1).type == Token::LBRACKET) {
-            const auto& id_token = consume();
-            auto var_ref = std::make_unique<VariableReferenceNode>(id_token.value, id_token.line, id_token.column);
-            consume(); // consume '['
-            auto index_expr = parseExpression();
-            expect(Token::RBRACKET, "Expected ']' after array index.");
-            node = std::make_unique<ArrayAccessNode>(std::move(var_ref), std::move(index_expr));
+        std::string full_name = parseQualifiedName(); 
+
+        if (peek().type == Token::LPAREN) {
+            node = parseFunctionCall(full_name);
         } else {
-            const auto& id_token = consume();
-            node = std::make_unique<VariableReferenceNode>(id_token.value, id_token.line, id_token.column);
+            node = std::make_unique<VariableReferenceNode>(full_name, current_token.line, current_token.column);
         }
-    } else if (current_token.type == Token::LPAREN) {
-        consume();
+    } else if (current_token.type == Token::LPAREN) { // This is for parenthesized expressions like (1 + 2)        consume();
         node = parseExpression();
         expect(Token::RPAREN, "Expected ')' after expression in parentheses.");
     } else if (current_token.type == Token::STRING_LITERAL) {
@@ -576,7 +582,8 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
         }
         case Token::IDENTIFIER: {
             if (peek(1).type == Token::LPAREN) {
-                auto func_call = parseFunctionCall();
+		std::string name = consume().value;
+                auto func_call = parseFunctionCall(name);
                 expect(Token::SEMICOLON, "Expected ';' after function call statement.");
                 return func_call;
             } else if (peek(1).type == Token::IDENTIFIER) {

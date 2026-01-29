@@ -29,7 +29,8 @@ private:
     // Token handling methods
     const Token& peek(size_t offset = 0) const;
     const Token& consume();
-    void expect(Token::Type expected_type, const std::string& error_msg);
+    void expect(Token::Type expected_type, const std::string& error_msg);\
+    std::string parseQualifiedName();
 
     std::unique_ptr<ASTNode> parseStatement(); // General statement parsing (e.g., return, var decl, assignment)
     std::unique_ptr<VariableDeclarationNode> parseVariableDeclaration();
@@ -40,7 +41,7 @@ private:
     std::unique_ptr<IfStatementNode> parseIfStatement();
     std::unique_ptr<WhileStatementNode> parseWhileStatement();
     std::unique_ptr<ForStatementNode> parseForStatement();
-    std::unique_ptr<FunctionCallNode> parseFunctionCall();
+    std::unique_ptr<FunctionCallNode> parseFunctionCall(std::string name);
     std::vector<std::unique_ptr<ParameterNode>> parseParameters();
     std::unique_ptr<TypeNode> parseType();
     std::unique_ptr<StructDefinitionNode> parseStructDefinition();

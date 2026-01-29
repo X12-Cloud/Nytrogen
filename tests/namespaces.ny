@@ -1,8 +1,8 @@
-namespace Math {
+namespace math {
     int x = 10;
 }
 
 int main() {
-    print Math::x; // <--- The Parser needs to handle this!
+    print math::x;
     return 0;
 }

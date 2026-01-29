@@ -231,14 +231,16 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
 
 	if (currentChar == ':') {
 	    if (currentPos + 1 < sourceCode.length() && sourceCode[currentPos + 1] == ':') {
-	        tokens.push_back({Token::DOUBLE_COLON, "::", line, column});
-                currentPos++; column++; continue;
-	    } else {
-            tokens.push_back({Token::COLON, ":", line, column});
-            currentPos++; column++; continue;
-	    }
-	    continue;
-        }
+        	tokens.push_back({Token::DOUBLE_COLON, "::", line, column});
+        	currentPos += 2; // Jump past BOTH colons
+        	column += 2;
+            } else {
+                tokens.push_back({Token::COLON, ":", line, column});
+                currentPos++; 
+                column++;
+    	    }
+    	    continue; // Continue the loop
+	}
 
         // Other single-char tokens
         if (currentChar == ';') {
