@@ -237,7 +237,7 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
         if (symbol->type == Symbol::SymbolType::CONSTANT) {
             visit(symbol->value.get());
         } else {
-            out << "    mov rax, [rbp + " << symbol->offset << "]" << std::endl;
+            out << "    movsx rax, dword [rbp + " << symbol->offset << "]" << std::endl;
         }
     }
 }
@@ -446,25 +446,30 @@ void CodeGenerator::visit(ForStatementNode* node) {
 }
 
 void CodeGenerator::visit(FunctionCallNode* node) {
-    const std::vector<std::string> arg_registers = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+    const std::vector<std::string> arg_regs_64 = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+    const std::vector<std::string> arg_regs_32 = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
     int arg_count = node->arguments.size();
 
-    // Handle arguments passed on the stack (arguments > 6)
-    for (int i = arg_count - 1; i >= arg_registers.size(); --i) {
+    for (int i = arg_count - 1; i >= (int)arg_regs_64.size(); --i) {
         visit(node->arguments[i].get());
         out << "    push rax" << std::endl;
     }
 
-    // Handle arguments passed in registers
-    for (int i = std::min(arg_count, (int)arg_registers.size()) - 1; i >= 0; --i) {
+    for (int i = std::min(arg_count, (int)arg_regs_64.size()) - 1; i >= 0; --i) {
         visit(node->arguments[i].get());
-        out << "    mov " << arg_registers[i] << ", rax" << std::endl;
+	if (node->arguments[i]->node_type == ASTNode::NodeType::MEMBER_ACCESS_EXPRESSION) {
+    	    out << "    mov eax, dword [rax]" << std::endl;
+	}
+        // Since visit() put the result in rax, we move the 32-bit 
+        // part (eax) into the 32-bit target register (e.g., edi).
+        // This automatically clears the top 32 bits of the 64-bit register.
+        out << "    mov " << arg_regs_32[i] << ", eax" << std::endl;
     }
 
     out << "    call " << node->function_name << std::endl;
 
-    if (arg_count > arg_registers.size()) {
-        out << "    add rsp, " << (arg_count - arg_registers.size()) * 8 << std::endl;
+    if (arg_count > arg_regs_64.size()) {
+        out << "    add rsp, " << (arg_count - arg_regs_64.size()) * 8 << std::endl;
     }
 }
 
@@ -486,6 +491,7 @@ void CodeGenerator::visit(MemberAccessNode* node) {
         throw std::runtime_error("Code generation error: member symbol not resolved for '" + node->member_name + "'.");
     }
     out << "    add rax, " << member_symbol->offset << std::endl;
+    // out << "    mov eax, " << "dword [rax]" << std::endl;
 }
 
 void CodeGenerator::visit(UnaryOpExpressionNode* node) {
