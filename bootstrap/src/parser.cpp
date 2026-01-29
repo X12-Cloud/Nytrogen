@@ -272,14 +272,22 @@ void Parser::parseNamespace(ProgramNode* program) {
     expect(Token::LBRACE, "Expected '{'");
 
     while (peek().type != Token::RBRACE && peek().type != Token::END_OF_FILE) {
-        // Just copy your logic from Parser::parse() here!
         if (peek().type == Token::KEYWORD_EXTERN || (peek(1).type == Token::IDENTIFIER && peek(2).type == Token::LPAREN)) {
             program->functions.push_back(parseFunctionDefinition());
         } else if (peek().type == Token::KEYWORD_STRUCT) {
             program->structs.push_back(parseStructDefinition());
             if (peek().type == Token::SEMICOLON) consume();
         } else if (peek().type == Token::KEYWORD_NAMESPACE) {
-            parseNamespace(program); // Recursive namespaces!
+            parseNamespace(program); 
+        } 
+        // ADD "ELSE IF" HERE so it doesn't double-process
+        else if (peek().type == Token::KEYWORD_INT || peek().type == Token::KEYWORD_STRING || 
+                 peek().type == Token::KEYWORD_BOOL || peek().type == Token::KEYWORD_CHAR ||
+                 peek().type == Token::IDENTIFIER) { // Added IDENTIFIER for custom types/structs
+            
+            // IMPORTANT: Add directly to program->statements
+            program->statements.push_back(parseVariableDeclaration());
+            expect(Token::SEMICOLON, "Expected ';' after variable declaration");
         } else {
             program->statements.push_back(parseStatement());
         }

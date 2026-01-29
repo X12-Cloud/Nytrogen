@@ -21,6 +21,7 @@ public:
 private:
     std::unique_ptr<ProgramNode>& program_ast;
     SymbolTable& symbolTable;
+    bool isInsideFunction = false;
 
     // Visitor methods for AST nodes
     void visit(ASTNode* node);

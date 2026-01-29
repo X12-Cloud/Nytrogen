@@ -3,6 +3,8 @@ namespace math {
 }
 
 int main() {
-    print math::x;
+    // math::x = 10; // This will trigger the assignment code
+    int y = math::x;
+    print y;
     return 0;
 }

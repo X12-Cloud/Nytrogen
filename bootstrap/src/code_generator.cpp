@@ -121,9 +121,25 @@ void CodeGenerator::visit(ProgramNode* node) {
     for (const auto& stmt : node->statements) {
         if (stmt->node_type == ASTNode::NodeType::VARIABLE_DECLARATION) {
             auto decl = static_cast<VariableDeclarationNode*>(stmt.get());
-            out << "section .bss" << std::endl;
-            // sanitize the name
-            out << sanitizeName(decl->name) << ": resb " << getTypeSize(decl->type.get()) << std::endl;
+            
+            out << "section .data" << std::endl;
+            out << sanitizeName(decl->name) << ": ";
+
+            if (decl->initial_value) {
+                // DEBUG: Tell us what the initial value node type is!
+                std::cout << "Debug: Global " << decl->name << " has init value type: " 
+                          << (int)decl->initial_value->node_type << std::endl;
+
+                if (decl->initial_value->node_type == ASTNode::NodeType::INTEGER_LITERAL_EXPRESSION) {
+                    auto lit = static_cast<IntegerLiteralExpressionNode*>(decl->initial_value.get());
+                    out << "dd " << lit->value << std::endl;
+                } else {
+                    out << "dd 0 ; non-literal init" << std::endl;
+                }
+            } else {
+                std::cout << "Debug: Global " << decl->name << " has NO init value." << std::endl;
+                out << "dd 0 ; no init" << std::endl;
+            }
             out << "section .text" << std::endl;
         }
     }
@@ -131,7 +147,6 @@ void CodeGenerator::visit(ProgramNode* node) {
         visit(func.get());
     }
 }
-
 void CodeGenerator::visit(FunctionDefinitionNode* node) {
     if (node->is_extern) {
         out << "extern " << node->name << std::endl;
@@ -245,7 +260,13 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
     if (symbol) {
         if (symbol->type == Symbol::SymbolType::CONSTANT) {
             visit(symbol->value.get());
+        } 
+        // If it's a namespace variable or global, it won't have a stack offset
+        else if (node->name.find("::") != std::string::npos || symbol->offset == 0) {
+            // GLOBAL/NAMESPACE ACCESS: Use the sanitized name as a label
+            out << "    movsx rax, dword [rel " << sanitizeName(node->name) << "]" << std::endl;
         } else {
+            // LOCAL ACCESS: Use stack offset
             out << "    movsx rax, dword [rbp + " << symbol->offset << "]" << std::endl;
         }
     }

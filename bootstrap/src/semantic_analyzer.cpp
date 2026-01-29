@@ -207,6 +207,7 @@ void SemanticAnalyzer::visit(ProgramNode* node) {
 }
 
 void SemanticAnalyzer::visit(FunctionDefinitionNode* node) {
+    isInsideFunction = true;
     symbolTable.enterScope();
 
     const std::vector<std::string> arg_registers = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
@@ -235,6 +236,7 @@ void SemanticAnalyzer::visit(FunctionDefinitionNode* node) {
 
     // DO NOT exit scope here — code generator needs it!
     // symbolTable.exitScope(); ← COMMENTED OUT
+    isInsideFunction = false;
 }
 
 void SemanticAnalyzer::visit(VariableDeclarationNode* node) {
@@ -249,30 +251,38 @@ void SemanticAnalyzer::visit(VariableDeclarationNode* node) {
             throw std::runtime_error("Semantic Error: 'auto' variable '" + node->name + "' requires an initializer.");
         }
         actual_type = visitExpression(node->initial_value.get());
-        if (!actual_type) {
-            throw std::runtime_error("Semantic Error: Could not deduce type for 'auto' variable '" + node->name + "'.");
-        }
-        node->type = actual_type->clone(); // Update the node's type with the deduced type
+        node->type = actual_type->clone();
     } else {
         actual_type = node->type->clone();
     }
 
+    // --- LOGIC: Global vs Local ---
+    // Inside SemanticAnalyzer::visit(VariableDeclarationNode* node)
+int offset = 0;
+
+if (isInsideFunction) {
+    // LOCAL VARIABLE: Give it a stack offset
     int var_size = getTypeSize(actual_type.get());
-
     symbolTable.scopes.back()->currentOffset -= var_size;
-    int offset = symbolTable.scopes.back()->currentOffset;
+    offset = symbolTable.scopes.back()->currentOffset;
+} else {
+    // GLOBAL/NAMESPACE VARIABLE: Keep it at 0
+    offset = 0;
+}
 
-    Symbol symbol(Symbol::SymbolType::VARIABLE, node->name, actual_type->clone(), offset, var_size);
-    node->resolved_symbol = symbolTable.addSymbol(std::move(symbol));
+    // --- FIX: Re-adding the missing 'sym' creation ---
+    Symbol sym(Symbol::SymbolType::VARIABLE, node->name, node->type->clone(), offset);
+    
+    // Pass the symbol we just created
+    node->resolved_symbol = symbolTable.addSymbol(std::move(sym));
 
     if (node->initial_value) {
         std::unique_ptr<TypeNode> expr_type = visitExpression(node->initial_value.get());
         if (!areTypesCompatible(expr_type.get(), actual_type.get())) {
-            throw std::runtime_error("Semantic Error: Type mismatch in variable initialization for '" + node->name + "'.");
+            throw std::runtime_error("Semantic Error: Type mismatch in initialization for '" + node->name + "'.");
         }
     }
 }
-
 void SemanticAnalyzer::visit(VariableAssignmentNode* node) {
     if (node->left->node_type == ASTNode::NodeType::VARIABLE_REFERENCE) {
         auto* var_ref = static_cast<VariableReferenceNode*>(node->left.get());
