@@ -3,6 +3,6 @@ namespace name {
 }
 int main() {
 	name::x = 12;
-	print x;
+	print name::x;
 	return 0;
 }

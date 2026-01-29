@@ -185,7 +185,11 @@ void SemanticAnalyzer::visit(ASTNode* node) {
             visit(static_cast<StructDefinitionNode*>(node));
             break;
 	case ASTNode::NodeType::NAMESPACE_DEFINITION:
-	                visit(static_cast<NamespaceDefinitionNode*>(node));	    break;
+	    visit(static_cast<NamespaceDefinitionNode*>(node));
+	    break;
+	case ASTNode::NodeType::SCOPE_ACCESS: // <--- ADD THIS
+            visit(static_cast<ScopeAccessNode*>(node));
+            break;
         case ASTNode::NodeType::INTEGER_LITERAL_EXPRESSION:
         case ASTNode::NodeType::STRING_LITERAL_EXPRESSION:
         case ASTNode::NodeType::BOOLEAN_LITERAL_EXPRESSION:
