@@ -272,31 +272,42 @@ void Parser::parseNamespace(ProgramNode* program) {
     expect(Token::LBRACE, "Expected '{'");
 
     while (peek().type != Token::RBRACE && peek().type != Token::END_OF_FILE) {
+        // --- FUNCTION DEFINITION CASE ---
         if (peek().type == Token::KEYWORD_EXTERN || (peek(1).type == Token::IDENTIFIER && peek(2).type == Token::LPAREN)) {
-            program->functions.push_back(parseFunctionDefinition());
-        } else if (peek().type == Token::KEYWORD_STRUCT) {
-            program->structs.push_back(parseStructDefinition());
-            if (peek().type == Token::SEMICOLON) consume();
-        } else if (peek().type == Token::KEYWORD_NAMESPACE) {
-            parseNamespace(program); 
+            auto func = parseFunctionDefinition();
+            // Prefix the function name with the current namespace (e.g., "physics::get_gravity")
+            func->name = current_namespace + "::" + func->name; 
+            program->functions.push_back(std::move(func));
         } 
-        // ADD "ELSE IF" HERE so it doesn't double-process
+        // --- NESTED NAMESPACE CASE ---
+        else if (peek().type == Token::KEYWORD_NAMESPACE) {
+            parseNamespace(program); 
+        }
+        // --- STRUCT DEFINITION CASE ---
+        else if (peek().type == Token::KEYWORD_STRUCT) {
+            auto strct = parseStructDefinition();
+            // Prefix the struct name as well!
+            strct->name = current_namespace + "::" + strct->name;
+            program->structs.push_back(std::move(strct));
+            if (peek().type == Token::SEMICOLON) consume();
+        } 
+        // --- VARIABLE DECLARATION CASE ---
         else if (peek().type == Token::KEYWORD_INT || peek().type == Token::KEYWORD_STRING || 
                  peek().type == Token::KEYWORD_BOOL || peek().type == Token::KEYWORD_CHAR ||
-                 peek().type == Token::IDENTIFIER) { // Added IDENTIFIER for custom types/structs
+                 peek().type == Token::IDENTIFIER) {
             
-            // IMPORTANT: Add directly to program->statements
             program->statements.push_back(parseVariableDeclaration());
             expect(Token::SEMICOLON, "Expected ';' after variable declaration");
-        } else {
+        } 
+        // --- OTHER STATEMENTS ---
+        else {
             program->statements.push_back(parseStatement());
         }
     }
 
     expect(Token::RBRACE, "Expected '}'");
-    current_namespace = old_ns;
+    current_namespace = old_ns; // Pop the namespace back to the previous level
 }
-
 std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
     auto type = parseType();
     const Token& id_token = peek();

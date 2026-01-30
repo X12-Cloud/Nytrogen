@@ -1,3 +1,4 @@
-int printer(string x) {
+int main() {
+	char x = 'm';
 	print x;
 }
