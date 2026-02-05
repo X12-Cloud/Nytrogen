@@ -618,15 +618,15 @@ std::unique_ptr<FunctionDefinitionNode> Parser::parseFunctionDefinition() {
     func_def_node->is_extern = is_extern_func; // Set the flag
 
     // Enter a new scope for the function body (even for extern, for parameters)
-    symbol_table.enterScope();
+    // symbol_table.enterScope();
 
     func_def_node->parameters = parseParameters();
 
     // Add parameters to the symbol table
-    for (const auto& param : func_def_node->parameters) {
+    /* for (const auto& param : func_def_node->parameters) {
         // Placeholder offset/size - semantic analyzer will calculate
         symbol_table.addSymbol(Symbol(Symbol::SymbolType::VARIABLE, param->name, param->type->clone(), 0, 0));
-    }
+    } */
 
     if (is_extern_func) {
         expect(Token::SEMICOLON, "Expected ';' after extern function declaration.");
@@ -642,7 +642,7 @@ std::unique_ptr<FunctionDefinitionNode> Parser::parseFunctionDefinition() {
 
 
     // Exit the scope for the function body
-    symbol_table.exitScope();
+    // symbol_table.exitScope();
 
     return func_def_node;
 }

@@ -109,6 +109,8 @@ void CodeGenerator::visit(ASTNode* node) {
     }
 }
 
+bool is_lvalue;
+
 void CodeGenerator::visit(ProgramNode* node) {
     for (const auto& stmt : node->statements) {
         if (stmt->node_type == ASTNode::NodeType::VARIABLE_DECLARATION) {
@@ -133,28 +135,33 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
     out << "    push rbp" << std::endl;
     out << "    mov rbp, rsp" << std::endl;
 
+    // Calculate total local variable space from current scope
+    int local_var_space = 64;
+    /* if (!symbolTable.all_scopes.empty()) {
+        // The total space for local variables and register parameters pushed to the stack
+        local_var_space = -symbolTable.all_scopes.back()->currentOffset;
+    } else {
+        // throw std::runtime_error("Code generation error: No active scope in function '" + node->name + "'.");
+	local_var_space = 32;
+    } */
+    int aligned_space = 64; // (local_var_space + 15) & ~15
+    if (aligned_space > 0) {
+        out << "    sub rsp, " << aligned_space << "\n";
+    }
+
     // Push register arguments onto the stack
     const std::vector<std::string> arg_registers = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
     int register_args_size = 0;
     for (int i = 0; i < node->parameters.size() && i < arg_registers.size(); ++i) {
-        out << "    push " << arg_registers[i] << std::endl;
-        register_args_size += 8;
-    }
-
-    // Calculate total local variable space from current scope
-    int local_var_space = 0;
-    if (!symbolTable.scopes.empty()) {
-        // The total space for local variables and register parameters pushed to the stack
-        local_var_space = -symbolTable.scopes.back()->currentOffset;
-    } else {
-        throw std::runtime_error("Code generation error: No active scope in function '" + node->name + "'.");
+        int offset = (i + 1) * -8; 
+        out << "    mov [rbp + " << offset << "], " << arg_registers[i] << std::endl;
     }
 
     // We only need to allocate space for local variables, not the register parameters
     // that we've already pushed.
-    if (local_var_space > register_args_size) {
-        out << "    sub rsp, " << (local_var_space - register_args_size) << std::endl;
-    }
+    // if (local_var_space > register_args_size) {
+    //     out << "    sub rsp, " << (local_var_space - register_args_size) << std::endl;
+    // }
 
     // Generate code for all statements
     for (const auto& stmt : node->body_statements) {
@@ -165,8 +172,7 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
         out << ".main_epilogue:" << std::endl;
     }
 
-    out << "    mov rsp, rbp" << std::endl;
-    out << "    pop rbp" << std::endl;
+    out << "    leave" << std::endl;
     out << "    ret" << std::endl << std::endl;
 }
 
@@ -179,7 +185,7 @@ void CodeGenerator::visit(EnumStatementNode* node) {
 }
 
 void CodeGenerator::visit(VariableDeclarationNode* node) {
-    Symbol* symbol = symbolTable.lookup(node->name);
+    Symbol* symbol = node->resolved_symbol;
     if (!symbol) {
         throw std::runtime_error("Code generation error: variable '" + node->name + "' not found in symbol table.");
     }
@@ -220,50 +226,87 @@ void CodeGenerator::visit(VariableAssignmentNode* node) {
     visit(node->right.get());
     out << "    push rax" << std::endl;
     if (node->left->node_type == ASTNode::NodeType::VARIABLE_REFERENCE) {
-        Symbol* symbol = symbolTable.lookup(static_cast<VariableReferenceNode*>(node->left.get())->name);
+	auto* var_ref = static_cast<VariableReferenceNode*>(node->left.get());
+        Symbol* symbol = var_ref->resolved_symbol;
         if (symbol) {
             out << "    lea rax, [rbp + " << symbol->offset << "]" << std::endl;
+        } else {
+             throw std::runtime_error("CodeGen Error: Assignment target '" + var_ref->name + "' not resolved.");
         }
     } else {
+	is_lvalue = true;
         visit(node->left.get());
+	is_lvalue = false;
     }
     out << "    pop rbx" << std::endl;
-    out << "    mov [rax], rbx" << std::endl;
+    int size = getTypeSize(node->left->resolved_type.get());
+    if (size == 4) out << "    mov [rax], ebx" << std::endl;
+    else if (size == 1) out << "    mov [rax], bl" << std::endl;
+    else out << "    mov [rax], rbx" << std::endl;
 }
 
 void CodeGenerator::visit(VariableReferenceNode* node) {
-    Symbol* symbol = symbolTable.lookup(node->name);
-    if (symbol) {
-        if (symbol->type == Symbol::SymbolType::CONSTANT) {
-            visit(symbol->value.get());
-        } else {
+    Symbol* symbol = node->resolved_symbol;
+    if (!symbol) {
+        throw std::runtime_error("CodeGen Error: Reference to '" + node->name + "' not resolved.");
+    }
+
+    if (symbol->type == Symbol::SymbolType::CONSTANT) {
+        visit(symbol->value.get());
+        return;
+    }
+	
+    if (is_lvalue) {
+        // We want the ADDRESS, not the value.
+        // symbol->offset should be negative (e.g., -8), so [rbp + -8] works.
+        out << "    lea rax, [rbp + " << symbol->offset << "]" << std::endl;
+    } else {
+        // We want the VALUE. We must check the size.
+        int size = getTypeSize(node->resolved_type.get());
+
+        if (size == 1) {
+            // Char or Bool: Move 1 byte and Sign-Extend to 64-bit rax
+            out << "    movsx rax, byte [rbp + " << symbol->offset << "]" << std::endl;
+        } else if (size == 4) {
+            // Int: Move 4 bytes and Sign-Extend to 64-bit rax
             out << "    movsx rax, dword [rbp + " << symbol->offset << "]" << std::endl;
+        } else if (size == 8) {
+            // Pointers or Strings: Move the full 8-byte 64-bit value
+            out << "    mov rax, [rbp + " << symbol->offset << "]" << std::endl;
+        } else {
+            // Fallback for structs/arrays (usually treated as an address)
+            out << "    lea rax, [rbp + " << symbol->offset << "]" << std::endl;
         }
     }
 }
 
 void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
     visit(node->left.get());
-    if (node->left->node_type == ASTNode::NodeType::ARRAY_ACCESS_EXPRESSION || node->left->node_type == ASTNode::NodeType::MEMBER_ACCESS_EXPRESSION) {
+    out << "    push rax" << std::endl;
+    visit(node->right.get());
+    out << "    mov rbx, rax" << std::endl; // rbx = right
+    out << "    pop rcx" << std::endl;     // rax = left
+    /* if (node->left->node_type == ASTNode::NodeType::ARRAY_ACCESS_EXPRESSION || node->left->node_type == ASTNode::NodeType::MEMBER_ACCESS_EXPRESSION) {
         out << "    mov rax, [rax]" << std::endl;
     }
     out << "    push rax" << std::endl;
     visit(node->right.get());
     if (node->right->node_type == ASTNode::NodeType::ARRAY_ACCESS_EXPRESSION || node->right->node_type == ASTNode::NodeType::MEMBER_ACCESS_EXPRESSION) {
         out << "    mov rax, [rax]" << std::endl;
-    }
-    out << "    pop rcx" << std::endl;  // left is in rcx, right in rax
+    } */
 
     switch (node->op_type) {
         case Token::PLUS:
-            out << "    add rax, rcx" << std::endl;
+            out << "    add rcx, rbx" << std::endl;
+            out << "    mov rax, rcx" << std::endl;
             break;
         case Token::MINUS:
-            out << "    sub rcx, rax" << std::endl;
+            out << "    sub rcx, rbx" << std::endl;
             out << "    mov rax, rcx" << std::endl;
             break;
         case Token::STAR:
-            out << "    imul rax, rcx" << std::endl;
+            out << "    imul rcx, rbx" << std::endl;
+            out << "    mov rax, rcx" << std::endl;
             break;
         case Token::SLASH:
             out << "    mov rbx, rax" << std::endl;
@@ -331,9 +374,9 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
 void CodeGenerator::visit(PrintStatementNode* node) {
     for (const auto& expr : node->expressions) {
         visit(expr.get());
-        if (expr->node_type == ASTNode::NodeType::ARRAY_ACCESS_EXPRESSION || expr->node_type == ASTNode::NodeType::MEMBER_ACCESS_EXPRESSION) {
+        /* if (expr->node_type == ASTNode::NodeType::ARRAY_ACCESS_EXPRESSION || expr->node_type == ASTNode::NodeType::MEMBER_ACCESS_EXPRESSION) {
             out << "    mov rax, [rax]" << std::endl;
-        }
+        } */
         out << "    mov rsi, rax" << std::endl;
 	
 	// Working now
@@ -457,9 +500,9 @@ void CodeGenerator::visit(FunctionCallNode* node) {
 
     for (int i = std::min(arg_count, (int)arg_regs_64.size()) - 1; i >= 0; --i) {
         visit(node->arguments[i].get());
-	if (node->arguments[i]->node_type == ASTNode::NodeType::MEMBER_ACCESS_EXPRESSION) {
+	/* if (node->arguments[i]->node_type == ASTNode::NodeType::MEMBER_ACCESS_EXPRESSION) {
     	    out << "    mov eax, dword [rax]" << std::endl;
-	}
+	} */
         // Since visit() put the result in rax, we move the 32-bit 
         // part (eax) into the 32-bit target register (e.g., edi).
         // This automatically clears the top 32 bits of the 64-bit register.
@@ -474,23 +517,42 @@ void CodeGenerator::visit(FunctionCallNode* node) {
 }
 
 void CodeGenerator::visit(MemberAccessNode* node) {
-    if (node->struct_expr->node_type == ASTNode::NodeType::VARIABLE_REFERENCE) {
+    /* if (node->struct_expr->node_type == ASTNode::NodeType::VARIABLE_REFERENCE) {
         auto var_ref = static_cast<VariableReferenceNode*>(node->struct_expr.get());
-        Symbol* symbol = symbolTable.lookup(var_ref->name);
+	Symbol* symbol = var_ref->resolved_symbol;
         if (symbol) {
             out << "    lea rax, [rbp + " << symbol->offset << "]" << std::endl;
         } else {
             throw std::runtime_error("Code generation error: struct '" + var_ref->name + "' not found in symbol table.");
         }
-    } else {
-        visit(node->struct_expr.get());
-    }
+    } else {} */
+
+    bool old_lvalue = is_lvalue;
+    is_lvalue = true; 
+    visit(node->struct_expr.get()); 
+    is_lvalue = old_lvalue; // Restore state
 
     Symbol* member_symbol = node->resolved_symbol;
-    if (!member_symbol) {
-        throw std::runtime_error("Code generation error: member symbol not resolved for '" + node->member_name + "'.");
+    if (member_symbol && member_symbol->offset != 0) {
+        out << "    add rax, " << member_symbol->offset << std::endl;
     }
-    out << "    add rax, " << member_symbol->offset << std::endl;
+
+    if (!node->resolved_type) {
+        throw std::runtime_error("CodeGen Error: Member access '" + node->member_name + "' has no resolved type.");
+    }
+
+    int size = getTypeSize(node->resolved_type.get()); 
+
+    if (!is_lvalue) {
+        if (size == 4) {
+            out << "    movsx rax, dword [rax]" << std::endl;
+        } else if (size == 1) {
+            out << "    movsx rax, byte [rax]" << std::endl;
+        } else {
+            out << "    mov rax, [rax]" << std::endl;
+        }
+    }
+    // out << "    add rax, " << member_symbol->offset << std::endl;
     // out << "    mov eax, " << "dword [rax]" << std::endl;
 }
 

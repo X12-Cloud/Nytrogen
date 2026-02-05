@@ -68,8 +68,9 @@ class Scope {
 public:
     std::map<std::string, Symbol> symbols;
     int currentOffset; // For local variables, tracks the current stack offset
+    Scope* parent;
 
-    Scope() : currentOffset(0) {}
+    Scope(Scope* p = nullptr) : currentOffset(0), parent(p) {}
 
     void addSymbol(Symbol&& symbol) {
         symbols.emplace(symbol.name, std::move(symbol));
@@ -87,45 +88,55 @@ public:
 // Main Symbol Table class
 class SymbolTable {
 public:
-    std::vector<std::unique_ptr<Scope>> scopes; // Stack of scopes
+    // This vector is now an ARCHIVE. We only push_back, NEVER pop_back.
+    std::vector<std::unique_ptr<Scope>> all_scopes; 
+    
+    // This is our "Read/Write Head"
+    Scope* current_scope;
+
     std::map<std::string, StructDefinitionNode*> struct_definitions;
 
-    SymbolTable() {
-        enterScope(); // Start with a global scope
+    SymbolTable() : current_scope(nullptr) {
+        enterScope(); // Creates the Global Scope
     }
 
     void enterScope() {
-        scopes.push_back(std::make_unique<Scope>());
-        std::cerr << "Debug: Entered new scope. Total scopes: " << scopes.size() << std::endl;
+        // Create new scope linked to the current one
+        auto new_scope = std::make_unique<Scope>(current_scope);
+        current_scope = new_scope.get(); // Move the head to the new scope
+        
+        all_scopes.push_back(std::move(new_scope)); // Save to the archive
+        
+        std::cerr << "Debug: Entered new scope. Total scopes in archive: " << all_scopes.size() << std::endl;
     }
 
     void exitScope() {
-        if (!scopes.empty()) {
-            scopes.pop_back();
-            std::cerr << "Debug: Exited scope. Total scopes: " << scopes.size() << std::endl;
+        if (current_scope && current_scope->parent) {
+            current_scope = current_scope->parent; // Just climb up! No deletion!
+            std::cerr << "Debug: Exited scope. Head moved to parent." << std::endl;
         }
     }
 
     Symbol* addSymbol(Symbol&& symbol) {
-        if (!scopes.empty()) {
-            std::cerr << "Debug: Adding symbol '" << symbol.name << "' to scope " << scopes.size() << ". Offset: " << symbol.offset << std::endl;
-            auto result = scopes.back()->symbols.emplace(symbol.name, std::move(symbol));
+        if (current_scope) {
+            std::cerr << "Debug: Adding symbol '" << symbol.name << "' to current scope." << std::endl;
+            // Use current_scope instead of scopes.back()
+            auto result = current_scope->symbols.emplace(symbol.name, std::move(symbol));
             return &(result.first->second);
-        } else {
-            // Handle error: no active scope
-            std::cerr << "Error: Attempted to add symbol '" << symbol.name << "' with no active scope." << std::endl;
-            return nullptr;
         }
+        return nullptr;
     }
 
     Symbol* lookup(const std::string& name) {
-        // Search from innermost to outermost scope
-        for (auto it = scopes.rbegin(); it != scopes.rend(); ++it) {
-            if (Symbol* symbol = (*it)->lookup(name)) {
+        // Search starting from current_scope and follow parent pointers
+        Scope* search_head = current_scope;
+        while (search_head != nullptr) {
+            if (Symbol* symbol = search_head->lookup(name)) {
                 return symbol;
             }
+            search_head = search_head->parent; // Move to outer scope
         }
-        return nullptr; // Not found
+        return nullptr;
     }
 
     bool isStructDefined(const std::string& name) {

@@ -128,8 +128,7 @@ void SemanticAnalyzer::analyze() {
         throw std::runtime_error("Semantic Error: No 'main' function defined.");
     }
 
-    // DO NOT exit global scope — code generator might need it
-    // symbolTable.exitScope(); ← COMMENTED OUT
+    symbolTable.exitScope();
 }
 
 void SemanticAnalyzer::visit(ASTNode* node) {
@@ -210,35 +209,36 @@ void SemanticAnalyzer::visit(FunctionDefinitionNode* node) {
     symbolTable.enterScope();
 
     const std::vector<std::string> arg_registers = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
-    int param_offset = 16; // Stack arguments start at rbp + 16
+    int param_offset = 16; 
     int register_param_offset = 0;
 
     for (int i = 0; i < node->parameters.size(); ++i) {
         const auto& param = node->parameters[i];
         int size = getTypeSize(param->type.get());
         if (i < arg_registers.size()) {
-            register_param_offset -= 8; // We push 8 bytes for each register
+            register_param_offset -= 8; 
+            // Use symbolTable.addSymbol directly, it now targets current_scope
             symbolTable.addSymbol(Symbol(Symbol::SymbolType::VARIABLE, param->name, param->type->clone(), register_param_offset, size));
         } else {
             symbolTable.addSymbol(Symbol(Symbol::SymbolType::VARIABLE, param->name, param->type->clone(), param_offset, size));
             param_offset += size;
         }
     }
-    symbolTable.scopes.back()->currentOffset = register_param_offset;
+    
+    // Update the offset of the CURRENT scope
+    symbolTable.current_scope->currentOffset = register_param_offset;
 
-    // Only analyze body statements if it's not an extern function
     if (!node->is_extern) {
         for (const auto& stmt : node->body_statements) {
             visit(stmt.get());
         }
     }
 
-    // DO NOT exit scope here — code generator needs it!
-    // symbolTable.exitScope(); ← COMMENTED OUT
+    // NOW IT IS SAFE TO EXIT!
+    symbolTable.exitScope(); 
 }
-
 void SemanticAnalyzer::visit(VariableDeclarationNode* node) {
-    if (symbolTable.scopes.back()->lookup(node->name)) {
+    if (symbolTable.current_scope->lookup(node->name)) {
         throw std::runtime_error("Semantic Error: Redefinition of variable '" + node->name + "'.");
     }
 
@@ -257,10 +257,11 @@ void SemanticAnalyzer::visit(VariableDeclarationNode* node) {
         actual_type = node->type->clone();
     }
 
+
     int var_size = getTypeSize(actual_type.get());
 
-    symbolTable.scopes.back()->currentOffset -= var_size;
-    int offset = symbolTable.scopes.back()->currentOffset;
+    symbolTable.current_scope->currentOffset -= var_size;
+    int offset = symbolTable.current_scope->currentOffset;
 
     Symbol symbol(Symbol::SymbolType::VARIABLE, node->name, actual_type->clone(), offset, var_size);
     node->resolved_symbol = symbolTable.addSymbol(std::move(symbol));
@@ -435,6 +436,7 @@ void SemanticAnalyzer::visit(MemberAccessNode* node) {
             }
 
             node->resolved_symbol = new Symbol(Symbol::SymbolType::STRUCT_MEMBER, member.name, member.type->clone(), member.offset, getTypeSize(member.type.get()), member.visibility);
+	    node->resolved_type = member.type->clone();
             break;
         }
     }
@@ -496,7 +498,7 @@ void SemanticAnalyzer::visit(AsmStatementNode* node) {
 }
 
 void SemanticAnalyzer::visit(ConstantDeclarationNode* node) {
-    if (symbolTable.scopes.back()->lookup(node->name)) {
+    if (symbolTable.current_scope->lookup(node->name)) {
         throw std::runtime_error("Semantic Error: Redefinition of symbol '" + node->name + "'.");
     }
 
@@ -537,7 +539,7 @@ void SemanticAnalyzer::visit(ConstantDeclarationNode* node) {
 }
 
 void SemanticAnalyzer::visit(EnumStatementNode* node) {
-    if (symbolTable.scopes.back()->lookup(node->name)) {
+    if (symbolTable.current_scope->lookup(node->name)) {
         throw std::runtime_error("Semantic Error: Redefinition of symbol '" + node->name + "'.");
     }
 
@@ -548,7 +550,7 @@ void SemanticAnalyzer::visit(EnumStatementNode* node) {
 
     int current_value = 0;
     for (const auto& member : node->members) {
-        if (symbolTable.scopes.back()->lookup(member->name)) {
+        if (symbolTable.current_scope->lookup(member->name)) {
             throw std::runtime_error("Semantic Error: Redefinition of symbol '" + member->name + "'.");
         }
 
@@ -560,7 +562,7 @@ void SemanticAnalyzer::visit(EnumStatementNode* node) {
             current_value = static_cast<IntegerLiteralExpressionNode*>(member->value.get())->value;
         }
 
-        auto value_node = std::make_unique<IntegerLiteralExpressionNode>(current_value);
+	auto value_node = std::make_unique<IntegerLiteralExpressionNode>(current_value);
         auto type_node = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_INT);
         symbolTable.addSymbol(Symbol(Symbol::SymbolType::CONSTANT, member->name, std::move(type_node), std::move(value_node)));
 

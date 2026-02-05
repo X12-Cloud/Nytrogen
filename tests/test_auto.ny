@@ -1,4 +1,5 @@
 int main() {
-	auto x = "hi";
+	auto x = 12;
 	print x;
+	return 0;
 }

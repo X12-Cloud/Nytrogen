@@ -9,7 +9,8 @@ cd "$SCRIPT_DIR/.."
 echo "--- Performing a clean build of Nytrogen ---"
 
 
-echo "Removing existing 'build' directory..."
+echo "Removing existing 'build', 'out' directories..."
+rm -rf out/*
 rm -rf bootstrap/build
 
 
