@@ -1,8 +1,25 @@
 int main() {
-    int arr[3];
-    int i = 1;
-    arr[i] = 500;
-    print(arr[i]); // Should be 500
-    print(arr[i - 1 + 1]); // Should also be 500
+    int map[3];
+    int data[3];
+
+    // Set up the map
+    map[0] = 2;
+    map[1] = 0;
+    map[2] = 1;
+
+    // Set up the data
+    data[0] = 100;
+    data[1] = 200;
+    data[2] = 300;
+
+    // The Recursive Test: data[map[0]]
+    // map[0] is 2, so this should point to data[2], which is 300
+    print(data[map[0]]); 
+    
+    // The Ultimate Test: Assignment via nested index
+    // data[map[1]] is data[0]. We set it to 999.
+    data[map[1]] = 999;
+    print(data[0]);
+
     return 0;
 }
