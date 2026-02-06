@@ -549,20 +549,33 @@ void CodeGenerator::visit(ArrayAccessNode* node) {
     visit(node->index_expr.get());
     out << "    mov rbx, rax" << std::endl;
 
+    int element_size = 8; 
+    if (node->array_expr && node->array_expr->resolved_type) {
+        if (node->array_expr->resolved_type->category == TypeNode::TypeCategory::ARRAY) {
+            auto arr_type = static_cast<ArrayTypeNode*>(node->array_expr->resolved_type.get());
+            element_size = getTypeSize(arr_type->base_type.get());
+        }
+    }
+
     if (node->array_expr->node_type == ASTNode::NodeType::VARIABLE_REFERENCE) {
         auto var_ref = static_cast<VariableReferenceNode*>(node->array_expr.get());
-        Symbol* symbol = symbolTable.lookup(var_ref->name);
+        Symbol* symbol = var_ref->resolved_symbol; 
+        
         if (symbol) {
             out << "    lea rax, [rbp + " << symbol->offset << "]" << std::endl;
         } else {
-            throw std::runtime_error("Code generation error: array '" + var_ref->name + "' not found in symbol table.");
+             throw std::runtime_error("CodeGen Error: Symbol not found.");
         }
     } else {
         visit(node->array_expr.get());
     }
 
-    out << "    imul rbx, 8" << std::endl;
+    out << "    imul rbx, " << element_size << std::endl;
     out << "    add rax, rbx" << std::endl;
+
+    if (!is_lvalue) {
+        out << "    mov rax, [rax]" << std::endl;
+    }
 }
 
 void CodeGenerator::visit(StructDefinitionNode* node) {

@@ -477,7 +477,7 @@ void SemanticAnalyzer::visit(ArrayAccessNode* node) {
         static_cast<PrimitiveTypeNode*>(index_type.get())->primitive_type != Token::KEYWORD_INT) {
         throw std::runtime_error("Semantic Error: Array index must be an integer.");
     }
-    node->resolved_symbol = new Symbol(Symbol::SymbolType::VARIABLE, "", static_cast<ArrayTypeNode*>(array_type.get())->base_type->clone(), 0, getTypeSize(static_cast<ArrayTypeNode*>(array_type.get())->base_type.get()));
+    node->resolved_type = static_cast<ArrayTypeNode*>(array_type.get())->base_type->clone();
 }
 
 void SemanticAnalyzer::visit(StructDefinitionNode* node) {
