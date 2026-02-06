@@ -1,63 +1,37 @@
 #include "lexer.hpp"
 #include <iostream>
 #include <cctype>
+#include <unordered_map>
+
+static const std::unordered_map<std::string, Token::Type> KEYWORD_MAP = {
+    {"return", Token::KEYWORD_RETURN}, {"int", Token::KEYWORD_INT},
+    {"string", Token::KEYWORD_STRING}, {"print", Token::KEYWORD_PRINT},
+    {"if", Token::KEYWORD_IF},         {"else", Token::KEYWORD_ELSE},
+    {"while", Token::KEYWORD_WHILE},   {"bool", Token::KEYWORD_BOOL},
+    {"char", Token::KEYWORD_CHAR},     {"true", Token::TRUE},
+    {"false", Token::FALSE},           {"for", Token::KEYWORD_FOR},
+    {"struct", Token::KEYWORD_STRUCT}, {"switch", Token::KEYWORD_SWITCH},
+    {"case", Token::KEYWORD_CASE},     {"default", Token::KEYWORD_DEFAULT},
+    {"asm", Token::KEYWORD_ASM},       {"enum", Token::KEYWORD_ENUM},
+    {"const", Token::KEYWORD_CONST},   {"public", Token::KEYWORD_PUBLIC},
+    {"private", Token::KEYWORD_PRIVATE}, {"extern", Token::KEYWORD_EXTERN},
+    {"auto", Token::KEYWORD_AUTO},     {"void", Token::KEYWORD_VOID}
+};
 
 // Token type to string conversion
+// Token type to string conversion
 std::string Token::typeToString() const {
-    switch (type) {
-        case KEYWORD_RETURN: return "KEYWORD_RETURN";
-        case KEYWORD_PRINT: return "KEYWORD_PRINT";
-        case INTEGER_LITERAL: return "INTEGER_LITERAL";
-        case STRING_LITERAL: return "STRING_LITERAL";
-	case TRUE: return "TRUE";
-	case FALSE: return "FALSE";
-	case CHARACTER_LITERAL: return "CHARACTER_LITERAL";
-        case KEYWORD_INT: return "KEYWORD_INT";
-        case KEYWORD_VOID: return "KEYWORD_VOID";
-        case KEYWORD_STRING: return "KEYWORD_STRING";
-        case KEYWORD_IF: return "KEYWORD_IF";
-	case KEYWORD_WHILE: return "KEYWORD_WHILE";
-        case KEYWORD_ELSE: return "KEYWORD_ELSE";
-	case KEYWORD_BOOL: return "KEYWORD_BOOL";
-        case KEYWORD_CHAR: return "KEYWORD_CHAR";
-        case KEYWORD_FOR: return "KEYWORD_FOR";
-	case KEYWORD_CONST: return "KEYWORD_CONST";
-        case KEYWORD_STRUCT: return "KEYWORD_STRUCT";
-	case KEYWORD_SWITCH: return "KEYWORD_SWITCH";
-	case KEYWORD_CASE: return "KEYWORD_CASE";
-	case KEYWORD_DEFAULT: return "KEYWORD_DEFAULT";
-	case KEYWORD_ASM: return "KEYWORD_ASM";
-	case KEYWORD_ENUM: return "KEYWORD_ENUM";
-	case KEYWORD_PUBLIC: return "KEYWORD_PUBLIC";
-	case KEYWORD_PRIVATE: return "KEYWORD_PRIVATE";
+    static const char* typeStrings[] = {
+#define AS_STR(name, str) #name,
+        TOKEN_LIST(AS_STR)
+#undef AS_STR
+    };
 
-	case IDENTIFIER: return "IDENTIFIER";
-        case EQ: return "EQ";
-        case PLUS: return "PLUS";
-        case MINUS: return "MINUS";
-        case STAR: return "STAR";
-        case SLASH: return "SLASH";
-	case ADDRESSOF: return "ADDRESSOF";
-        case EQUAL_EQUAL: return "EQUAL_EQUAL";
-        case BANG_EQUAL: return "BANG_EQUAL";
-        case LESS: return "LESS";
-        case GREATER: return "GREATER";
-        case LESS_EQUAL: return "LESS_EQUAL";
-        case GREATER_EQUAL: return "GREATER_EQUAL";
-        case SEMICOLON: return "SEMICOLON";
-        case LPAREN: return "LPAREN";
-	case RPAREN: return "RPAREN";
-        case LBRACE: return "LBRACE";
-        case RBRACE: return "RBRACE";
-	case LBRACKET: return "LBRACKET";
-        case RBRACKET: return "RBRACKET";
-	case COMMA: return "COMMA";
-	case DOT: return "DOT";
-	case COLON: return "COLON";
-        case END_OF_FILE: return "END_OF_FILE";
-        case UNKNOWN: return "UNKNOWN";
+    // Since this->type is an enum (integer), we just index the array
+    if (this->type >= 0 && this->type < (sizeof(typeStrings) / sizeof(typeStrings[0]))) {
+        return typeStrings[this->type];
     }
-    return "UNKNOWN_TYPE";
+    return "UNKNOWN";
 }
 
 // Lexical analysis - converts source code to tokens
@@ -143,40 +117,22 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
         }
 
         // Identifier or keyword
-        if (std::isalpha(currentChar) || currentChar == '_') {
-            std::string value;
-            int startColumn = column;
-            while (currentPos < sourceCode.length() &&
-                   (std::isalnum(sourceCode[currentPos]) || sourceCode[currentPos] == '_')) {
-                value += sourceCode[currentPos++];
-                column++;
-            }
-            if (value == "return") tokens.push_back({Token::KEYWORD_RETURN, value, line, startColumn});
-            else if (value == "int") tokens.push_back({Token::KEYWORD_INT, value, line, startColumn});
-            else if (value == "string") tokens.push_back({Token::KEYWORD_STRING, value, line, startColumn});
-            else if (value == "print") tokens.push_back({Token::KEYWORD_PRINT, value, line, startColumn});
-            else if (value == "if") tokens.push_back({Token::KEYWORD_IF, value, line, startColumn});
-            else if (value == "else") tokens.push_back({Token::KEYWORD_ELSE, value, line, startColumn});
-	    else if (value == "while") tokens.push_back({Token::KEYWORD_WHILE, value, line, startColumn});
-	    else if (value == "bool") tokens.push_back({Token::KEYWORD_BOOL, value, line, startColumn});
-	    else if (value == "char") tokens.push_back({Token::KEYWORD_CHAR, value, line, startColumn});		
-	    else if (value == "true") tokens.push_back({Token::TRUE, value, line, startColumn});
-	    else if (value == "false") tokens.push_back({Token::FALSE, value, line, startColumn});
-	    else if (value == "for") tokens.push_back({Token::KEYWORD_FOR, value, line, startColumn});
-	    else if (value == "struct") tokens.push_back({Token::KEYWORD_STRUCT, value, line, startColumn});
-	    else if (value == "switch") tokens.push_back({Token::KEYWORD_SWITCH, value, line, startColumn});
-	    else if (value == "case") tokens.push_back({Token::KEYWORD_CASE, value, line, startColumn});
-	    else if (value == "default") tokens.push_back({Token::KEYWORD_DEFAULT, value, line, startColumn});
-	    else if (value == "asm") tokens.push_back({Token::KEYWORD_ASM, value, line, startColumn});
-	    else if (value == "enum") tokens.push_back({Token::KEYWORD_ENUM, value, line, startColumn});
-	    else if (value == "const") tokens.push_back({Token::KEYWORD_CONST, value, line, startColumn});
-	    else if (value == "public") tokens.push_back({Token::KEYWORD_PUBLIC, value, line, startColumn});
-	    else if (value == "private") tokens.push_back({Token::KEYWORD_PRIVATE, value, line, startColumn});
-	    else if (value == "extern") tokens.push_back({Token::KEYWORD_EXTERN, value, line, startColumn});
-	    else if (value == "auto") tokens.push_back({Token::KEYWORD_AUTO, value, line, startColumn});
-	    else tokens.push_back({Token::IDENTIFIER, value, line, startColumn});
-            continue;
-        }
+	if (std::isalpha(currentChar) || currentChar == '_') {
+    	    std::string value;
+    	    int startColumn = column;
+    	    while (currentPos < sourceCode.length() && (std::isalnum(sourceCode[currentPos]) || sourceCode[currentPos] == '_')) {
+        	    value += sourceCode[currentPos++];
+        	    column++;
+    	    }
+
+    	    auto it = KEYWORD_MAP.find(value);
+    	    if (it != KEYWORD_MAP.end()) {
+        	    tokens.push_back({it->second, value, line, startColumn});
+    	    } else {
+        	    tokens.push_back({Token::IDENTIFIER, value, line, startColumn});
+    	    }
+    	    continue;
+	}
 
         // == or =
         if (currentChar == '=') {
