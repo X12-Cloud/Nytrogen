@@ -1,8 +1,11 @@
 int main() {
     // Test variables
     int result;
+    int y;
     result = 100;
+    y = 10;
     print(result);
+    print(y);
 
     bool x;
     x = false; // 0

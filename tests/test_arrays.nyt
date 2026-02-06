@@ -1,9 +1,8 @@
 int main() {
-    // Test arrays
-    int my_array[5];
-    my_array[0] = 10;
-    my_array[2 - 1] = 20;
-    print(my_array[0]);
-    print(my_array[1]);
+    int arr[3];
+    int i = 1;
+    arr[i] = 500;
+    print(arr[i]); // Should be 500
+    print(arr[i - 1 + 1]); // Should also be 500
     return 0;
 }

@@ -546,8 +546,11 @@ void CodeGenerator::visit(UnaryOpExpressionNode* node) {
 }
 
 void CodeGenerator::visit(ArrayAccessNode* node) {
+    bool was_lvalue = is_lvalue;
+    is_lvalue = false;
     visit(node->index_expr.get());
     out << "    mov rbx, rax" << std::endl;
+    is_lvalue = was_lvalue;
 
     int element_size = 8; 
     if (node->array_expr && node->array_expr->resolved_type) {
@@ -573,8 +576,12 @@ void CodeGenerator::visit(ArrayAccessNode* node) {
     out << "    imul rbx, " << element_size << std::endl;
     out << "    add rax, rbx" << std::endl;
 
-    if (!is_lvalue) {
-        out << "    mov rax, [rax]" << std::endl;
+    if (!was_lvalue) {
+        if (element_size == 4) {
+             out << "    movsx rax, dword [rax]" << std::endl;
+        } else {
+             out << "    mov rax, [rax]" << std::endl;
+        }
     }
 }
 
