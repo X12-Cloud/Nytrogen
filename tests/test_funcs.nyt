@@ -1,7 +1,7 @@
 int add() {
 	int x;
 	x = 10 + 1;
-	print x;
+	print "number: ", x;
 }
 
 int main() {
