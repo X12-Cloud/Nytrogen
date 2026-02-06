@@ -1,5 +1,6 @@
 #include "code_generator.hpp"
 #include <stdexcept>
+#include <sstream>
 
 CodeGenerator::CodeGenerator(std::unique_ptr<ProgramNode>& ast, SymbolTable& symTable)
 : program_ast(ast), symbolTable(symTable), string_label_counter(0) {}
@@ -135,16 +136,26 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
     out << "    push rbp" << std::endl;
     out << "    mov rbp, rsp" << std::endl;
 
+    std::stringstream body_buffer;
+    std::streambuf* backup = out.std::ios::rdbuf(body_buffer.rdbuf());
+
+    // Generate code for all statements
+    for (const auto& stmt : node->body_statements) {
+        visit(stmt.get());
+    }
+
+    out.std::ios::rdbuf(backup);
+
     // Calculate total local variable space from current scope
-    int local_var_space = 64;
-    /* if (!symbolTable.all_scopes.empty()) {
-        // The total space for local variables and register parameters pushed to the stack
+    int local_var_space = 0;
+    if (!symbolTable.all_scopes.empty()) {
         local_var_space = -symbolTable.all_scopes.back()->currentOffset;
-    } else {
-        // throw std::runtime_error("Code generation error: No active scope in function '" + node->name + "'.");
-	local_var_space = 32;
-    } */
-    int aligned_space = 64; // (local_var_space + 15) & ~15
+    }
+    if (local_var_space == 0) {
+        local_var_space = 64; 
+    }
+
+    int aligned_space = (local_var_space + 15) & ~15;
     if (aligned_space > 0) {
         out << "    sub rsp, " << aligned_space << "\n";
     }
@@ -157,16 +168,7 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
         out << "    mov [rbp + " << offset << "], " << arg_registers[i] << std::endl;
     }
 
-    // We only need to allocate space for local variables, not the register parameters
-    // that we've already pushed.
-    // if (local_var_space > register_args_size) {
-    //     out << "    sub rsp, " << (local_var_space - register_args_size) << std::endl;
-    // }
-
-    // Generate code for all statements
-    for (const auto& stmt : node->body_statements) {
-        visit(stmt.get());
-    }
+    out << body_buffer.str();
 
     if (node->name == "main") {
         out << ".main_epilogue:" << std::endl;
@@ -286,14 +288,6 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
     visit(node->right.get());
     out << "    mov rbx, rax" << std::endl; // rbx = right
     out << "    pop rcx" << std::endl;     // rax = left
-    /* if (node->left->node_type == ASTNode::NodeType::ARRAY_ACCESS_EXPRESSION || node->left->node_type == ASTNode::NodeType::MEMBER_ACCESS_EXPRESSION) {
-        out << "    mov rax, [rax]" << std::endl;
-    }
-    out << "    push rax" << std::endl;
-    visit(node->right.get());
-    if (node->right->node_type == ASTNode::NodeType::ARRAY_ACCESS_EXPRESSION || node->right->node_type == ASTNode::NodeType::MEMBER_ACCESS_EXPRESSION) {
-        out << "    mov rax, [rax]" << std::endl;
-    } */
 
     switch (node->op_type) {
         case Token::PLUS:
@@ -374,12 +368,8 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
 void CodeGenerator::visit(PrintStatementNode* node) {
     for (const auto& expr : node->expressions) {
         visit(expr.get());
-        /* if (expr->node_type == ASTNode::NodeType::ARRAY_ACCESS_EXPRESSION || expr->node_type == ASTNode::NodeType::MEMBER_ACCESS_EXPRESSION) {
-            out << "    mov rax, [rax]" << std::endl;
-        } */
         out << "    mov rsi, rax" << std::endl;
-	
-	// Working now
+
         if (expr->resolved_type) {
             if (expr->resolved_type->category == TypeNode::TypeCategory::PRIMITIVE) {
                 auto prim_type = static_cast<PrimitiveTypeNode*>(expr->resolved_type.get());
@@ -500,12 +490,6 @@ void CodeGenerator::visit(FunctionCallNode* node) {
 
     for (int i = std::min(arg_count, (int)arg_regs_64.size()) - 1; i >= 0; --i) {
         visit(node->arguments[i].get());
-	/* if (node->arguments[i]->node_type == ASTNode::NodeType::MEMBER_ACCESS_EXPRESSION) {
-    	    out << "    mov eax, dword [rax]" << std::endl;
-	} */
-        // Since visit() put the result in rax, we move the 32-bit 
-        // part (eax) into the 32-bit target register (e.g., edi).
-        // This automatically clears the top 32 bits of the 64-bit register.
         out << "    mov " << arg_regs_32[i] << ", eax" << std::endl;
     }
 
@@ -517,16 +501,6 @@ void CodeGenerator::visit(FunctionCallNode* node) {
 }
 
 void CodeGenerator::visit(MemberAccessNode* node) {
-    /* if (node->struct_expr->node_type == ASTNode::NodeType::VARIABLE_REFERENCE) {
-        auto var_ref = static_cast<VariableReferenceNode*>(node->struct_expr.get());
-	Symbol* symbol = var_ref->resolved_symbol;
-        if (symbol) {
-            out << "    lea rax, [rbp + " << symbol->offset << "]" << std::endl;
-        } else {
-            throw std::runtime_error("Code generation error: struct '" + var_ref->name + "' not found in symbol table.");
-        }
-    } else {} */
-
     bool old_lvalue = is_lvalue;
     is_lvalue = true; 
     visit(node->struct_expr.get()); 

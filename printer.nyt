@@ -1,3 +1,0 @@
-int printer(string x) {
-	print x;
-}
