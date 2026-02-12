@@ -337,7 +337,7 @@ void SemanticAnalyzer::visit(ReturnStatementNode* node) {
 void SemanticAnalyzer::visit(IfStatementNode* node) {
     std::unique_ptr<TypeNode> cond_type = visitExpression(node->condition.get());
     if (cond_type->category != TypeNode::TypeCategory::PRIMITIVE ||
-        static_cast<PrimitiveTypeNode*>(cond_type.get())->primitive_type != Token::KEYWORD_BOOL) {
+        static_cast<PrimitiveTypeNode*>(cond_type.get())->primitive_type != Token::KEYWORD_BOOL && static_cast<PrimitiveTypeNode*>(cond_type.get())->primitive_type != Token::INTEGER_LITERAL) {
         throw std::runtime_error("Semantic Error: If condition must be a boolean expression.");
     }
 
@@ -460,6 +460,8 @@ void SemanticAnalyzer::visit(UnaryOpExpressionNode* node) {
             throw std::runtime_error("Semantic Error: Dereference operator '*' can only be applied to pointer types.");
         }
         node->resolved_type = static_cast<PointerTypeNode*>(operand_type.get())->base_type->clone();
+    } else if (node->op_type == Token::BANG) {
+	node->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::INTEGER_LITERAL);
     } else {
         throw std::runtime_error("Semantic Error: Unknown unary operator.");
     }

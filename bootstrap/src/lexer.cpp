@@ -152,7 +152,7 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
                 tokens.push_back({Token::BANG_EQUAL, "!=", line, column});
                 currentPos += 2; column += 2;
             } else {
-                std::cerr << "Lexer Error: Unexpected character '!' at line " << line << ", column " << column << std::endl;
+		tokens.push_back({Token::BANG, "!", line, column});
                 currentPos++; column++;
             }
             continue;

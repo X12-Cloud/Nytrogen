@@ -542,6 +542,11 @@ void CodeGenerator::visit(UnaryOpExpressionNode* node) {
         out << "    lea rax, [rbp + " << std::to_string(offset) << "]" << std::endl;
     } else if (node->op_type == Token::STAR) {
         out << "    mov rax, [rax]" << std::endl;
+    } else if (node->op_type == Token::BANG) {
+	visit(node->operand.get());
+	out << "    test rax, rax" << std::endl;
+	out << "    setz al" << std::endl;
+	out << "    movzx rax, al" << std::endl;
     }
 }
 

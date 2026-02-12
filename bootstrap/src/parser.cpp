@@ -349,6 +349,11 @@ std::unique_ptr<ASTNode> Parser::parseUnaryExpression() {
         auto operand = parseUnaryExpression();
         return std::make_unique<UnaryOpExpressionNode>(op_token.type, std::move(operand), op_token.line, op_token.column);
     }
+    else if (peek().type == Token::BANG) {
+	const Token& op_token = consume();
+	auto operand = parseUnaryExpression();
+        return std::make_unique<UnaryOpExpressionNode>(op_token.type, std::move(operand), op_token.line, op_token.column);
+    }
     return parseFactor();
 }
 
