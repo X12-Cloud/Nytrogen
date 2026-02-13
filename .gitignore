@@ -1,8 +1,7 @@
-/build/
-/out/
-output.txt
+build/
+out/
+bin/
 
 **/build
 **/out
 
-gemini_context.md
