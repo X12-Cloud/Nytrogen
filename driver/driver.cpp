@@ -43,7 +43,10 @@ int main(int argc, char* argv[]) {
             output_bin_name = argv[++i];
         } else if (arg == "-obj") {
             obj_only = true;
-        }
+        } else if (std::string(argv[1]) == "--version") {
+    	    std::cout << "Nytrogen Toolchain v" << NYTRO_VERSION << " (Arch Linux)" << std::endl;
+    	    return 0;
+	}
     }
 
     // 3. Setup Output Directory (Current Working Directory/out)

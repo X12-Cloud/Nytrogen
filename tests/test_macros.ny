@@ -4,5 +4,7 @@
 int main() {
 	print NUM;
 	print STR;
+	string x = __VERSION__;
+	print x;
 	return 0;
 }

@@ -122,7 +122,7 @@ int main(int argc, char* argv[]) {
     defined_macros["__DATE_TIME__"] = ss_datetime.str();
     defined_macros["__DATE__"] = ss_date.str();
     defined_macros["__TIME__"] = ss_time.str();
-    defined_macros["__VERSION__"] = "\"0.1 beta\"";
+    defined_macros["__VERSION__"] = NYTRO_VERSION;
 #if defined(__linux__)
     defined_macros["__SYSTEM__"] = "\"Linux\"";
 #elif defined(_WIN32)
