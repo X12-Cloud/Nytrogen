@@ -22,5 +22,5 @@ add_compile_definitions(NYTRO_VERSION="\\"${NYTRO_FULL_VERSION}\\"")
 
 # Components
 add_subdirectory(Preprocessor)
-add_subdirectory(bootstrap)
+add_subdirectory(compiler)
 add_subdirectory(driver)
