@@ -36,15 +36,18 @@ int main(int argc, char* argv[]) {
     std::string base_name = fs::path(input_file).stem().string();
     std::string output_bin_name = base_name; // Default to input name
     bool obj_only = false;
+    bool no_preproc = false;
 
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "-o" && i + 1 < argc) {
             output_bin_name = argv[++i];
-        } else if (arg == "-obj") {
+        } else if (arg == "-obj" || arg == "-c") {
             obj_only = true;
-        } else if (std::string(argv[1]) == "--version") {
-    	    std::cout << "Nytrogen Toolchain v" << NYTRO_VERSION << " (Arch Linux)" << std::endl;
+	} else if (arg == "-dp") {
+            no_preproc = true;
+        } else if (std::string(argv[1]) == "--version" || std::string(argv[1]) == "-v") {
+    	    std::cout << "Nytrogen Toolchain v" << NYTRO_VERSION << " (Arch Linux)" << std::endl; // will replace the arch linux thing to show the actual OS later
     	    return 0;
 	}
     }
@@ -60,9 +63,11 @@ int main(int argc, char* argv[]) {
     std::string final_exe = (out_dir / output_bin_name).string();
 
     // 4. Preprocessor
-    std::cout << "--- Running Nytrogen Preprocessor ---" << std::endl;
-    std::string pre_cmd = "\"" + pre_bin.string() + "\" \"" + input_file + "\" > \"" + pre_out + "\"";
-    if (std::system(pre_cmd.c_str()) != 0) return 1;
+    if (no_preproc == false) {
+        std::cout << "--- Running Nytrogen Preprocessor ---" << std::endl;
+        std::string pre_cmd = "\"" + pre_bin.string() + "\" \"" + input_file + "\" > \"" + pre_out + "\"";
+        if (std::system(pre_cmd.c_str()) != 0) return 1;
+    }
 
     // 5. Compiler
     std::cout << "--- Running Nytrogen Compiler ---" << std::endl;

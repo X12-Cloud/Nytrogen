@@ -27,7 +27,6 @@ Nytrogen supports a range of fundamental data types:
 *   `string`: A sequence of characters enclosed in double quotes.
 *   `bool`: A boolean value, which can be `true` or `false`.
 *   `char`: A single character enclosed in single quotes.
-*   `void`: Represents the absence of a value, typically used as a function return type.
 
 ### Pointers
 
@@ -181,13 +180,19 @@ for (int i = 0; i < 5; i = i + 1) {
 ## Extern 
 Makes for very good C (possibly C++) compatibility.
 
+```nytrogen
+extern malloc(int size);
+// inside a function or sth
+int heap = malloc(20);
+```
+
 ## Expressions
 
 Expressions are combinations of values, variables, and operators that are evaluated to produce a new value.
 
 *   **Arithmetic:** `+`, `-`, `*`, `/`
 *   **Comparison:** `==`, `!=`, `<`, `>`, `<=`, `>=`
-*   **Logical:** `&&` (AND), `||` (OR), `!` (NOT)
+*   **Logical:** `!` (NOT)
 
 ## Built-in Functions
 
@@ -199,6 +204,6 @@ The `print` function can output the value of any expression.
 
 ```nytrogen
 print "Hello, Nytrogen!";
-int version = 1;
+int version = 0.1;
 print version;
 ```
