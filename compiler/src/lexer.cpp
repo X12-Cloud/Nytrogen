@@ -15,7 +15,8 @@ static const std::unordered_map<std::string, Token::Type> KEYWORD_MAP = {
     {"asm", Token::KEYWORD_ASM},       {"enum", Token::KEYWORD_ENUM},
     {"const", Token::KEYWORD_CONST},   {"public", Token::KEYWORD_PUBLIC},
     {"private", Token::KEYWORD_PRIVATE}, {"extern", Token::KEYWORD_EXTERN},
-    {"auto", Token::KEYWORD_AUTO},     {"void", Token::KEYWORD_VOID}
+    {"auto", Token::KEYWORD_AUTO},     {"void", Token::KEYWORD_VOID},
+    {"auto", Token::KEYWORD_FLOAT},    {"void", Token::KEYWORD_DOUBLE}
 };
 
 // Token type to string conversion
@@ -67,17 +68,34 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
             continue;
         }
 
-        // Integer literal
+        // Any digit literal
         if (std::isdigit(currentChar)) {
             std::string value;
             int startColumn = column;
-            while (currentPos < sourceCode.length() && std::isdigit(sourceCode[currentPos])) {
-                value += sourceCode[currentPos++];
-                column++;
-            }
-            tokens.push_back({Token::INTEGER_LITERAL, value, line, startColumn});
-            continue;
-        }
+	    while (currentPos < sourceCode.length() && 
+      		  (std::isdigit(sourceCode[currentPos]) || 
+       		   sourceCode[currentPos] == '.' || 
+       		   sourceCode[currentPos] == 'f' || 
+       		   sourceCode[currentPos] == 'd')) {
+    		value += sourceCode[currentPos++];
+    		column++;
+	    }
+
+	    char suffix = value.back(); // last char of value
+
+	    if (value.find('.') != std::string::npos) {
+		switch (suffix) {
+		    case 'f': tokens.push_back({Token::FLOAT_LITERAL, value, line, startColumn});
+		    break;
+		    case 'd':
+		    default: tokens.push_back({Token::DOUBLE_LITERAL, value, line, startColumn});
+		    break;
+		} 
+	    } else {
+                tokens.push_back({Token::INTEGER_LITERAL, value, line, startColumn});
+	    }
+	    continue;
+	}
 
         // Character literal
         if (currentChar == '\'') {

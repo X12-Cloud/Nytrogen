@@ -86,6 +86,19 @@ std::unique_ptr<CharacterLiteralExpressionNode> Parser::parseCharacterLiteralExp
     return std::make_unique<CharacterLiteralExpressionNode>(char_token.value[0], char_token.line, char_token.column);
 }
 
+std::unique_ptr<FloatLiteralExpressionNode> Parser::parseFloatLiteralExpression() {
+    const Token& token = consume();
+    std::string valStr = token.value;
+    if (valStr.back() == 'f') valStr.pop_back();
+    return std::make_unique<FloatLiteralExpressionNode>(std::stof(valStr), token.line, token.column);
+}
+
+std::unique_ptr<DoubleLiteralExpressionNode> Parser::parseDoubleLiteralExpression() {
+    const Token& token = consume();
+    std::string valStr = token.value;
+    if (valStr.back() == 'd') valStr.pop_back();
+    return std::make_unique<DoubleLiteralExpressionNode>(std::stod(valStr), token.line, token.column);
+}
 
 std::unique_ptr<ReturnStatementNode> Parser::parseReturnStatement() {
     const Token& return_token = peek();
@@ -229,6 +242,8 @@ std::unique_ptr<TypeNode> Parser::parseType() {
 
     if (type_token.type == Token::KEYWORD_INT ||
         type_token.type == Token::KEYWORD_STRING ||
+        type_token.type == Token::KEYWORD_FLOAT ||
+        type_token.type == Token::KEYWORD_DOUBLE ||
         type_token.type == Token::KEYWORD_BOOL ||
         type_token.type == Token::KEYWORD_CHAR) {
         consume();
@@ -300,6 +315,10 @@ std::unique_ptr<ASTNode> Parser::parseFactor() {
 
     if (current_token.type == Token::INTEGER_LITERAL) {
         node = parseIntegerLiteralExpression();
+    } else if (current_token.type == Token::FLOAT_LITERAL) {
+        node = parseFloatLiteralExpression();
+    } else if (current_token.type == Token::DOUBLE_LITERAL) {
+        node = parseDoubleLiteralExpression();
     } else if (current_token.type == Token::IDENTIFIER) {
         if (peek(1).type == Token::LPAREN) {
             node = parseFunctionCall();

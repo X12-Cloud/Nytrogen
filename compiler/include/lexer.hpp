@@ -18,9 +18,11 @@
     X(KEYWORD_ASM, "asm")         X(KEYWORD_ENUM, "enum")       \
     X(KEYWORD_PUBLIC, "public")   X(KEYWORD_PRIVATE, "private") \
     X(KEYWORD_EXTERN, "extern")   X(KEYWORD_AUTO, "auto")       \
+    X(KEYWORD_FLOAT, "float")     X(KEYWORD_DOUBLE, "double")   \
     X(IDENTIFIER, "ID")           X(INTEGER_LITERAL, "INT_LIT") \
     X(STRING_LITERAL, "STR_LIT")  X(TRUE, "true")               \
     X(FALSE, "false")             X(CHARACTER_LITERAL, "CHAR_LIT") \
+    X(FLOAT_LITERAL, "FLOAT_LIT") X(DOUBLE_LITERAL, "DOUBLE_LIT") \
     X(EQ, "=")                    X(EQUAL_EQUAL, "==")          \
     X(BANG_EQUAL, "!=")           X(LESS, "<")                  \
     X(GREATER, ">")               X(LESS_EQUAL, "<=")           \

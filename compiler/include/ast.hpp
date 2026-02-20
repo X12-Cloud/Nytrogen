@@ -41,6 +41,8 @@ struct ASTNode {
 	CONSTANT_LITERAL_EXPRESSION = 22,
 	ENUM_STATEMENT = 23,
 	CONSTANT_DECLARATION = 24,
+	FLOAT_LITERAL_EXPRESSION = 25,
+	DOUBLE_LITERAL_EXPRESSION = 26,
     };
 
     NodeType node_type;
@@ -87,6 +89,20 @@ struct CharacterLiteralExpressionNode : public ASTNode {
 
     CharacterLiteralExpressionNode(int val, int line = -1, int column = -1)
         : ASTNode(NodeType::CHARACTER_LITERAL_EXPRESSION, line, column), value(val) {}
+};
+
+// Node representing float literals
+struct FloatLiteralExpressionNode : public ASTNode {
+    float value;
+    FloatLiteralExpressionNode(float val, int line = -1, int column = -1)
+        : ASTNode(NodeType::FLOAT_LITERAL_EXPRESSION, line, column), value(val) {}
+};
+
+// Node representing double literals
+struct DoubleLiteralExpressionNode : public ASTNode {
+    double value;
+    DoubleLiteralExpressionNode(double val, int line = -1, int column = -1)
+        : ASTNode(NodeType::DOUBLE_LITERAL_EXPRESSION, line, column), value(val) {}
 };
 
 // Node for return statements (e.g., return x;)

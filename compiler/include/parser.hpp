@@ -54,6 +54,8 @@ private:
     std::unique_ptr<ASTNode> parseUnaryExpression();
 
     std::unique_ptr<IntegerLiteralExpressionNode> parseIntegerLiteralExpression(); // Specific helper for int literals
+    std::unique_ptr<FloatLiteralExpressionNode> parseFloatLiteralExpression();
+    std::unique_ptr<DoubleLiteralExpressionNode> parseDoubleLiteralExpression();
     std::unique_ptr<StringLiteralExpressionNode> parseStringLiteralExpression();
     std::unique_ptr<BooleanLiteralExpressionNode> parseBooleanLiteralExpression();
     std::unique_ptr<CharacterLiteralExpressionNode> parseCharacterLiteralExpression();
