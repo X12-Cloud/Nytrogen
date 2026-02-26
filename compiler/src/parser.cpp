@@ -562,6 +562,8 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
         case Token::KEYWORD_STRING:
         case Token::KEYWORD_BOOL:
         case Token::KEYWORD_CHAR:
+        case Token::KEYWORD_FLOAT:
+        case Token::KEYWORD_DOUBLE:
         case Token::KEYWORD_AUTO: {
             auto decl_node = parseVariableDeclaration();
             expect(Token::SEMICOLON, "Expected ';' after variable declaration.");

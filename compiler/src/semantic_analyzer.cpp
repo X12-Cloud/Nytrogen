@@ -189,6 +189,8 @@ void SemanticAnalyzer::visit(ASTNode* node) {
         case ASTNode::NodeType::STRING_LITERAL_EXPRESSION:
         case ASTNode::NodeType::BOOLEAN_LITERAL_EXPRESSION:
         case ASTNode::NodeType::CHARACTER_LITERAL_EXPRESSION:
+	case ASTNode::NodeType::FLOAT_LITERAL_EXPRESSION:
+        case ASTNode::NodeType::DOUBLE_LITERAL_EXPRESSION:
             break;
         case ASTNode::NodeType::ASM_STATEMENT:
             visit(static_cast<AsmStatementNode*>(node));
@@ -308,7 +310,15 @@ void SemanticAnalyzer::visit(BinaryOperationExpressionNode* node) {
     std::unique_ptr<TypeNode> right_type = visitExpression(node->right.get());
 
     if (left_type->category != right_type->category) {
-        throw std::runtime_error("Semantic Error: Type mismatch in binary operation.");
+        throw std::runtime_error("Semantic Error: Type mismatch in binary operation (cannot operate on " + typeToString(left_type.get()) + " and " + typeToString(right_type.get()) + ")");
+    }
+
+    if (left_type->category == TypeNode::TypeCategory::PRIMITIVE) {
+	auto p1 = static_cast<PrimitiveTypeNode*>(left_type.get());
+        auto p2 = static_cast<PrimitiveTypeNode*>(right_type.get());
+        if (p1->primitive_type != p2->primitive_type) {
+	    throw std::runtime_error("Semantic Error: Mixed math. Adding different primitive types is not yet supported.");
+        }
     }
 
     switch (node->op_type) {
@@ -510,7 +520,9 @@ void SemanticAnalyzer::visit(ConstantDeclarationNode* node) {
     if (node->initial_value->node_type != ASTNode::NodeType::INTEGER_LITERAL_EXPRESSION &&
         node->initial_value->node_type != ASTNode::NodeType::STRING_LITERAL_EXPRESSION &&
         node->initial_value->node_type != ASTNode::NodeType::BOOLEAN_LITERAL_EXPRESSION &&
-        node->initial_value->node_type != ASTNode::NodeType::CHARACTER_LITERAL_EXPRESSION) {
+        node->initial_value->node_type != ASTNode::NodeType::CHARACTER_LITERAL_EXPRESSION &&
+	node->initial_value->node_type != ASTNode::NodeType::FLOAT_LITERAL_EXPRESSION &&
+	node->initial_value->node_type != ASTNode::NodeType::DOUBLE_LITERAL_EXPRESSION) {
         throw std::runtime_error("Semantic Error: Constant initializer must be a literal value.");
     }
 
@@ -532,6 +544,12 @@ void SemanticAnalyzer::visit(ConstantDeclarationNode* node) {
             break;
         case ASTNode::NodeType::CHARACTER_LITERAL_EXPRESSION:
             value_clone = std::make_unique<CharacterLiteralExpressionNode>(static_cast<CharacterLiteralExpressionNode*>(node->initial_value.get())->value);
+            break;
+        case ASTNode::NodeType::FLOAT_LITERAL_EXPRESSION:
+            value_clone = std::make_unique<FloatLiteralExpressionNode>(static_cast<FloatLiteralExpressionNode*>(node->initial_value.get())->value);
+            break;
+        case ASTNode::NodeType::DOUBLE_LITERAL_EXPRESSION:
+            value_clone = std::make_unique<DoubleLiteralExpressionNode>(static_cast<DoubleLiteralExpressionNode*>(node->initial_value.get())->value);
             break;
         default:
             // Should not happen due to the check above
@@ -589,6 +607,10 @@ std::unique_ptr<TypeNode> SemanticAnalyzer::visitExpression(ASTNode* expr) {
             return visitBooleanLiteralExpression(static_cast<BooleanLiteralExpressionNode*>(expr));
         case ASTNode::NodeType::CHARACTER_LITERAL_EXPRESSION:
             return visitCharacterLiteralExpression(static_cast<CharacterLiteralExpressionNode*>(expr));
+        case ASTNode::NodeType::FLOAT_LITERAL_EXPRESSION:
+            return visitFloatLiteralExpression(static_cast<FloatLiteralExpressionNode*>(expr));
+	case ASTNode::NodeType::DOUBLE_LITERAL_EXPRESSION:
+            return visitDoubleLiteralExpression(static_cast<DoubleLiteralExpressionNode*>(expr));
         case ASTNode::NodeType::VARIABLE_REFERENCE: {
             visit(static_cast<VariableReferenceNode*>(expr));
             Symbol* sym = symbolTable.lookup(static_cast<VariableReferenceNode*>(expr)->name);
@@ -667,4 +689,38 @@ std::unique_ptr<TypeNode> SemanticAnalyzer::visitBooleanLiteralExpression(Boolea
 std::unique_ptr<TypeNode> SemanticAnalyzer::visitCharacterLiteralExpression(CharacterLiteralExpressionNode* node) {
     node->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_CHAR);
     return node->resolved_type->clone();
+}
+
+std::unique_ptr<TypeNode> SemanticAnalyzer::visitFloatLiteralExpression(FloatLiteralExpressionNode* node) {
+    node->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_FLOAT);
+    return node->resolved_type->clone();
+}
+
+std::unique_ptr<TypeNode> SemanticAnalyzer::visitDoubleLiteralExpression(DoubleLiteralExpressionNode* node) {
+    node->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_DOUBLE);
+    return node->resolved_type->clone();
+}
+
+std::string SemanticAnalyzer::typeToString(const TypeNode* type) {
+    if (!type) return "null";
+    switch (type->category) {
+        case TypeNode::TypeCategory::PRIMITIVE: {
+            auto p = static_cast<const PrimitiveTypeNode*>(type);
+            switch (p->primitive_type) {
+                case Token::KEYWORD_INT:    return "int";
+                case Token::KEYWORD_FLOAT:  return "float";
+                case Token::KEYWORD_DOUBLE: return "double";
+                case Token::KEYWORD_BOOL:   return "bool";
+                case Token::KEYWORD_CHAR:   return "char";
+                case Token::KEYWORD_STRING: return "string";
+                case Token::KEYWORD_VOID:   return "void";
+                default: return "primitive";
+            }
+        }
+        case TypeNode::TypeCategory::POINTER: return "pointer";
+        case TypeNode::TypeCategory::ARRAY:   return "array";
+        case TypeNode::TypeCategory::STRUCT: 
+            return "struct " + static_cast<const StructTypeNode*>(type)->struct_name;
+        default: return "unknown";
+    }
 }

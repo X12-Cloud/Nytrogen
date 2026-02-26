@@ -21,6 +21,7 @@ public:
 private:
     std::unique_ptr<ProgramNode>& program_ast;
     SymbolTable& symbolTable;
+    std::string typeToString(const TypeNode* type);
 
     // Visitor methods for AST nodes
     void visit(ASTNode* node);
@@ -39,7 +40,7 @@ private:
     void visit(MemberAccessNode* node);
     void visit(UnaryOpExpressionNode* node);
     void visit(ArrayAccessNode* node);
-    void visit(StructDefinitionNode* node); // New visitor for struct definitions
+    void visit(StructDefinitionNode* node);
     void visit(AsmStatementNode* node);
     void visit(ConstantDeclarationNode* node);
     void visit(EnumStatementNode* node);
@@ -50,6 +51,8 @@ private:
     std::unique_ptr<TypeNode> visitStringLiteralExpression(StringLiteralExpressionNode* node);
     std::unique_ptr<TypeNode> visitBooleanLiteralExpression(BooleanLiteralExpressionNode* node);
     std::unique_ptr<TypeNode> visitCharacterLiteralExpression(CharacterLiteralExpressionNode* node);
+    std::unique_ptr<TypeNode> visitFloatLiteralExpression(FloatLiteralExpressionNode* node);
+    std::unique_ptr<TypeNode> visitDoubleLiteralExpression(DoubleLiteralExpressionNode* node);
 };
 
 #endif // SEMANTIC_ANALYZER_HPP
