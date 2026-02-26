@@ -13,6 +13,8 @@ int SemanticAnalyzer::getTypeSize(const TypeNode* type) {
             const PrimitiveTypeNode* prim_type = static_cast<const PrimitiveTypeNode*>(type);
             switch (prim_type->primitive_type) {
                 case Token::KEYWORD_INT: return 4; // 4 bytes for int (dword)
+                case Token::KEYWORD_FLOAT: return 4; // 4 bytes for float (dword)
+                case Token::KEYWORD_DOUBLE: return 8; // 8 bytes for double (qword)
                 case Token::KEYWORD_BOOL: return 1; // 1 byte for bool
                 case Token::KEYWORD_CHAR: return 1; // 1 byte for char
                 case Token::KEYWORD_STRING: return 8; // 8 bytes for string (pointer)

@@ -16,7 +16,7 @@ static const std::unordered_map<std::string, Token::Type> KEYWORD_MAP = {
     {"const", Token::KEYWORD_CONST},   {"public", Token::KEYWORD_PUBLIC},
     {"private", Token::KEYWORD_PRIVATE}, {"extern", Token::KEYWORD_EXTERN},
     {"auto", Token::KEYWORD_AUTO},     {"void", Token::KEYWORD_VOID},
-    {"auto", Token::KEYWORD_FLOAT},    {"void", Token::KEYWORD_DOUBLE}
+    {"float", Token::KEYWORD_FLOAT},    {"double", Token::KEYWORD_DOUBLE}
 };
 
 // Token type to string conversion
