@@ -265,7 +265,6 @@ void CodeGenerator::visit(VariableAssignmentNode* node) {
 
 void CodeGenerator::visit(VariableReferenceNode* node) {
     Symbol* symbol = node->resolved_symbol;
-    auto prim = dynamic_cast<PrimitiveTypeNode*>(node->resolved_type.get());
 
     if (!symbol) {
         throw std::runtime_error("CodeGen Error: Reference to '" + node->name + "' not resolved.");
@@ -275,6 +274,9 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
         visit(symbol->value.get());
         return;
     }
+
+    auto prim = dynamic_cast<PrimitiveTypeNode*>(node->resolved_type.get());
+    bool is_float = prim && (prim->primitive_type == Token::KEYWORD_FLOAT || prim->primitive_type == Token::KEYWORD_DOUBLE);
 	
     if (is_lvalue) {
         // We want the ADDRESS, not the value.
@@ -284,7 +286,9 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
         // We want the VALUE. We must check the size.
         int size = getTypeSize(node->resolved_type.get());
 
-        if (size == 1) {
+	if (is_float) {
+        out << "    vmovss xmm0, dword [rbp + " << symbol->offset << "]" << std::endl;
+	} else if (size == 1) {
             // Char or Bool: Move 1 byte and Sign-Extend to 64-bit rax
             out << "    movsx rax, byte [rbp + " << symbol->offset << "]" << std::endl;
         } else if (size == 4) {
@@ -292,7 +296,7 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
             out << "    movsx rax, dword [rbp + " << symbol->offset << "]" << std::endl;
         } else if (size == 8) {
             // Pointers or Strings: Move the full 8-byte 64-bit value
-            out << "    mov rax, [rbp + " << symbol->offset << "]" << std::endl;
+            out << "    mov rcx, [rbp + " << symbol->offset << "]" << std::endl;
         } else {
             // Fallback for structs/arrays (usually treated as an address)
             if (prim && prim->primitive_type == Token::KEYWORD_FLOAT) {
