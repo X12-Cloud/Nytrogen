@@ -15,6 +15,7 @@ class CodeGenerator {
 public:
     CodeGenerator(std::unique_ptr<ProgramNode>& ast, SymbolTable& symTable);
     void generate(const std::string& output_filename);
+    bool isFloatingPoint(const std::shared_ptr<TypeNode>& type);
 
 private:
     std::unique_ptr<ProgramNode>& program_ast;

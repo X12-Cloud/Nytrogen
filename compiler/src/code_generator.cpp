@@ -305,12 +305,38 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
 }
 
 void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
+    // Left
     visit(node->left.get());
-    out << "    push rax" << std::endl;
-    visit(node->right.get());
-    out << "    mov rbx, rax" << std::endl; // rbx = right
-    out << "    pop rcx" << std::endl;     // rax = left
+    bool is_float = isFloatingPoint(node->left->resolved_type);
 
+    if (is_float) {
+        out << "    sub rsp, 8" << std::endl;
+        out << "    vmovss dword [rsp], xmm0" << std::endl;
+    } else {
+        out << "    push rax" << std::endl;
+    }
+
+    // Right
+    visit(node->right.get());
+
+    if (is_float) {
+        out << "    vmovss xmm1, dword [rsp]" << std::endl;
+        out << "    add rsp, 8" << std::endl;
+        // Left is in xmm1, Right is in xmm0
+    } else {
+        out << "    pop rbx" << std::endl; 
+        // Left is in rbx, Right is in rax
+    }
+
+    if (is_float) {
+        switch (node->op_type) {
+            case Token::PLUS:  out << "    vaddss xmm0, xmm1, xmm0" << std::endl; break;
+            case Token::MINUS: out << "    vsubss xmm0, xmm1, xmm0" << std::endl; break;
+            case Token::STAR:  out << "    vmulss xmm0, xmm1, xmm0" << std::endl; break;
+            case Token::SLASH: out << "    vdivss xmm0, xmm1, xmm0" << std::endl; break;
+            default: throw std::runtime_error("Unsupported float operation");
+        }
+    } else {
     switch (node->op_type) {
         case Token::PLUS:
             out << "    add rcx, rbx" << std::endl;
@@ -384,6 +410,7 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
             break;
         default:
             throw std::runtime_error("Unknown binary operator.");
+    }
     }
 }
 
@@ -719,4 +746,11 @@ int CodeGenerator::getTypeSize(const TypeNode* type) {
                 default:
                     throw std::runtime_error("Code Generation Error: Unknown type category for size calculation.");
     }
+}
+
+bool CodeGenerator::isFloatingPoint(const std::shared_ptr<TypeNode>& type) {
+    if (!type) return false;
+    auto prim = dynamic_cast<PrimitiveTypeNode*>(type.get());
+    return prim && (prim->primitive_type == Token::KEYWORD_FLOAT || 
+                    prim->primitive_type == Token::KEYWORD_DOUBLE);
 }

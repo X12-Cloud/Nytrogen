@@ -1,7 +1,7 @@
 int main() {
-	float x = 1.1f;
-	int y = 2;
-	print x;
+	float x = 2.0f;
+	float z = 1.0f;
+	float y = x - z;
 	print y;
 	return 0;
 }
