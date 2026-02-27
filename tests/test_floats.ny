@@ -1,3 +1,4 @@
 int main() {
-	double x = 1.1d;
+	float x = 1.1f;
+	return 0;
 }

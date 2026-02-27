@@ -96,6 +96,12 @@ void CodeGenerator::visit(ASTNode* node) {
         case ASTNode::NodeType::CHARACTER_LITERAL_EXPRESSION:
             visit(static_cast<CharacterLiteralExpressionNode*>(node));
             break;
+        case ASTNode::NodeType::FLOAT_LITERAL_EXPRESSION:
+            visit(static_cast<FloatLiteralExpressionNode*>(node));
+            break;
+        case ASTNode::NodeType::DOUBLE_LITERAL_EXPRESSION:
+            visit(static_cast<DoubleLiteralExpressionNode*>(node));
+            break;
         case ASTNode::NodeType::ASM_STATEMENT:
             visit(static_cast<AsmStatementNode*>(node));
             break;
@@ -199,34 +205,36 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
         return;
     } else if (node->initial_value) {
         visit(node->initial_value.get());
-        out << "    push rax" << std::endl;                    // Save the value
-        out << "    lea rax, [rbp + " << symbol->offset << "]" << std::endl; // rax = address of variable
-        out << "    pop rbx" << std::endl;                     // Restore value into rbx
 
-        // Store with correct size based on type
-        if (node->type->category == TypeNode::TypeCategory::PRIMITIVE) {
-            auto prim = static_cast<PrimitiveTypeNode*>(node->type.get());
-            switch (prim->primitive_type) {
-                case Token::KEYWORD_BOOL:
-                case Token::KEYWORD_CHAR:
-                    out << "    mov [rax], bl" << std::endl;
-                    break;
-                case Token::KEYWORD_INT:
-                    out << "    mov [rax], ebx" << std::endl;
-                    break;
-                default:
-                    out << "    mov [rax], rbx" << std::endl;
-                    break;
-            }
+        auto prim = static_cast<PrimitiveTypeNode*>(node->type.get());
+        bool is_float = prim && (prim->primitive_type == Token::KEYWORD_FLOAT);
+        bool is_double = prim && (prim->primitive_type == Token::KEYWORD_DOUBLE);
+
+        out << "    lea rax, [rbp + " << symbol->offset << "]" << std::endl;
+
+        if (is_float) {
+            out << "    vmovss dword [rax], xmm0" << std::endl;
+        } else if (is_double) {
+            out << "    vmovsd qword [rax], xmm0" << std::endl;
         } else {
-            out << "    mov [rax], rbx" << std::endl;
+	    int size = getTypeSize(node->type.get());
+            if (size == 1)      out << "    mov [rax], al" << std::endl;
+            else if (size == 4) out << "    mov [rax], eax" << std::endl;
+            else                out << "    mov [rax], rax" << std::endl;
         }
     }
 }
 
 void CodeGenerator::visit(VariableAssignmentNode* node) {
     visit(node->right.get());
-    out << "    push rax" << std::endl;
+    auto type = node->left->resolved_type;
+    auto prim_type = dynamic_cast<PrimitiveTypeNode*>(type.get());
+    bool is_float = prim_type && (prim_type->primitive_type == Token::KEYWORD_FLOAT || prim_type->primitive_type == Token::KEYWORD_DOUBLE);
+
+    if (!is_float) {
+        out << "    push rax" << std::endl;
+    }
+
     if (node->left->node_type == ASTNode::NodeType::VARIABLE_REFERENCE) {
 	auto* var_ref = static_cast<VariableReferenceNode*>(node->left.get());
         Symbol* symbol = var_ref->resolved_symbol;
@@ -240,11 +248,18 @@ void CodeGenerator::visit(VariableAssignmentNode* node) {
         visit(node->left.get());
 	is_lvalue = false;
     }
-    out << "    pop rbx" << std::endl;
-    int size = getTypeSize(node->left->resolved_type.get());
-    if (size == 4) out << "    mov [rax], ebx" << std::endl;
-    else if (size == 1) out << "    mov [rax], bl" << std::endl;
-    else out << "    mov [rax], rbx" << std::endl;
+
+    if (is_float) {
+	out << "    vmovss [rax], xmm0" << std::endl;
+    } else if (prim_type && prim_type->primitive_type == Token::KEYWORD_DOUBLE) {
+	out << "    vmovss [rax], xmm0" << std::endl;
+    } else {
+        out << "    pop rbx" << std::endl;
+        int size = getTypeSize(node->left->resolved_type.get());
+        if (size == 4) out << "    mov [rax], ebx" << std::endl;
+        else if (size == 1) out << "    mov [rax], bl" << std::endl;
+        else out << "    mov [rax], rbx" << std::endl;
+    }
 }
 
 void CodeGenerator::visit(VariableReferenceNode* node) {
@@ -379,7 +394,11 @@ void CodeGenerator::visit(PrintStatementNode* node) {
                     out << "    lea rdi, [rel _print_int_format]" << std::endl;
                 } else if (prim_type->primitive_type == Token::KEYWORD_CHAR) {
                     out << "    lea rdi, [rel _print_char_format]" << std::endl;
-                } else {
+                } else if (prim_type->primitive_type == Token::KEYWORD_FLOAT) {
+                    out << "    lea rdi, [rel _print_float_format]" << std::endl;
+                } else if (prim_type->primitive_type == Token::KEYWORD_DOUBLE) {
+                    out << "    lea rdi, [rel _print_double_format]" << std::endl;
+                }else {
                     // Default to int for now
                     out << "    lea rdi, [rel _print_int_format]" << std::endl;
                 }
@@ -598,6 +617,28 @@ void CodeGenerator::visit(IntegerLiteralExpressionNode* node) {
     out << "    mov rax, " << node->value << std::endl;
 }
 
+void CodeGenerator::visit(FloatLiteralExpressionNode* node) {
+    std::string label = "_float_" + std::to_string(string_label_counter++);
+
+    out << "section .data" << std::endl;
+    out << "    " << label << " dd " << node->value << std::endl;
+
+    out << "section .text" << std::endl;
+    out << "    vmovss xmm0, " << "[rel " << label << "]" << std::endl;
+    // out << "    vmovss [rax], xmm0" << std::endl;
+}
+
+void CodeGenerator::visit(DoubleLiteralExpressionNode* node) {
+    std::string label = "_double_" + std::to_string(string_label_counter++);
+
+    out << "section .data" << std::endl;
+    out << "    " << label << " dq " << node->value << std::endl;
+
+    out << "section .text" << std::endl;
+    out << "    vmovsd xmm0, " << "qword [rel " << label << "]" << std::endl;
+    // out << "    vmovsd [rax], xmm0" << std::endl;
+}
+
 void CodeGenerator::visit(StringLiteralExpressionNode* node) {
     std::string label = "_str_" + std::to_string(string_label_counter++);
     out << "section .data" << std::endl;
@@ -636,6 +677,8 @@ int CodeGenerator::getTypeSize(const TypeNode* type) {
                 case Token::KEYWORD_CHAR: return 1;
                 case Token::KEYWORD_STRING: return 8;
                 case Token::KEYWORD_VOID: return 0;
+                case Token::KEYWORD_FLOAT: return 4;
+                case Token::KEYWORD_DOUBLE: return 8;
                 default: throw std::runtime_error("Code Generation Error: Unknown primitive type for size calculation.");
             }
         }
