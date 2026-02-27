@@ -253,7 +253,7 @@ void CodeGenerator::visit(VariableAssignmentNode* node) {
     if (is_float) {
 	out << "    vmovss [rax], xmm0" << std::endl;
     } else if (prim_type && prim_type->primitive_type == Token::KEYWORD_DOUBLE) {
-	out << "    vmovss [rax], xmm0" << std::endl;
+	out << "    vmovsd [rax], xmm0" << std::endl;
     } else {
         out << "    pop rbx" << std::endl;
         int size = getTypeSize(node->left->resolved_type.get());
@@ -330,6 +330,7 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
     } else {
         out << "    pop rbx" << std::endl; 
         // Left is in rbx, Right is in rax
+	out << "    mov rcx, rbx" << std::endl;
     }
 
     if (is_float) {
