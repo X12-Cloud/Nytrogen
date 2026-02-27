@@ -15,6 +15,7 @@ void CodeGenerator::generate(const std::string& output_filename) {
     out << "  _print_int_format db \"%d\", 10, 0" << std::endl;
     out << "  _print_str_format db \"%s\", 10, 0" << std::endl;
     out << "  _print_char_format db \"%c\", 10, 0" << std::endl;
+    out << "  _print_float_format db \"%f\", 10, 0" << std::endl;
 
     out << "section .text" << std::endl;
     out << "global _start" << std::endl;
@@ -210,17 +211,17 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
         bool is_float = prim && (prim->primitive_type == Token::KEYWORD_FLOAT);
         bool is_double = prim && (prim->primitive_type == Token::KEYWORD_DOUBLE);
 
-        out << "    lea rax, [rbp + " << symbol->offset << "]" << std::endl;
+        out << "    lea rcx, [rbp + " << symbol->offset << "]" << std::endl;
 
         if (is_float) {
-            out << "    vmovss dword [rax], xmm0" << std::endl;
+            out << "    vmovss dword [rcx], xmm0" << std::endl;
         } else if (is_double) {
-            out << "    vmovsd qword [rax], xmm0" << std::endl;
+            out << "    vmovsd qword [rcx], xmm0" << std::endl;
         } else {
 	    int size = getTypeSize(node->type.get());
-            if (size == 1)      out << "    mov [rax], al" << std::endl;
-            else if (size == 4) out << "    mov [rax], eax" << std::endl;
-            else                out << "    mov [rax], rax" << std::endl;
+            if (size == 1)      out << "    mov [rcx], al" << std::endl;
+            else if (size == 4) out << "    mov [rcx], eax" << std::endl;
+            else                out << "    mov [rcx], rax" << std::endl;
         }
     }
 }
@@ -264,6 +265,8 @@ void CodeGenerator::visit(VariableAssignmentNode* node) {
 
 void CodeGenerator::visit(VariableReferenceNode* node) {
     Symbol* symbol = node->resolved_symbol;
+    auto prim = dynamic_cast<PrimitiveTypeNode*>(node->resolved_type.get());
+
     if (!symbol) {
         throw std::runtime_error("CodeGen Error: Reference to '" + node->name + "' not resolved.");
     }
@@ -292,7 +295,11 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
             out << "    mov rax, [rbp + " << symbol->offset << "]" << std::endl;
         } else {
             // Fallback for structs/arrays (usually treated as an address)
-            out << "    lea rax, [rbp + " << symbol->offset << "]" << std::endl;
+            if (prim && prim->primitive_type == Token::KEYWORD_FLOAT) {
+                out << "    vmovss xmm0, dword [rbp + " << symbol->offset << "]" << std::endl;
+            } else {
+                out << "    movsx rax, dword [rbp + " << symbol->offset << "]" << std::endl;
+            }
         }
     }
 }
@@ -382,40 +389,49 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
 
 void CodeGenerator::visit(PrintStatementNode* node) {
     for (const auto& expr : node->expressions) {
+        // 1. Generate code to evaluate the expression.
+        // Integers land in rax, Floats in xmm0.
         visit(expr.get());
-        out << "    mov rsi, rax" << std::endl;
 
-        if (expr->resolved_type) {
-            if (expr->resolved_type->category == TypeNode::TypeCategory::PRIMITIVE) {
-                auto prim_type = static_cast<PrimitiveTypeNode*>(expr->resolved_type.get());
-                if (prim_type->primitive_type == Token::KEYWORD_STRING) {
-                    out << "    lea rdi, [rel _print_str_format]" << std::endl;
-                } else if (prim_type->primitive_type == Token::KEYWORD_INT) {
-                    out << "    lea rdi, [rel _print_int_format]" << std::endl;
-                } else if (prim_type->primitive_type == Token::KEYWORD_CHAR) {
-                    out << "    lea rdi, [rel _print_char_format]" << std::endl;
-                } else if (prim_type->primitive_type == Token::KEYWORD_FLOAT) {
-                    out << "    lea rdi, [rel _print_float_format]" << std::endl;
-                } else if (prim_type->primitive_type == Token::KEYWORD_DOUBLE) {
-                    out << "    lea rdi, [rel _print_double_format]" << std::endl;
-                }else {
-                    // Default to int for now
-                    out << "    lea rdi, [rel _print_int_format]" << std::endl;
-                }
-            } else {
-                // Default to int for non-primitives
-                out << "    lea rdi, [rel _print_int_format]" << std::endl;
-            }
-        } else {
-            // Fallback for unresolved types
-            out << "    lea rdi, [rel _print_int_format]" << std::endl;
+        // 2. Identify the type of the current expression
+        auto expr_type = expr->resolved_type;
+        if (!expr_type) {
+             // Fallback if semantic analysis missed a type
+             out << "    mov rsi, rax" << std::endl;
+             out << "    lea rdi, [rel _print_int_format]" << std::endl;
+             out << "    xor rax, rax" << std::endl;
+             out << "    call printf" << std::endl;
+             continue;
         }
 
-        out << "    xor rax, rax" << std::endl;
+        auto prim_type = dynamic_cast<PrimitiveTypeNode*>(expr_type.get());
+        bool is_float = prim_type && (prim_type->primitive_type == Token::KEYWORD_FLOAT);
+        bool is_double = prim_type && (prim_type->primitive_type == Token::KEYWORD_DOUBLE);
+
+        if (is_float || is_double) {
+            if (is_float) {
+                out << "    cvtss2sd xmm0, xmm0" << std::endl;
+            }
+            out << "    lea rdi, [rel _print_float_format]" << std::endl;
+            out << "    mov rax, 1" << std::endl; // Tells printf to look at xmm0
+        } else if (prim_type && prim_type->primitive_type == Token::KEYWORD_STRING) {
+            out << "    mov rsi, rax" << std::endl;
+            out << "    lea rdi, [rel _print_str_format]" << std::endl;
+            out << "    xor rax, rax" << std::endl;
+        } else if (prim_type && prim_type->primitive_type == Token::KEYWORD_CHAR) {
+            out << "    mov rsi, rax" << std::endl;
+            out << "    lea rdi, [rel _print_char_format]" << std::endl;
+            out << "    xor rax, rax" << std::endl;
+        } else {
+            // Default: Integer
+            out << "    mov rsi, rax" << std::endl;
+            out << "    lea rdi, [rel _print_int_format]" << std::endl;
+            out << "    xor rax, rax" << std::endl;
+        }
+
         out << "    call printf" << std::endl;
     }
 }
-
 void CodeGenerator::visit(ReturnStatementNode* node) {
     visit(node->expression.get());
 }
