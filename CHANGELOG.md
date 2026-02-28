@@ -1,9 +1,8 @@
 # Nytrogen Compiler
 
 ## 0.111 (Upcoming Patch)
-- Fix infinite loop in `while` loops by correcting register mismatch in `BinaryOperationExpressionNode`.
+- Fix infinite loop in `stress_test` by correcting register mismatch in `BinaryOperationExpressionNode`.
 - Fix variable corruption in assignments by saving RHS results before evaluating LHS addresses.
-- Add support for 64-bit `double` types in the codegen.
 
 ## 0.110 (Current)
 - Added support for `float` (32 bit) and `double` (64 bit) keywords.
