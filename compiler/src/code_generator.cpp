@@ -227,17 +227,30 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
 }
 
 void CodeGenerator::visit(VariableAssignmentNode* node) {
+    // 1. Evaluate the Right-Hand Side (the value)
     visit(node->right.get());
+
+    // 2. Identify the type and SAVE the value to the stack
     auto type = node->left->resolved_type;
     auto prim_type = dynamic_cast<PrimitiveTypeNode*>(type.get());
-    bool is_float = prim_type && (prim_type->primitive_type == Token::KEYWORD_FLOAT || prim_type->primitive_type == Token::KEYWORD_DOUBLE);
+    bool is_float = prim_type && (prim_type->primitive_type == Token::KEYWORD_FLOAT);
+    bool is_double = prim_type && (prim_type->primitive_type == Token::KEYWORD_DOUBLE);
 
-    if (!is_float) {
+    if (is_float) {
+        out << "    sub rsp, 8" << std::endl;
+        out << "    vmovss dword [rsp], xmm0" << std::endl;
+    } else if (is_double) {
+        out << "    sub rsp, 8" << std::endl;
+        out << "    vmovsd qword [rsp], xmm0" << std::endl;
+    } else {
         out << "    push rax" << std::endl;
     }
 
+    // 3. Evaluate the Left-Hand Side (get the ADDRESS)
+    // We force it to give us the address, which lands in RAX
+    is_lvalue = true;
     if (node->left->node_type == ASTNode::NodeType::VARIABLE_REFERENCE) {
-	auto* var_ref = static_cast<VariableReferenceNode*>(node->left.get());
+        auto* var_ref = static_cast<VariableReferenceNode*>(node->left.get());
         Symbol* symbol = var_ref->resolved_symbol;
         if (symbol) {
             out << "    lea rax, [rbp + " << symbol->offset << "]" << std::endl;
@@ -245,21 +258,25 @@ void CodeGenerator::visit(VariableAssignmentNode* node) {
              throw std::runtime_error("CodeGen Error: Assignment target '" + var_ref->name + "' not resolved.");
         }
     } else {
-	is_lvalue = true;
         visit(node->left.get());
-	is_lvalue = false;
     }
+    is_lvalue = false;
 
+    // 4. RESTORE the value from the stack and MOVE it into the address in RAX
     if (is_float) {
-	out << "    vmovss [rax], xmm0" << std::endl;
-    } else if (prim_type && prim_type->primitive_type == Token::KEYWORD_DOUBLE) {
-	out << "    vmovsd [rax], xmm0" << std::endl;
+        out << "    vmovss xmm0, dword [rsp]" << std::endl;
+        out << "    add rsp, 8" << std::endl;
+        out << "    vmovss [rax], xmm0" << std::endl;
+    } else if (is_double) {
+        out << "    vmovsd xmm0, qword [rsp]" << std::endl;
+        out << "    add rsp, 8" << std::endl;
+        out << "    vmovsd [rax], xmm0" << std::endl;
     } else {
-        out << "    pop rbx" << std::endl;
+        out << "    pop rbx" << std::endl; // The value is now in rbx
         int size = getTypeSize(node->left->resolved_type.get());
-        if (size == 4) out << "    mov [rax], ebx" << std::endl;
-        else if (size == 1) out << "    mov [rax], bl" << std::endl;
-        else out << "    mov [rax], rbx" << std::endl;
+        if (size == 1)      out << "    mov [rax], bl" << std::endl;
+        else if (size == 4) out << "    mov [rax], ebx" << std::endl;
+        else                out << "    mov [rax], rbx" << std::endl;
     }
 }
 
@@ -344,22 +361,22 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
     } else {
     switch (node->op_type) {
         case Token::PLUS:
-            out << "    add rcx, rbx" << std::endl;
-            out << "    mov rax, rcx" << std::endl;
+            out << "    add rbx, rax" << std::endl;
+            out << "    mov rax, rbx" << std::endl;
             break;
         case Token::MINUS:
-            out << "    sub rcx, rbx" << std::endl;
-            out << "    mov rax, rcx" << std::endl;
+            out << "    sub rbx, rax" << std::endl;
+            out << "    mov rax, rbx" << std::endl;
             break;
         case Token::STAR:
-            out << "    imul rcx, rbx" << std::endl;
-            out << "    mov rax, rcx" << std::endl;
+            out << "    imul rbx, rax" << std::endl;
+            out << "    mov rax, rbx" << std::endl;
             break;
         case Token::SLASH:
-            out << "    mov rbx, rax" << std::endl;
-            out << "    mov rax, rcx" << std::endl;
+            out << "    mov rcx, rax" << std::endl;
+            out << "    mov rax, rbx" << std::endl;
             out << "    cqo" << std::endl;
-            out << "    idiv rbx" << std::endl;
+            out << "    idiv rcx" << std::endl;
             break;
         case Token::EQUAL_EQUAL:
             if (node->left->resolved_type && node->left->resolved_type->category == TypeNode::TypeCategory::PRIMITIVE && static_cast<PrimitiveTypeNode*>(node->left->resolved_type.get())->primitive_type == Token::KEYWORD_STRING) {
