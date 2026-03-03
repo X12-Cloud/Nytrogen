@@ -3,6 +3,7 @@
 ## 0.111 (Upcoming Patch)
 - Fix infinite loop in `stress_test` by correcting register mismatch in `BinaryOperationExpressionNode`.
 - Fix variable corruption in assignments by saving RHS results before evaluating LHS addresses.
+- Fix double support
 
 ## 0.110 (Current)
 - Added support for `float` (32 bit) and `double` (64 bit) keywords.

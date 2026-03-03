@@ -293,7 +293,8 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
     }
 
     auto prim = dynamic_cast<PrimitiveTypeNode*>(node->resolved_type.get());
-    bool is_float = prim && (prim->primitive_type == Token::KEYWORD_FLOAT || prim->primitive_type == Token::KEYWORD_DOUBLE);
+    bool is_double = prim && (prim->primitive_type == Token::KEYWORD_DOUBLE);
+    bool is_float = prim && (prim->primitive_type == Token::KEYWORD_FLOAT);
 	
     if (is_lvalue) {
         // We want the ADDRESS, not the value.
@@ -304,7 +305,9 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
         int size = getTypeSize(node->resolved_type.get());
 
 	if (is_float) {
-        out << "    vmovss xmm0, dword [rbp + " << symbol->offset << "]" << std::endl;
+            out << "    vmovss xmm0, dword [rbp + " << symbol->offset << "]" << std::endl;
+	} else if (is_double) {
+	    out << "    vmovsd xmm0, qword [rbp + " << symbol->offset << "]" << std::endl;
 	} else if (size == 1) {
             // Char or Bool: Move 1 byte and Sign-Extend to 64-bit rax
             out << "    movsx rax, byte [rbp + " << symbol->offset << "]" << std::endl;
@@ -328,26 +331,27 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
 void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
     // Left
     visit(node->left.get());
-    bool is_float = isFloatingPoint(node->left->resolved_type);
+    // bool is_float = isFloatingPoint(node->left->resolved_type);
+    auto prim = dynamic_cast<PrimitiveTypeNode*>(node->resolved_type.get());
+    bool is_double = prim && (prim->primitive_type == Token::KEYWORD_DOUBLE);
+    bool is_float = prim && (prim->primitive_type == Token::KEYWORD_FLOAT);
 
-    if (is_float) {
+    if (is_float || is_double) {
         out << "    sub rsp, 8" << std::endl;
-        out << "    vmovss dword [rsp], xmm0" << std::endl;
-    } else {
-        out << "    push rax" << std::endl;
-    }
+        if (is_double) out << "    vmovsd qword [rsp], xmm0" << std::endl;
+	else out << "    vmovss dword [rsp], xmm0" << std::endl;
+    } else out << "    push rax" << std::endl;
 
     // Right
     visit(node->right.get());
 
-    if (is_float) {
-        out << "    vmovss xmm1, dword [rsp]" << std::endl;
-        out << "    add rsp, 8" << std::endl;
-        // Left is in xmm1, Right is in xmm0
+    if (is_float || is_double) {
+	if (is_double) out << "    vmovsd xmm1, qword [rsp]" << std::endl;
+	else out << "    vmovss xmm1, dword [rsp]" << std::endl;
+        out << "    add rsp, 8" << std::endl; // Left is in xmm1, Right is in xmm0
     } else {
         out << "    pop rbx" << std::endl; 
-        // Left is in rbx, Right is in rax
-	out << "    mov rcx, rbx" << std::endl;
+	out << "    mov rcx, rbx" << std::endl; // Left is in rbx, Right is in rax
     }
 
     if (is_float) {
@@ -357,6 +361,14 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
             case Token::STAR:  out << "    vmulss xmm0, xmm1, xmm0" << std::endl; break;
             case Token::SLASH: out << "    vdivss xmm0, xmm1, xmm0" << std::endl; break;
             default: throw std::runtime_error("Unsupported float operation");
+        }
+    } else if (is_double) {
+        switch (node->op_type) {
+            case Token::PLUS:  out << "    vaddsd xmm0, xmm1, xmm0" << std::endl; break;
+            case Token::MINUS: out << "    vsubsd xmm0, xmm1, xmm0" << std::endl; break;
+            case Token::STAR:  out << "    vmulsd xmm0, xmm1, xmm0" << std::endl; break;
+            case Token::SLASH: out << "    vdivsd xmm0, xmm1, xmm0" << std::endl; break;
+            default: throw std::runtime_error("Unsupported double operation");
         }
     } else {
     switch (node->op_type) {
