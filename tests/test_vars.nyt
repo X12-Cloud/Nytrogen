@@ -1,5 +1,7 @@
 int main() {
     // Test variables
+    auto: l = 2, m = 20, n = 10;
+    print l, m, n;
     int result;
     int y;
     result = 100;

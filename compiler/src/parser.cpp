@@ -278,6 +278,7 @@ std::unique_ptr<TypeNode> Parser::parseType() {
 std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
     auto type = parseType();
     if (peek().type == Token::COLON) {
+	consume();
         std::vector<Declaration> declarations;
 	do {
     	std::string name = peek().value;
@@ -287,9 +288,10 @@ std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
             init = parseExpression();
     	}
     	declarations.push_back({name, std::move(init)});
+	if (peek().type == Token::SEMICOLON) break;
 	} while (match(Token::COMMA));
 	expect(Token::SEMICOLON, "Expected semicolon ';'.");
-	return std::make_unique<VariableDeclarationNode>(type, std::move(declarations));
+	return std::make_unique<VariableDeclarationNode>(std::move(type), std::move(declarations));
     }
 
     const Token& id_token = peek();
@@ -310,7 +312,10 @@ std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
         initial_value = parseExpression();
     }
 
-    return std::make_unique<VariableDeclarationNode>(id_token.value, std::move(type), std::move(initial_value), id_token.line, id_token.column);
+    // return std::make_unique<VariableDeclarationNode>(id_token.value, std::move(type), std::move(initial_value), id_token.line, id_token.column);
+    std::vector<Declaration> declarations;
+    declarations.push_back({id_token.value, std::move(initial_value)}); 
+    return std::make_unique<VariableDeclarationNode>(std::move(type), std::move(declarations));
 }
 
 std::unique_ptr<FunctionCallNode> Parser::parseFunctionCall() {

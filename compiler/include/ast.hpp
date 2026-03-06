@@ -226,10 +226,6 @@ struct VariableDeclarationNode : public ASTNode {
         : ASTNode(NodeType::VARIABLE_DECLARATION), 
           type(std::move(type)), 
           declarations(std::move(decls)) {}
-
-    void accept(ASTVisitor* visitor) override {
-        visitor->visit(this);
-    }
 };
 
 // Node for variable assignments (e.g., x = 5;)

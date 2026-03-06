@@ -122,7 +122,7 @@ bool is_lvalue;
 void CodeGenerator::visit(ProgramNode* node) {
     for (const auto& stmt : node->statements) {
         if (stmt->node_type == ASTNode::NodeType::VARIABLE_DECLARATION) {
-            auto decl = static_cast<VariableDeclarationNode*>(stmt.get());
+            auto decl_node = static_cast<VariableDeclarationNode*>(stmt.get());
             for (const auto& decl : decl_node->declarations) {
                 out << decl.name << ": resb " << getTypeSize(decl_node->type.get()) << std::endl;
             }
@@ -194,18 +194,19 @@ void CodeGenerator::visit(EnumStatementNode* node) {
 }
 
 void CodeGenerator::visit(VariableDeclarationNode* node) {
-    Symbol* symbol = node->resolved_symbol;
+    for (auto& decl : node->declarations) {
+    Symbol* symbol = decl.resolved_symbol;
     if (!symbol) {
-        throw std::runtime_error("Code generation error: variable '" + node->name + "' not found in symbol table.");
+        throw std::runtime_error("Code generation error: variable '" + decl.name + "' not found in symbol table.");
     }
 
     if (node->type->category == TypeNode::TypeCategory::STRUCT) {
-        if (node->initial_value) {
+        if (decl.initial_value) {
             throw std::runtime_error("Code generation error: Struct initialization not yet supported.");
         }
-        return;
-    } else if (node->initial_value) {
-        visit(node->initial_value.get());
+        continue;
+    } else if (decl.initial_value) {
+        visit(decl.initial_value.get());
 
         auto prim = static_cast<PrimitiveTypeNode*>(node->type.get());
         bool is_float = prim && (prim->primitive_type == Token::KEYWORD_FLOAT);
@@ -223,6 +224,7 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
             else if (size == 4) out << "    mov [rcx], eax" << std::endl;
             else                out << "    mov [rcx], rax" << std::endl;
         }
+    }
     }
 }
 
