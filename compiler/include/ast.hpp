@@ -209,23 +209,28 @@ struct MemberAccessNode : public ASTNode {
           resolved_symbol(nullptr) {}
 };
 
+struct ExpressionNode; // Forward declaration
+
 struct Declaration {
     std::string name;
-    std::unique_ptr<ExpressionNode> initializer; // Can be nullptr
+    std::unique_ptr<ASTNode> initial_value; 
+    Symbol* resolved_symbol = nullptr;
 };
 
 // Node for variable declarations (e.g., int/string x;)
 struct VariableDeclarationNode : public ASTNode {
-    std::string name;
     std::unique_ptr<TypeNode> type;
     std::vector<Declaration> declarations;
-    std::unique_ptr<ASTNode> initial_value;
-    Symbol* resolved_symbol; // Add resolved_symbol
 
-    VariableDeclarationNode(std::string name, std::unique_ptr<TypeNode> type, std::unique_ptr<ASTNode> initial_val = nullptr, int line = -1, int column = -1)
-	: ASTNode(NodeType::VARIABLE_DECLARATION, line, column), name(std::move(name)), type(std::move(type)), initial_value(std::move(initial_val)), resolved_symbol(nullptr) {}
+    VariableDeclarationNode(std::unique_ptr<TypeNode> type, std::vector<Declaration> decls)
+        : ASTNode(NodeType::VARIABLE_DECLARATION), 
+          type(std::move(type)), 
+          declarations(std::move(decls)) {}
+
+    void accept(ASTVisitor* visitor) override {
+        visitor->visit(this);
+    }
 };
-
 
 // Node for variable assignments (e.g., x = 5;)
 struct VariableAssignmentNode : public ASTNode {

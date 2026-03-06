@@ -27,6 +27,7 @@ private:
     const Token& peek(size_t offset = 0) const;
     const Token& consume();
     void expect(Token::Type expected_type, const std::string& error_msg);
+    bool match(Token::Type type);
 
     std::unique_ptr<ASTNode> parseStatement(); // General statement parsing (e.g., return, var decl, assignment)
     std::unique_ptr<VariableDeclarationNode> parseVariableDeclaration();

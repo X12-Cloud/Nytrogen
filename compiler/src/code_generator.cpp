@@ -123,9 +123,9 @@ void CodeGenerator::visit(ProgramNode* node) {
     for (const auto& stmt : node->statements) {
         if (stmt->node_type == ASTNode::NodeType::VARIABLE_DECLARATION) {
             auto decl = static_cast<VariableDeclarationNode*>(stmt.get());
-            out << "section .bss" << std::endl;
-            out << decl->name << ": resb " << getTypeSize(decl->type.get()) << std::endl;
-            out << "section .text" << std::endl;
+            for (const auto& decl : decl_node->declarations) {
+                out << decl.name << ": resb " << getTypeSize(decl_node->type.get()) << std::endl;
+            }
         }
     }
     for (const auto& func : node->functions) {

@@ -39,6 +39,14 @@ void Parser::expect(Token::Type expected_type, const std::string& error_msg) {
     }
 }
 
+bool Parser::match(Token::Type type) {
+    if (peek().type == type) {
+        consume();
+        return true;
+    }
+    return false;
+}
+
 std::unique_ptr<ConstantDeclarationNode> Parser::parseConstantDeclaration() {
     const Token& const_token = peek();
     expect(Token::KEYWORD_CONST, "Expected 'const' keyword.");
@@ -272,15 +280,16 @@ std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
     if (peek().type == Token::COLON) {
         std::vector<Declaration> declarations;
 	do {
-    	std::string name = consume(Token::IDENTIFIER).value;
-    	std::unique_ptr<ExpressionNode> init = nullptr;
-    	if (match(Token::EQUAL)) {
+    	std::string name = peek().value;
+	expect(Token::IDENTIFIER, "Expected variable name.");
+    	std::unique_ptr<ASTNode> init = nullptr;
+    	if (match(Token::EQ)) {
             init = parseExpression();
     	}
     	declarations.push_back({name, std::move(init)});
 	} while (match(Token::COMMA));
-	consume(Token::SEMICOLON);
-	return std::make_unique<MultiVariableDeclarationNode>(type, std::move(declarations));
+	expect(Token::SEMICOLON, "Expected semicolon ';'.");
+	return std::make_unique<VariableDeclarationNode>(type, std::move(declarations));
     }
 
     const Token& id_token = peek();
