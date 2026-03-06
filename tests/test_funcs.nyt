@@ -1,4 +1,4 @@
-int add() {
+void add() {
 	int x;
 	x = 10 + 1;
 	print "number: ", x;

@@ -209,10 +209,16 @@ struct MemberAccessNode : public ASTNode {
           resolved_symbol(nullptr) {}
 };
 
+struct Declaration {
+    std::string name;
+    std::unique_ptr<ExpressionNode> initializer; // Can be nullptr
+};
+
 // Node for variable declarations (e.g., int/string x;)
 struct VariableDeclarationNode : public ASTNode {
     std::string name;
     std::unique_ptr<TypeNode> type;
+    std::vector<Declaration> declarations;
     std::unique_ptr<ASTNode> initial_value;
     Symbol* resolved_symbol; // Add resolved_symbol
 

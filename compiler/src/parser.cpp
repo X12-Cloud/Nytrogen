@@ -245,7 +245,8 @@ std::unique_ptr<TypeNode> Parser::parseType() {
         type_token.type == Token::KEYWORD_FLOAT ||
         type_token.type == Token::KEYWORD_DOUBLE ||
         type_token.type == Token::KEYWORD_BOOL ||
-        type_token.type == Token::KEYWORD_CHAR) {
+        type_token.type == Token::KEYWORD_CHAR ||
+	type_token.type == Token::KEYWORD_VOID) {
         consume();
         type = std::make_unique<PrimitiveTypeNode>(type_token.type);
     } else if (type_token.type == Token::KEYWORD_AUTO) {
@@ -268,6 +269,19 @@ std::unique_ptr<TypeNode> Parser::parseType() {
 
 std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
     auto type = parseType();
+    if (peek().type == Token::COLON) {
+        std::vector<Declaration> declarations;
+	do {
+    	std::string name = consume(Token::IDENTIFIER).value;
+    	std::unique_ptr<ExpressionNode> init = nullptr;
+    	if (match(Token::EQUAL)) {
+            init = parseExpression();
+    	}
+    	declarations.push_back({name, std::move(init)});
+	} while (match(Token::COMMA));
+	consume(Token::SEMICOLON);
+	return std::make_unique<MultiVariableDeclarationNode>(type, std::move(declarations));
+    }
 
     const Token& id_token = peek();
     expect(Token::IDENTIFIER, "Expected variable name after type.");
