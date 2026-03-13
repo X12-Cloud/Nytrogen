@@ -290,7 +290,7 @@ std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
     	declarations.push_back({name, std::move(init)});
 	if (peek().type == Token::SEMICOLON) break;
 	} while (match(Token::COMMA));
-	expect(Token::SEMICOLON, "Expected semicolon ';'.");
+	// expect(Token::SEMICOLON, "Expected semicolon ';'.");
 	return std::make_unique<VariableDeclarationNode>(std::move(type), std::move(declarations));
     }
 
