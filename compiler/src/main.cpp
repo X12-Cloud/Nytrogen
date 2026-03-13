@@ -37,8 +37,13 @@ int main(int argc, char* argv[]) {
     std::string output_asm_filename = "out.asm";
     if (argc > 2) {
         output_asm_filename = argv[2];
+    } 
+    bool debug_mode = false;
+    for (int i = 1; i < argc; ++i) {
+        if (std::string(argv[i]) == "-debug") {
+            debug_mode = true;
+        }
     }
-
 
     std::string ext = input_filepath.substr(input_filepath.find_last_of(".") + 1);
     if (ext != "ny" && ext != "nyt") {
@@ -53,6 +58,8 @@ int main(int argc, char* argv[]) {
 
     std::vector<Token> tokens = tokenize(sourceCode);
     Parser parser(std::move(tokens));
+    parser.getSymbolTable().setDebugMode(debug_mode);
+    
     std::unique_ptr<ProgramNode> ast_root = parser.parse();
 
     if (!ast_root) {

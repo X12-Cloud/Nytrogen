@@ -90,6 +90,8 @@ class SymbolTable {
 public:
     // This vector is now an ARCHIVE. We only push_back, NEVER pop_back.
     std::vector<std::unique_ptr<Scope>> all_scopes; 
+    bool debug_mode = false; // Add this
+    void setDebugMode(bool mode) { debug_mode = mode; } // Add this
     
     // This is our "Read/Write Head"
     Scope* current_scope;
@@ -107,19 +109,19 @@ public:
         
         all_scopes.push_back(std::move(new_scope)); // Save to the archive
         
-        std::cerr << "Debug: Entered new scope. Total scopes in archive: " << all_scopes.size() << std::endl;
+        if (debug_mode) std::cerr << "Debug: Entered new scope. Total scopes in archive: " << all_scopes.size() << std::endl;
     }
 
     void exitScope() {
         if (current_scope && current_scope->parent) {
             current_scope = current_scope->parent; // Just climb up! No deletion!
-            std::cerr << "Debug: Exited scope. Head moved to parent." << std::endl;
+            if (debug_mode) std::cerr << "Debug: Exited scope. Head moved to parent." << std::endl;
         }
     }
 
     Symbol* addSymbol(Symbol&& symbol) {
         if (current_scope) {
-            std::cerr << "Debug: Adding symbol '" << symbol.name << "' to current scope." << std::endl;
+	    if (debug_mode) std::cerr << "Debug: Adding symbol '" << symbol.name << "' to current scope." << std::endl;
             // Use current_scope instead of scopes.back()
             auto result = current_scope->symbols.emplace(symbol.name, std::move(symbol));
             return &(result.first->second);
