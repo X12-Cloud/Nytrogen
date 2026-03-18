@@ -17,7 +17,7 @@ set(CMAKE_CXX_STANDARD 17)
 # Set output dir
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-# Global macro/var
+# Global macros/vars
 add_compile_definitions(NYTRO_VERSION="${NYTRO_FULL_VERSION}")
 
 # Components

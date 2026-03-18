@@ -20,16 +20,16 @@ done
 
 # Clean build if requested
 if [ "$clean_build" = true ]; then
-    echo "--- Performing a clean build of Nytrogen ---"
+    # echo "--- Performing a clean build of Nytrogen ---"
     "$SCRIPT_DIR/run_scripts/clean_build.sh"
-    echo "--- Clean build complete ---"
+    # echo "--- Clean build complete ---"
 fi
 
 # Incremental build if requested
 if [ "$build" = true ]; then
-    echo "--- Performing an incremental build of Nytrogen ---"
+    # echo "--- Performing an incremental build of Nytrogen ---"
     "$SCRIPT_DIR/run_scripts/build.sh"
-    echo "--- Incremental build complete ---"
+    # echo "--- Incremental build complete ---"
 fi
 
 # Run the compiler

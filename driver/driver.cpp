@@ -69,7 +69,7 @@ int main(int argc, char* argv[]) {
     std::string final_exe = (out_dir / output_bin_name).string();
 
     // 4. Preprocessor
-    if (no_preproc == false) {
+    if (!no_preproc) {
         std::cout << "--- Running Nytrogen Preprocessor ---" << std::endl;
         std::string pre_cmd = "\"" + pre_bin.string() + "\" \"" + input_file + "\" > \"" + pre_out + "\"";
         if (std::system(pre_cmd.c_str()) != 0) return 1;

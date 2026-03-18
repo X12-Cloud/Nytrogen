@@ -562,10 +562,23 @@ std::unique_ptr<EnumStatementNode> Parser::parseEnumStatement() {
 std::unique_ptr<AsmStatementNode> Parser::parseAsmStatement() {
     const Token& asm_token = peek();
     expect(Token::KEYWORD_ASM, "Expected 'asm' keyword.");
-    expect(Token::LBRACE, "Expected '{' after 'asm'.");
+
+    Token::Type closing_type;
+    bool is_paren_block = false;
+
+    if (peek().type == Token::LPAREN) {
+	consume();
+	is_paren_block = true;
+	closing_type = Token::RPAREN;
+    } else if (peek().type == Token::LBRACE) {
+	consume();
+	closing_type = Token::RBRACE;
+    } else {
+        throw std::runtime_error("Expected '(' or '{' after 'asm'.");
+    }
 
     std::vector<std::string> asm_lines;
-    while (peek().type != Token::RBRACE && peek().type != Token::END_OF_FILE) {
+    while (peek().type != closing_type && peek().type != Token::END_OF_FILE) {
         if (peek().type == Token::STRING_LITERAL) {
             asm_lines.push_back(consume().value);
         } else {
@@ -573,7 +586,9 @@ std::unique_ptr<AsmStatementNode> Parser::parseAsmStatement() {
                 "Example: asm { \"mov rax, 1\"; \"add rax, rbx\"; }");
         }
     }
-    expect(Token::RBRACE, "Expected '}' to close 'asm' block.");
+
+    expect(closing_type, "Expected closing delimeter for asm block.");
+    if (is_paren_block) expect(Token::SEMICOLON, "Expected ';' after inline assembly statement");
     return std::make_unique<AsmStatementNode>(std::move(asm_lines), asm_token.line, asm_token.column);
 }
 
