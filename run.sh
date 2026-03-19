@@ -11,8 +11,8 @@ ARGS=()
 # Parse command-line arguments
 while [[ "$#" -gt 0 ]]; do
     case $1 in
-        -clean|--clean-build) clean_build=true ;;
-        -build|--build) build=true ;;
+        -cclean|--clean-build) clean_build=true ;;
+        -cbuild|--build) build=true ;;
 	*) NYTRO_ARGS+=("$1") ;;
     esac
     shift

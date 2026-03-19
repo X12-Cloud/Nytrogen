@@ -1,6 +1,13 @@
 # Nytrogen Compiler
 
-## 0.120 (Current)
+## 0.121
+- Feat: Add support for parenthesis in assembly statements `asm();` instead of only braces `asm {}`.
+- Feat: Refactored argument handling for the driver using `std::unordered_map` and a config `struct`.
+- Feat: Added the `-verbose`, `-clean`/`--clear` flags.
+- Fix: Fixed "Ghost Files" bug where flags were being interpreted as input filenames.
+- Fix: Improved argument position independence (flags can now appear before or after the input file).
+
+## 0.120
 - Add support for mulit-variable declarations `int: x, y, z;` optionally `int: x = 1, y = 2, z;`.
 - Added the debug (`-debug`) flag so all those debug lines are optional.
 - Added the S/asm flag (`-S` or `-asm`) to stop after generating the `.asm` file.
