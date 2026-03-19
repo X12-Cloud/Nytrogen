@@ -39,6 +39,7 @@ int main(int argc, char* argv[]) {
     bool obj_only = false;
     bool asm_only = false;
     bool no_preproc = false;
+    bool verbose = false;
 
     for (int i = 2; i < argc; ++i) {
         std::string arg = argv[i];
@@ -51,7 +52,10 @@ int main(int argc, char* argv[]) {
 	} else if (arg == "-dp") {
             no_preproc = true;
         } else if (arg == "-debug") {
-	    extra_flags += "-debug";
+	    extra_flags += " -debug";
+	} else if (arg == "-verbose") {
+	    extra_flags += " -verbose";
+	    verbose = true;
 	} else if (std::string(argv[1]) == "--version" || std::string(argv[1]) == "-v") {
     	    std::cout << "Nytrogen Toolchain v" << NYTRO_VERSION << " (Arch Linux)" << std::endl; // will replace the arch linux thing to show the actual OS later
     	    return 0;
@@ -70,19 +74,19 @@ int main(int argc, char* argv[]) {
 
     // 4. Preprocessor
     if (!no_preproc) {
-        std::cout << "--- Running Nytrogen Preprocessor ---" << std::endl;
+        if (verbose) std::cout << "--- Running Nytrogen Preprocessor ---" << std::endl;
         std::string pre_cmd = "\"" + pre_bin.string() + "\" \"" + input_file + "\" > \"" + pre_out + "\"";
         if (std::system(pre_cmd.c_str()) != 0) return 1;
     }
 
     // 5. Compiler
-    std::cout << "--- Running Nytrogen Compiler ---" << std::endl;
+    if (verbose) std::cout << "--- Running Nytrogen Compiler ---" << std::endl;
     std::string comp_cmd = "\"" + compiler_bin.string() + "\" \"" + pre_out + "\" \"" + asm_file + "\" " + extra_flags;
     if (std::system(comp_cmd.c_str()) != 0) return 1;
     if (asm_only) return 0;
 
     // 6. NASM (Assembler)
-    std::cout << "\n--- Assembling " << base_name << ".asm ---" << std::endl;
+    if (verbose) std::cout << "\n--- Assembling " << base_name << ".asm ---" << std::endl;
     std::string nasm_cmd = "nasm -f elf64 \"" + asm_file + "\" -o \"" + obj_file + "\"";
     if (std::system(nasm_cmd.c_str()) != 0) return 1;
 
@@ -92,12 +96,12 @@ int main(int argc, char* argv[]) {
     }
 
     // 7. LD (Linker)
-    std::cout << "\n--- Linking ---" << std::endl;
+    if (verbose) std::cout << "\n--- Linking ---" << std::endl;
     std::string link_cmd = "ld -o \"" + final_exe + "\" \"" + obj_file + "\" -lc --dynamic-linker /usr/lib64/ld-linux-x86-64.so.2";
     if (std::system(link_cmd.c_str()) != 0) return 1;
 
     // 8. Execution
-    std::cout << "\n--- Running output program ---" << std::endl;
+    if (verbose) std::cout << "\n--- Running output program ---" << std::endl;
     std::string run_cmd = "\"" + final_exe + "\"";
     int status = std::system(run_cmd.c_str());
     
