@@ -30,6 +30,8 @@ int main(int argc, char* argv[]) {
     std::string base_name = fs::path(input_file).stem().string();
     std::string output_bin_name = base_name; // Default to input name
 
+    // TODO: add a -help flag that would open a cool help screen, make it possible to use multiple single char flags at once
+
     // Flag map
     std::unordered_map<std::string, bool*> flag_map = {
         {"-obj",        &cfg.obj_only},

@@ -1,7 +1,7 @@
 <!-- Top Logo -->
 
 <p align="center">
-  <img src="assets/nytrogen.jpg" alt="Nytrogen Logo" width="220" />
+  <img src="assets/images/nytrogen.jpg" alt="Nytrogen Logo" width="220" />
 </p>
 
 <!-- Stats Badges -->
