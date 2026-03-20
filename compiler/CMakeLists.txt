@@ -8,7 +8,7 @@ file(GLOB SOURCES "src/*.cpp")
 
 # Include headers
 include_directories(include)
-include_directories(src) # Added for code_generator.hpp
+include_directories(src)
 
 add_executable(Nytro ${SOURCES})
 

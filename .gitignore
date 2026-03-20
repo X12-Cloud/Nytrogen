@@ -2,6 +2,7 @@ build/
 out/
 bin/
 releases/
+media/
 
 **/build
 **/out
