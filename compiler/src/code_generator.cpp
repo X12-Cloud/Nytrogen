@@ -356,41 +356,21 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
 	out << "    mov rcx, rbx" << std::endl; // Left is in rbx, Right is in rax
     }
 
-    if (is_float) {
-        switch (node->op_type) {
-            case Token::PLUS:  out << "    vaddss xmm0, xmm1, xmm0" << std::endl; break;
-            case Token::MINUS: out << "    vsubss xmm0, xmm1, xmm0" << std::endl; break;
-            case Token::STAR:  out << "    vmulss xmm0, xmm1, xmm0" << std::endl; break;
-            case Token::SLASH: out << "    vdivss xmm0, xmm1, xmm0" << std::endl; break;
-            default: throw std::runtime_error("Unsupported float operation");
-        }
-    } else if (is_double) {
-        switch (node->op_type) {
-            case Token::PLUS:  out << "    vaddsd xmm0, xmm1, xmm0" << std::endl; break;
-            case Token::MINUS: out << "    vsubsd xmm0, xmm1, xmm0" << std::endl; break;
-            case Token::STAR:  out << "    vmulsd xmm0, xmm1, xmm0" << std::endl; break;
-            case Token::SLASH: out << "    vdivsd xmm0, xmm1, xmm0" << std::endl; break;
-            default: throw std::runtime_error("Unsupported double operation");
-        }
-    } else {
+    char type = 'd';
+    if (is_float) type = 'f';
+    else if (is_double) type = 'l';
     switch (node->op_type) {
         case Token::PLUS:
-            out << "    add rbx, rax" << std::endl;
-            out << "    mov rax, rbx" << std::endl;
+	    emit_binary_op("add", type);
             break;
         case Token::MINUS:
-            out << "    sub rbx, rax" << std::endl;
-            out << "    mov rax, rbx" << std::endl;
+	    emit_binary_op("sub", type);
             break;
         case Token::STAR:
-            out << "    imul rbx, rax" << std::endl;
-            out << "    mov rax, rbx" << std::endl;
+	    emit_binary_op("imul", type);
             break;
         case Token::SLASH:
-            out << "    mov rcx, rax" << std::endl;
-            out << "    mov rax, rbx" << std::endl;
-            out << "    cqo" << std::endl;
-            out << "    idiv rcx" << std::endl;
+	    emit_binary_op("idiv", type);
             break;
         case Token::EQUAL_EQUAL:
             if (node->left->resolved_type && node->left->resolved_type->category == TypeNode::TypeCategory::PRIMITIVE && static_cast<PrimitiveTypeNode*>(node->left->resolved_type.get())->primitive_type == Token::KEYWORD_STRING) {
@@ -446,7 +426,6 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
             break;
         default:
             throw std::runtime_error("Unknown binary operator.");
-    }
     }
 }
 

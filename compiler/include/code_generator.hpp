@@ -51,6 +51,10 @@ private:
     void visit(FloatLiteralExpressionNode* node);
 
     int getTypeSize(const TypeNode* type);
+
+    // Instruction set
+    void emit(std::string instruction, std::string dest, std::string data);
+    void emit_binary_op(const std::string& op_instr, char type);
 };
 
 #endif // CODE_GENERATOR_HPP
