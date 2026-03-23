@@ -1,0 +1,11 @@
+/home/mohamed/dev/Nytrogen/CMakeFiles/edit_cache.dir
+/home/mohamed/dev/Nytrogen/CMakeFiles/rebuild_cache.dir
+/home/mohamed/dev/Nytrogen/Preprocessor/CMakeFiles/nytro-pre.dir
+/home/mohamed/dev/Nytrogen/Preprocessor/CMakeFiles/edit_cache.dir
+/home/mohamed/dev/Nytrogen/Preprocessor/CMakeFiles/rebuild_cache.dir
+/home/mohamed/dev/Nytrogen/compiler/CMakeFiles/nytro-c.dir
+/home/mohamed/dev/Nytrogen/compiler/CMakeFiles/edit_cache.dir
+/home/mohamed/dev/Nytrogen/compiler/CMakeFiles/rebuild_cache.dir
+/home/mohamed/dev/Nytrogen/driver/CMakeFiles/nytro-driver.dir
+/home/mohamed/dev/Nytrogen/driver/CMakeFiles/edit_cache.dir
+/home/mohamed/dev/Nytrogen/driver/CMakeFiles/rebuild_cache.dir

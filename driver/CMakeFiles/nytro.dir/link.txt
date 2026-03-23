@@ -1,0 +1,1 @@
+/usr/sbin/c++ -Wl,--dependency-file=CMakeFiles/nytro.dir/link.d CMakeFiles/nytro.dir/driver.cpp.o -o ../bin/nytro

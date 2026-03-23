@@ -1,0 +1,1 @@
+/usr/sbin/c++ -Wl,--dependency-file=CMakeFiles/nytro-c.dir/link.d "CMakeFiles/nytro-c.dir/src/code_generator.cpp.o" "CMakeFiles/nytro-c.dir/src/instruction_set.cpp.o" "CMakeFiles/nytro-c.dir/src/lexer.cpp.o" "CMakeFiles/nytro-c.dir/src/main.cpp.o" "CMakeFiles/nytro-c.dir/src/parser.cpp.o" "CMakeFiles/nytro-c.dir/src/semantic_analyzer.cpp.o" -o ../bin/nytro-c

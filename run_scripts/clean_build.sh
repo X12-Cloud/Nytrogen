@@ -18,4 +18,6 @@ echo "Configuring and building Nytrogen compiler..."
 cmake -B build
 cmake --build build -j$(nproc)
 
+cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
 echo "--- Clean build complete ---"

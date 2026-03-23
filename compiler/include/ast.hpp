@@ -59,50 +59,68 @@ struct ASTNode {
     virtual ~ASTNode() = default;
 };
 
+// Node representing all literals
+struct LiteralExpressionNode : public ASTNode {
+    LiteralExpressionNode(NodeType type, int line, int column) 
+        : ASTNode(type, line, column) {}
+
+    virtual std::string getValueAsString() const = 0;
+};
+
 // Node representing integer literals (e.g., 42)
-struct IntegerLiteralExpressionNode : public ASTNode {
+struct IntegerLiteralExpressionNode : public LiteralExpressionNode {
     int value;
 
     IntegerLiteralExpressionNode(int val, int line = -1, int column = -1)
-        : ASTNode(NodeType::INTEGER_LITERAL_EXPRESSION, line, column), value(val) {}
+        : LiteralExpressionNode(NodeType::INTEGER_LITERAL_EXPRESSION, line, column), value(val) {}
+    std::string getValueAsString() const override { return std::to_string(value); }
 };
 
 // Node representing string literals (e.g., "Hello World")
-struct StringLiteralExpressionNode : public ASTNode {
+struct StringLiteralExpressionNode : public LiteralExpressionNode {
     std::string value;
 
     StringLiteralExpressionNode(std::string val, int line = -1, int column = -1)
-        : ASTNode(NodeType::STRING_LITERAL_EXPRESSION, line, column), value(std::move(val)) {}
+        : LiteralExpressionNode(NodeType::STRING_LITERAL_EXPRESSION, line, column), value(std::move(val)) {}
+    std::string getValueAsString() const override { return value; }
 };
 
 // Node representing boolean literals (e.g., true)
-struct BooleanLiteralExpressionNode : public ASTNode {
+struct BooleanLiteralExpressionNode : public LiteralExpressionNode {
     bool value;
 
     BooleanLiteralExpressionNode(int val, int line = -1, int column = -1)
-        : ASTNode(NodeType::BOOLEAN_LITERAL_EXPRESSION, line, column), value(val) {}
+        : LiteralExpressionNode(NodeType::BOOLEAN_LITERAL_EXPRESSION, line, column), value(val) {}
+    std::string getValueAsString() const override { return std::to_string(value); }
 };
 
 // Node representing character literals (e.g., 'x')
-struct CharacterLiteralExpressionNode : public ASTNode {
+struct CharacterLiteralExpressionNode : public LiteralExpressionNode {
     char value;
 
     CharacterLiteralExpressionNode(int val, int line = -1, int column = -1)
-        : ASTNode(NodeType::CHARACTER_LITERAL_EXPRESSION, line, column), value(val) {}
+        : LiteralExpressionNode(NodeType::CHARACTER_LITERAL_EXPRESSION, line, column), value(val) {}
+    std::string getValueAsString() const override { return std::to_string(value); }
 };
 
 // Node representing float literals
-struct FloatLiteralExpressionNode : public ASTNode {
+struct FloatLiteralExpressionNode : public LiteralExpressionNode {
     float value;
+    std::string label;
+
     FloatLiteralExpressionNode(float val, int line = -1, int column = -1)
-        : ASTNode(NodeType::FLOAT_LITERAL_EXPRESSION, line, column), value(val) {}
+        : LiteralExpressionNode(NodeType::FLOAT_LITERAL_EXPRESSION, line, column), value(val), label("") {}
+    std::string getValueAsString() const override { return std::to_string(value); }
 };
 
 // Node representing double literals
-struct DoubleLiteralExpressionNode : public ASTNode {
+struct DoubleLiteralExpressionNode : public LiteralExpressionNode {
     double value;
+    std::string label;
+
     DoubleLiteralExpressionNode(double val, int line = -1, int column = -1)
-        : ASTNode(NodeType::DOUBLE_LITERAL_EXPRESSION, line, column), value(val) {}
+        : LiteralExpressionNode(NodeType::DOUBLE_LITERAL_EXPRESSION, line, column), value(val), label("") {}
+    std::string getValueAsString() const override { return std::to_string(value); }
 };
 
 // Node for return statements (e.g., return x;)

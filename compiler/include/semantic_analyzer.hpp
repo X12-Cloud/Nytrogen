@@ -18,7 +18,10 @@ public:
     int getTypeSize(const TypeNode* type); // Helper to get size of a type
     bool areTypesCompatible(const TypeNode* type1, const TypeNode* type2);
 
+    void setIsEntryPoint(bool entry) { is_entry_point = entry; }
+
 private:
+    bool is_entry_point = false;
     std::unique_ptr<ProgramNode>& program_ast;
     SymbolTable& symbolTable;
     std::string typeToString(const TypeNode* type);

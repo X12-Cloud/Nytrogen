@@ -126,7 +126,7 @@ void SemanticAnalyzer::analyze() {
                 }
         }
     }
-    if (!has_main) {
+    if (is_entry_point && !has_main) {
         throw std::runtime_error("Semantic Error: No 'main' function defined.");
     }
 

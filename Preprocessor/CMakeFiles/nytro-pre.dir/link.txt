@@ -1,0 +1,1 @@
+/usr/sbin/c++ -Wl,--dependency-file=CMakeFiles/nytro-pre.dir/link.d "CMakeFiles/nytro-pre.dir/src/main.cpp.o" -o ../bin/nytro-pre

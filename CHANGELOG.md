@@ -1,5 +1,15 @@
 # Nytrogen Compiler
 
+## 0.122/0.130 (Current)
+- Add file: (instruction_set.cpp)[compiler/src/instruction_sset.cpp].
+- Rework: Remade `BinaryOperationExpressionNode` in `code_generator.cpp` to be more efficient.
+- Rework: Made `VariableAssignmentExpressssionNode` in `code_generator.cpp` much more efficient.
+- Optimization: Optimized the .data section generation (floats, doubles, strings as of now)and made it get generated at the very bottom instead of a separate section for each variable.
+- Feat: Made `code_generator.cpp` generate an epilogue for any function even if not `main`.
+- Feat: Add basic lua project configuration.
+- Fix: Fixed a bug where functions would continue executing code after a return statement if the return was nested inside a conditional block.
+- Fix: Updated floats to have a precision of 6, doubles to 15.
+
 ## 0.121
 - Feat: Add support for parenthesis in assembly statements `asm();` instead of only braces `asm {}`.
 - Feat: Refactored argument handling for the driver using `std::unordered_map` and a config `struct`.

@@ -4,15 +4,18 @@
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 
 # Default values
+file_viewer="bat"
 clean_build=false
 build=false
+enable_fviewer=false
 ARGS=()
 
 # Parse command-line arguments
 while [[ "$#" -gt 0 ]]; do
     case $1 in
-        -cclean|--clean-build) clean_build=true ;;
-        -cbuild|--build) build=true ;;
+        -cclean|--compiler-cleanbuild) clean_build=true ;;
+        -cbuild|--compiler-build) build=true ;;
+        -vf|--view-outputfile) enable_fviewer=true ;;
 	*) NYTRO_ARGS+=("$1") ;;
     esac
     shift
@@ -33,11 +36,15 @@ if [ "$build" = true ]; then
 fi
 
 # Run the compiler
-if [ ${#NYTRO_ARGS[@]} -gt 0 ]; then
-    "$SCRIPT_DIR/build/bin/nytro" "${NYTRO_ARGS[@]}"
-else
-    # Only show usage if the user didn't just ask for a build
-    if [ "$build" = false ] && [ "$clean_build" = false ]; then
-        echo "Usage: $0 [-build] [-clean] <input_file.nyt> [flags]"
-    fi
+# if [ ${#NYTRO_ARGS[@]} -gt 0 ] || [ "$build" = true ] || [ "$clean_build" = true ]; then
+"$SCRIPT_DIR/build/bin/nytro-driver" "${NYTRO_ARGS[@]}"
+# else
+    # echo "Usage: $0 [-cbuild/cclean] [-vf] <input_file.nyt>"
+# fi
+
+# Viewer if requested
+if [ "$enable_fviewer" = true ]; then
+    echo "--- Printing output assembly file ---"
+    $file_viewer "$SCRIPT_DIR/out/"*.asm
 fi
+

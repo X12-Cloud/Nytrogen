@@ -9,5 +9,6 @@ cd "$SCRIPT_DIR/.."
 echo "--- Performing an incremental build of Nytrogen ---"
 
 cmake --build build -j$(nproc)
+cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
 echo "--- Incremental build complete ---"

@@ -1,34 +1,49 @@
 #include "code_generator.hpp"
 #include <stdexcept>
 #include <sstream>
+#include <iomanip>
 
 CodeGenerator::CodeGenerator(std::unique_ptr<ProgramNode>& ast, SymbolTable& symTable)
 : program_ast(ast), symbolTable(symTable), string_label_counter(0) {}
 
-void CodeGenerator::generate(const std::string& output_filename) {
+void CodeGenerator::generate(const std::string& output_filename, bool is_entry_point) {
     out.open(output_filename);
     if (!out.is_open()) {
         throw std::runtime_error("Could not open output file: " + output_filename);
     }
 
-    out << "section .data" << std::endl;
-    out << "  _print_int_format db \"%d\", 10, 0" << std::endl;
-    out << "  _print_str_format db \"%s\", 10, 0" << std::endl;
-    out << "  _print_char_format db \"%c\", 10, 0" << std::endl;
-    out << "  _print_float_format db \"%f\", 10, 0" << std::endl;
+    // print formats
+    constants.push_back({"_print_int_format", "db", "\"%d\", 10, 0"});
+    constants.push_back({"_print_str_format", "db", "\"%s\", 10, 0"});
+    constants.push_back({"_print_char_format", "db", "\"%c\", 10, 0"});
+    constants.push_back({"_print_float_format", "db", "\"%f\", 10, 0"});
 
     out << "section .text" << std::endl;
-    out << "global _start" << std::endl;
     out << "extern printf" << std::endl;
     out << "extern strcmp" << std::endl;
+    if (is_entry_point) out << "global _start" << std::endl;
+
+    for (const auto& func : program_ast->functions) {
+        if (!func->body_statements.empty()) out << "global " << func->name << std::endl;
+	else out << "extern " << func->name << std::endl;
+    }
+
+    // entry point
+    if (is_entry_point) {
+	out << "_start:" << std::endl;
+	out << "  call main" << std::endl;
+	out << "  mov rdi, rax" << std::endl;
+	out << "  mov rax, 60" << std::endl;
+	out << "  syscall" << std::endl;
+    }
 
     visit(program_ast.get());
 
-    out << "_start:" << std::endl;
-    out << "  call main" << std::endl;
-    out << "  mov rdi, rax" << std::endl;
-    out << "  mov rax, 60" << std::endl;
-    out << "  syscall" << std::endl;
+    // print the .data section
+    out << "\nsection .data" << std::endl;
+    for (const auto& c : constants) {
+        out << "    " << c.label << " " << c.type << " " << c.value << std::endl;
+    }
 
     out.close();
 }
@@ -134,6 +149,7 @@ void CodeGenerator::visit(ProgramNode* node) {
 }
 
 void CodeGenerator::visit(FunctionDefinitionNode* node) {
+    current_function_name = node->name;
     if (node->is_extern) {
         out << "extern " << node->name << std::endl;
         return; // No further code generation for extern functions
@@ -177,12 +193,12 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
 
     out << body_buffer.str();
 
-    if (node->name == "main") {
-        out << ".main_epilogue:" << std::endl;
-    }
+    out << current_function_name << "_epilogue:" << std::endl;
 
     out << "    leave" << std::endl;
     out << "    ret" << std::endl << std::endl;
+
+    current_function_name = "";
 }
 
 void CodeGenerator::visit(ConstantDeclarationNode* node) {
@@ -194,96 +210,65 @@ void CodeGenerator::visit(EnumStatementNode* node) {
 }
 
 void CodeGenerator::visit(VariableDeclarationNode* node) {
+    auto prim = static_cast<PrimitiveTypeNode*>(node->type.get());
+    bool is_float = prim && (prim->primitive_type == Token::KEYWORD_FLOAT);
+    bool is_double = prim && (prim->primitive_type == Token::KEYWORD_DOUBLE);
     for (auto& decl : node->declarations) {
-    Symbol* symbol = decl.resolved_symbol;
-    if (!symbol) {
-        throw std::runtime_error("Code generation error: variable '" + decl.name + "' not found in symbol table.");
-    }
+        Symbol* symbol = decl.resolved_symbol;
+        if (!symbol) {
+            throw std::runtime_error("Code generation error: variable '" + decl.name + "' not found in symbol table.");
+        }
 
-    if (node->type->category == TypeNode::TypeCategory::STRUCT) {
+        if (node->type->category == TypeNode::TypeCategory::STRUCT) continue;
         if (decl.initial_value) {
-            throw std::runtime_error("Code generation error: Struct initialization not yet supported.");
+	    visit(decl.initial_value.get());
+
+	    std::string src_reg = (is_float || is_double) ? "xmm0" : "rax";
+
+	    emit_adv(node->type, "rbp", symbol->offset, src_reg);
         }
-        continue;
-    } else if (decl.initial_value) {
-        visit(decl.initial_value.get());
-
-        auto prim = static_cast<PrimitiveTypeNode*>(node->type.get());
-        bool is_float = prim && (prim->primitive_type == Token::KEYWORD_FLOAT);
-        bool is_double = prim && (prim->primitive_type == Token::KEYWORD_DOUBLE);
-
-        out << "    lea rcx, [rbp + " << symbol->offset << "]" << std::endl;
-
-        if (is_float) {
-            out << "    vmovss dword [rcx], xmm0" << std::endl;
-        } else if (is_double) {
-            out << "    vmovsd qword [rcx], xmm0" << std::endl;
-        } else {
-	    int size = getTypeSize(node->type.get());
-            if (size == 1)      out << "    mov [rcx], al" << std::endl;
-            else if (size == 4) out << "    mov [rcx], eax" << std::endl;
-            else                out << "    mov [rcx], rax" << std::endl;
-        }
-    }
     }
 }
 
 void CodeGenerator::visit(VariableAssignmentNode* node) {
-    // 1. Evaluate the Right-Hand Side (the value)
-    visit(node->right.get());
-
-    // 2. Identify the type and SAVE the value to the stack
     auto type = node->left->resolved_type;
-    auto prim_type = dynamic_cast<PrimitiveTypeNode*>(type.get());
-    bool is_float = prim_type && (prim_type->primitive_type == Token::KEYWORD_FLOAT);
-    bool is_double = prim_type && (prim_type->primitive_type == Token::KEYWORD_DOUBLE);
+    bool is_fp = isFloatingPoint(type);
+    auto literal = dynamic_cast<LiteralExpressionNode*>(node->right.get());
 
-    if (is_float) {
-        out << "    sub rsp, 8" << std::endl;
-        out << "    vmovss dword [rsp], xmm0" << std::endl;
-    } else if (is_double) {
-        out << "    sub rsp, 8" << std::endl;
-        out << "    vmovsd qword [rsp], xmm0" << std::endl;
-    } else {
-        out << "    push rax" << std::endl;
+    if (literal && !is_fp) {
+	is_lvalue = true;
+	visit(node->left.get());
+	is_lvalue = false;
+	
+	std::string val = literal->getValueAsString();
+
+	emit_adv(type, "rax", 0, val);
+	return;
     }
 
-    // 3. Evaluate the Left-Hand Side (get the ADDRESS)
-    // We force it to give us the address, which lands in RAX
-    is_lvalue = true;
-    if (node->left->node_type == ASTNode::NodeType::VARIABLE_REFERENCE) {
-        auto* var_ref = static_cast<VariableReferenceNode*>(node->left.get());
-        Symbol* symbol = var_ref->resolved_symbol;
-        if (symbol) {
-            out << "    lea rax, [rbp + " << symbol->offset << "]" << std::endl;
-        } else {
-             throw std::runtime_error("CodeGen Error: Assignment target '" + var_ref->name + "' not resolved.");
-        }
-    } else {
-        visit(node->left.get());
-    }
-    is_lvalue = false;
+    visit(node->right.get());
+    if (is_fp) {
+	is_lvalue = true;
+	visit(node->left.get());
+	is_lvalue = false;
 
-    // 4. RESTORE the value from the stack and MOVE it into the address in RAX
-    if (is_float) {
-        out << "    vmovss xmm0, dword [rsp]" << std::endl;
-        out << "    add rsp, 8" << std::endl;
-        out << "    vmovss [rax], xmm0" << std::endl;
-    } else if (is_double) {
-        out << "    vmovsd xmm0, qword [rsp]" << std::endl;
-        out << "    add rsp, 8" << std::endl;
-        out << "    vmovsd [rax], xmm0" << std::endl;
+	emit_adv(type, "rax", 0, "xmm0");
     } else {
-        out << "    pop rbx" << std::endl; // The value is now in rbx
-        int size = getTypeSize(node->left->resolved_type.get());
-        if (size == 1)      out << "    mov [rax], bl" << std::endl;
-        else if (size == 4) out << "    mov [rax], ebx" << std::endl;
-        else                out << "    mov [rax], rbx" << std::endl;
+	out << "    push  rax" << std::endl;
+
+	is_lvalue = true;
+	visit(node->left.get());
+	is_lvalue = false;
+	
+	out << "    pop rbx" << std::endl;
+	
+	emit_adv(type, "rax", 0, "rbx");
     }
 }
 
 void CodeGenerator::visit(VariableReferenceNode* node) {
     Symbol* symbol = node->resolved_symbol;
+    int offset = symbol->offset;
 
     if (!symbol) {
         throw std::runtime_error("CodeGen Error: Reference to '" + node->name + "' not resolved.");
@@ -299,41 +284,18 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
     bool is_float = prim && (prim->primitive_type == Token::KEYWORD_FLOAT);
 	
     if (is_lvalue) {
-        // We want the ADDRESS, not the value.
-        // symbol->offset should be negative (e.g., -8), so [rbp + -8] works.
-        out << "    lea rax, [rbp + " << symbol->offset << "]" << std::endl;
+        out << "    lea rax, [rbp + " << offset << "]" << std::endl;
     } else {
-        // We want the VALUE. We must check the size.
         int size = getTypeSize(node->resolved_type.get());
+	std::string dest_reg = (is_float || is_double) ? "xmm0" : "rax";
 
-	if (is_float) {
-            out << "    vmovss xmm0, dword [rbp + " << symbol->offset << "]" << std::endl;
-	} else if (is_double) {
-	    out << "    vmovsd xmm0, qword [rbp + " << symbol->offset << "]" << std::endl;
-	} else if (size == 1) {
-            // Char or Bool: Move 1 byte and Sign-Extend to 64-bit rax
-            out << "    movsx rax, byte [rbp + " << symbol->offset << "]" << std::endl;
-        } else if (size == 4) {
-            // Int: Move 4 bytes and Sign-Extend to 64-bit rax
-            out << "    movsx rax, dword [rbp + " << symbol->offset << "]" << std::endl;
-        } else if (size == 8) {
-            // Pointers or Strings: Move the full 8-byte 64-bit value
-            out << "    mov rcx, [rbp + " << symbol->offset << "]" << std::endl;
-        } else {
-            // Fallback for structs/arrays (usually treated as an address)
-            if (prim && prim->primitive_type == Token::KEYWORD_FLOAT) {
-                out << "    vmovss xmm0, dword [rbp + " << symbol->offset << "]" << std::endl;
-            } else {
-                out << "    movsx rax, dword [rbp + " << symbol->offset << "]" << std::endl;
-            }
-        }
+	load_adv(node->resolved_type, dest_reg, "rbp", offset);
     }
 }
 
 void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
     // Left
     visit(node->left.get());
-    // bool is_float = isFloatingPoint(node->left->resolved_type);
     auto prim = dynamic_cast<PrimitiveTypeNode*>(node->resolved_type.get());
     bool is_double = prim && (prim->primitive_type == Token::KEYWORD_DOUBLE);
     bool is_float = prim && (prim->primitive_type == Token::KEYWORD_FLOAT);
@@ -431,11 +393,8 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
 
 void CodeGenerator::visit(PrintStatementNode* node) {
     for (const auto& expr : node->expressions) {
-        // 1. Generate code to evaluate the expression.
-        // Integers land in rax, Floats in xmm0.
         visit(expr.get());
 
-        // 2. Identify the type of the current expression
         auto expr_type = expr->resolved_type;
         if (!expr_type) {
              // Fallback if semantic analysis missed a type
@@ -465,7 +424,6 @@ void CodeGenerator::visit(PrintStatementNode* node) {
             out << "    lea rdi, [rel _print_char_format]" << std::endl;
             out << "    xor rax, rax" << std::endl;
         } else {
-            // Default: Integer
             out << "    mov rsi, rax" << std::endl;
             out << "    lea rdi, [rel _print_int_format]" << std::endl;
             out << "    xor rax, rax" << std::endl;
@@ -474,8 +432,12 @@ void CodeGenerator::visit(PrintStatementNode* node) {
         out << "    call printf" << std::endl;
     }
 }
+
 void CodeGenerator::visit(ReturnStatementNode* node) {
-    visit(node->expression.get());
+    if (node->expression) {
+        visit(node->expression.get());
+    }
+    out << "    jmp " << current_function_name << "_epilogue" << std::endl;
 }
 
 void CodeGenerator::visit(IfStatementNode* node) {
@@ -676,34 +638,43 @@ void CodeGenerator::visit(IntegerLiteralExpressionNode* node) {
 }
 
 void CodeGenerator::visit(FloatLiteralExpressionNode* node) {
-    std::string label = "_float_" + std::to_string(string_label_counter++);
+    std::stringstream ss;
+    ss << std::fixed << std::setprecision(6) << node->value;
+    std::string val_str = ss.str();
 
-    out << "section .data" << std::endl;
-    out << "    " << label << " dd " << node->value << std::endl;
+    if (constants_map.find(val_str) == constants_map.end()) {
+        std::string label = "_float_" + std::to_string(string_label_counter++);
+        constants_map[val_str] = label;
+        constants.push_back({label, "dd", val_str});
+    }
 
-    out << "section .text" << std::endl;
-    out << "    vmovss xmm0, " << "[rel " << label << "]" << std::endl;
-    // out << "    vmovss [rax], xmm0" << std::endl;
+    out << "    vmovss xmm0, [rel " << constants_map[val_str] << "]" << std::endl;
 }
 
 void CodeGenerator::visit(DoubleLiteralExpressionNode* node) {
-    std::string label = "_double_" + std::to_string(string_label_counter++);
+    std::stringstream ss;
+    ss << std::fixed << std::setprecision(15) << node->value;
+    std::string val_str = ss.str();
 
-    out << "section .data" << std::endl;
-    out << "    " << label << " dq " << node->value << std::endl;
+    if (constants_map.find(val_str) == constants_map.end()) {
+        std::string label = "_double_" + std::to_string(string_label_counter++);
+        constants_map[val_str] = label;
+        constants.push_back({label, "dq", val_str});
+    }
 
-    out << "section .text" << std::endl;
-    out << "    vmovsd xmm0, " << "qword [rel " << label << "]" << std::endl;
-    // out << "    vmovsd [rax], xmm0" << std::endl;
+    out << "    vmovsd xmm0, " << "qword [rel " << node->label << "]" << std::endl;
 }
 
 void CodeGenerator::visit(StringLiteralExpressionNode* node) {
-    std::string label = "_str_" + std::to_string(string_label_counter++);
-    out << "section .data" << std::endl;
-    out << label << " db \"" << node->value << "\", 0" << std::endl;
-    out << "section .text" << std::endl;
+    std::string formatted_val = "\"" + node->value + "\", 0";
+    if (constants_map.find(formatted_val) == constants_map.end()) {
+        std::string label = "_str_" + std::to_string(string_label_counter++);
+	constants_map[formatted_val] = label;
+        constants.push_back({label, "db", formatted_val});
+    }
+
+    std::string label = constants_map[formatted_val];
     out << "    lea rax, [rel " << label << "]" << std::endl;
-    // SET resolved_type so print knows it's a string
     node->resolved_type = std::make_shared<PrimitiveTypeNode>(Token::KEYWORD_STRING);
 }
 
@@ -761,11 +732,4 @@ int CodeGenerator::getTypeSize(const TypeNode* type) {
                 default:
                     throw std::runtime_error("Code Generation Error: Unknown type category for size calculation.");
     }
-}
-
-bool CodeGenerator::isFloatingPoint(const std::shared_ptr<TypeNode>& type) {
-    if (!type) return false;
-    auto prim = dynamic_cast<PrimitiveTypeNode*>(type.get());
-    return prim && (prim->primitive_type == Token::KEYWORD_FLOAT || 
-                    prim->primitive_type == Token::KEYWORD_DOUBLE);
 }

@@ -1,71 +1,86 @@
-// 1. Enums
+extern int hi();
+
 enum Status {
     OFF,
     ON,
     PENDING
 }
 
-// 2. Structs
 struct Point {
     int x;
     int y;
 }
 
-// 3. Global Constants
-const int MAX_VALUE = 100;
+const float PI = 3.14159f;
 
-// 4. Functions with logic and control flow
 int calculate_score(int a, int b) {
-    int result = 0;
-    
-    // Comparison and Arithmetic Ops
     if (a > b) {
-        if (b != 0) {
-            result = (a * 2) + (b / 2);
-        }
-    } else {
-    result = a - b;
+        return (a * 2) + (b / 2);
     }
-    return result;
+    return a - b;
 }
 
 int main() {
-    // 5. Variable Declarations & Struct Instantiation
-    
-    int i = 0;
-    int total = 0;
+    // Array Setup
+    int map[3];
+    int data[3];
 
+    map[0] = 2;
+    map[1] = 0;
+    map[2] = 1;
+
+    data[0] = 100;
+    data[1] = 200;
+    data[2] = 300;
+
+    // Recursive Array Test: data[map[0]]
+    // map[0] is 2, so this prints data[2] (300)
+    print "nested index access (300):";
+    print data[map[0]];
+
+    // Nested Assignment Test
+    // data[map[1]] is data[0]. Setting it to 999.
+    data[map[1]] = 999;
+    print "nested assignment result (999):";
+    print data[0];
+
+    // Struct & Enum Logic
     Point p;
     p.x = 10;
     p.y = 20;
+    
+    int current_status = ON;
+    int total = 0;
 
-    print p.x;
-    print p.y;
-
-    // 6. Loops (Control Flow)
-    while (i < 5) {
-        total = total + p.x;
+    // Loops with Array Access
+    int i = 0;
+    while (i < 3) {
+        print "processing index..."; // Deduplication test
+        total = total + data[i];
         i = i + 1;
     }
-    
-    // 7. Testing Enums and Logic
-    int current_status = ON;
-    if (current_status == ON) {
-        total = total + MAX_VALUE;
-    }
-    
-    // 8. Function Calls
+    print "processing index..."; // Should reuse same label
+
+    // Float Math with Constants
+    float radius = 5.0f;
+    float area = PI * (radius * radius);
+    print "circle area:";
+    print area;
+
+    // Final Function & Logic check
     int final_result = calculate_score(total, p.y);
-    
-    // 9. Built-in Print (assuming it takes expressions)
-    print final_result; 
-    
-    // Comparison test
-    if (final_result >= 150) {
-        print 1; // True
-    } else {
-        print 0; // False
+    print "final score:";
+    print final_result;
+
+    if (current_status == ON) {
+        if (final_result > 1000) {
+            print "status: pass";
+        } else {
+            print "status: fail";
+        }
     }
+
+    hi();
 
     return 0;
 }

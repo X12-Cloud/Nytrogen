@@ -10,5 +10,5 @@ file(GLOB SOURCES "src/*.cpp")
 include_directories(include)
 include_directories(src)
 
-add_executable(Nytro ${SOURCES})
+add_executable(nytro-c ${SOURCES})
 

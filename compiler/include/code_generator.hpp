@@ -10,18 +10,27 @@
 #include "ast.hpp"
 #include "symbol_table.hpp"
 
+struct GlobalConstant {
+    std::string label;
+    std::string type;
+    std::string value;
+};
+
 class CodeGenerator {
 public:
     CodeGenerator(std::unique_ptr<ProgramNode>& ast, SymbolTable& symTable);
-    void generate(const std::string& output_filename);
+    void generate(const std::string& output_filename, bool is_entry_point);
     bool isFloatingPoint(const std::shared_ptr<TypeNode>& type);
 
 private:
+    std::vector<GlobalConstant> constants;
+    std::map<std::string, std::string> constants_map;
+    int string_label_counter;
+    std::string current_function_name;
+
     std::unique_ptr<ProgramNode>& program_ast;
     SymbolTable& symbolTable;
     std::ofstream out;
-    std::map<std::string, std::string> string_literals;
-    int string_label_counter;
 
     void visit(ASTNode* node);
     void visit(ProgramNode* node);
@@ -53,8 +62,13 @@ private:
     int getTypeSize(const TypeNode* type);
 
     // Instruction set
-    void emit(std::string instruction, std::string dest, std::string data);
+    void emit(const std::string& instr);
+    void emit(const std::string& instr, const std::string& dest, const std::string& src);
+    void emit_adv(const std::shared_ptr<TypeNode>& type, const std::string& base_reg, int offset, const std::string& src_val);
+    void emit_adv(const std::unique_ptr<TypeNode>& type, const std::string& base_reg, int offset, const std::string& src_val);
     void emit_binary_op(const std::string& op_instr, char type);
+    void load_adv(const std::shared_ptr<TypeNode>& type, const std::string& dest_reg, const std::string base_reg, int offset);
+    void load_adv(const std::unique_ptr<TypeNode>& type, const std::string& dest_reg, const std::string& base_reg, int offset);
 };
 
 #endif // CODE_GENERATOR_HPP

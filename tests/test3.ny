@@ -1,3 +1,3 @@
-int main() {
+int hi() {
     print "hello wrld";
 }

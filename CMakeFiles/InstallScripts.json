@@ -1,0 +1,10 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/mohamed/dev/Nytrogen/cmake_install.cmake",
+		"/home/mohamed/dev/Nytrogen/Preprocessor/cmake_install.cmake",
+		"/home/mohamed/dev/Nytrogen/compiler/cmake_install.cmake",
+		"/home/mohamed/dev/Nytrogen/driver/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

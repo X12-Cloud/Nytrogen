@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
     // std::cout << "Nytrogen Compiler (Arch Linux)\n";
 
     if (argc < 2) {
-        std::cerr << "Error: No source file provided. Usage: ./Nytro <source_file> [output_dir]\n";
+        std::cerr << "Error: No source file provided. Usage: ./nytro-c <source_file> [output_dir]\n";
         return 2;
     }
 
@@ -40,11 +40,14 @@ int main(int argc, char* argv[]) {
     } 
     bool debug_mode = false;
     bool verbose = false;
+    bool is_entry = false;
     for (int i = 1; i < argc; ++i) {
         if (std::string(argv[i]) == "-debug") {
             debug_mode = true;
         } else if (std::string(argv[i]) == "-verbose") {
             verbose = true;
+        } else if (std::string(argv[i]) == "-entry") {
+            is_entry = true;
         }
     }
 
@@ -72,11 +75,12 @@ int main(int argc, char* argv[]) {
 
     // Perform semantic analysis
     SemanticAnalyzer semanticAnalyzer(ast_root, parser.getSymbolTable());
+    semanticAnalyzer.setIsEntryPoint(is_entry);
     semanticAnalyzer.analyze();
 
     // Generate code
     CodeGenerator codeGenerator(ast_root, semanticAnalyzer.getSymbolTable());
-    codeGenerator.generate(output_asm_filename);
+    codeGenerator.generate(output_asm_filename, is_entry);
 
     if (verbose) std::cout << "Successfully generated assembly to '" << output_asm_filename << "'\n";
     return 0;
