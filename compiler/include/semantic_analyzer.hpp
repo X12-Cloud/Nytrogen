@@ -25,6 +25,7 @@ private:
     std::unique_ptr<ProgramNode>& program_ast;
     SymbolTable& symbolTable;
     std::string typeToString(const TypeNode* type);
+    TypeNode* currentFunctionReturnType = nullptr;
 
     // Visitor methods for AST nodes
     void visit(ASTNode* node);

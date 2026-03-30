@@ -63,10 +63,12 @@ private:
 
     // Instruction set
     void emit(const std::string& instr);
+    void emit(const std::string& instr, const std::string reg);
     void emit(const std::string& instr, const std::string& dest, const std::string& src);
     void emit_adv(const std::shared_ptr<TypeNode>& type, const std::string& base_reg, int offset, const std::string& src_val);
     void emit_adv(const std::unique_ptr<TypeNode>& type, const std::string& base_reg, int offset, const std::string& src_val);
     void emit_binary_op(const std::string& op_instr, char type);
+    void emit_print(const std::shared_ptr<TypeNode>& type);
     void load_adv(const std::shared_ptr<TypeNode>& type, const std::string& dest_reg, const std::string base_reg, int offset);
     void load_adv(const std::unique_ptr<TypeNode>& type, const std::string& dest_reg, const std::string& base_reg, int offset);
 };

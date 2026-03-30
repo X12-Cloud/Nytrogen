@@ -25,16 +25,16 @@ void CodeGenerator::generate(const std::string& output_filename, bool is_entry_p
 
     for (const auto& func : program_ast->functions) {
         if (!func->body_statements.empty()) out << "global " << func->name << std::endl;
-	else out << "extern " << func->name << std::endl;
+	    else out << "extern " << func->name << std::endl;
     }
 
     // entry point
     if (is_entry_point) {
-	out << "_start:" << std::endl;
-	out << "  call main" << std::endl;
-	out << "  mov rdi, rax" << std::endl;
-	out << "  mov rax, 60" << std::endl;
-	out << "  syscall" << std::endl;
+	    out << "_start:" << std::endl;
+	    out << "  call main" << std::endl;
+	    out << "  mov rdi, rax" << std::endl;
+	    out << "  mov rax, 60" << std::endl;
+	    out << "  syscall" << std::endl;
     }
 
     visit(program_ast.get());
@@ -156,8 +156,10 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
     }
 
     out << node->name << ":" << std::endl;
-    out << "    push rbp" << std::endl;
-    out << "    mov rbp, rsp" << std::endl;
+    emit("push", "rbp");
+    emit("mov", "rbp", "rsp");
+
+    emit("and", "rsp", "-16");
 
     std::stringstream body_buffer;
     std::streambuf* backup = out.std::ios::rdbuf(body_buffer.rdbuf());
@@ -171,17 +173,11 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
 
     // Calculate total local variable space from current scope
     int local_var_space = 0;
-    if (!symbolTable.all_scopes.empty()) {
-        local_var_space = -symbolTable.all_scopes.back()->currentOffset;
-    }
-    if (local_var_space == 0) {
-        local_var_space = 64; 
-    }
+    if (!symbolTable.all_scopes.empty()) local_var_space = -symbolTable.all_scopes.back()->currentOffset;
+    if (local_var_space == 0) local_var_space = 64;
 
     int aligned_space = (local_var_space + 15) & ~15;
-    if (aligned_space > 0) {
-        out << "    sub rsp, " << aligned_space << "\n";
-    }
+    if (aligned_space > 0) emit("sub", "rsp", std::to_string(aligned_space));
 
     // Push register arguments onto the stack
     const std::vector<std::string> arg_registers = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
@@ -195,8 +191,8 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
 
     out << current_function_name << "_epilogue:" << std::endl;
 
-    out << "    leave" << std::endl;
-    out << "    ret" << std::endl << std::endl;
+    emit("leave");
+    emit("ret");
 
     current_function_name = "";
 }
@@ -221,11 +217,8 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
 
         if (node->type->category == TypeNode::TypeCategory::STRUCT) continue;
         if (decl.initial_value) {
-	    visit(decl.initial_value.get());
-
-	    std::string src_reg = (is_float || is_double) ? "xmm0" : "rax";
-
-	    emit_adv(node->type, "rbp", symbol->offset, src_reg);
+	        visit(decl.initial_value.get());
+	        emit_adv(node->type, "rbp", symbol->offset, (is_float || is_double) ? "xmm0" : "rax");
         }
     }
 }
@@ -236,39 +229,46 @@ void CodeGenerator::visit(VariableAssignmentNode* node) {
     auto literal = dynamic_cast<LiteralExpressionNode*>(node->right.get());
 
     if (literal && !is_fp) {
-	is_lvalue = true;
-	visit(node->left.get());
-	is_lvalue = false;
+	    is_lvalue = true;
+	    visit(node->left.get());
+	    is_lvalue = false;
 	
-	std::string val = literal->getValueAsString();
+	    std::string val = literal->getValueAsString();
 
-	emit_adv(type, "rax", 0, val);
-	return;
+	    emit_adv(type, "rax", 0, val);
+	    return;
     }
 
     visit(node->right.get());
     if (is_fp) {
-	is_lvalue = true;
-	visit(node->left.get());
-	is_lvalue = false;
+	    is_lvalue = true;
+	    visit(node->left.get());
+	    is_lvalue = false;
 
-	emit_adv(type, "rax", 0, "xmm0");
+	    emit_adv(type, "rax", 0, "xmm0");
     } else {
-	out << "    push  rax" << std::endl;
+        emit("push", "rax");
 
-	is_lvalue = true;
-	visit(node->left.get());
-	is_lvalue = false;
+	    is_lvalue = true;
+	    visit(node->left.get());
+	    is_lvalue = false;
 	
-	out << "    pop rbx" << std::endl;
+        emit("pop", "rbx");
 	
-	emit_adv(type, "rax", 0, "rbx");
+	    emit_adv(type, "rax", 0, "rbx");
     }
 }
 
 void CodeGenerator::visit(VariableReferenceNode* node) {
     Symbol* symbol = node->resolved_symbol;
     int offset = symbol->offset;
+
+    if (!node->resolved_symbol) {
+        throw std::runtime_error("CodeGen Error: Symbol not resolved for " + node->name);
+    }
+    if (!node->resolved_symbol->dataType) {
+        throw std::runtime_error("CodeGen Error: Variable '" + node->name + "' has NO TYPE in symbol table!");
+    }
 
     if (!symbol) {
         throw std::runtime_error("CodeGen Error: Reference to '" + node->name + "' not resolved.");
@@ -284,12 +284,9 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
     bool is_float = prim && (prim->primitive_type == Token::KEYWORD_FLOAT);
 	
     if (is_lvalue) {
-        out << "    lea rax, [rbp + " << offset << "]" << std::endl;
+        emit("lea", "rax", "[rbp + " + std::to_string(offset) + "]");
     } else {
-        int size = getTypeSize(node->resolved_type.get());
-	std::string dest_reg = (is_float || is_double) ? "xmm0" : "rax";
-
-	load_adv(node->resolved_type, dest_reg, "rbp", offset);
+	    load_adv(node->resolved_type, (is_float || is_double) ? "xmm0" : "rax", "rbp", offset);
     }
 }
 
@@ -303,7 +300,7 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
     if (is_float || is_double) {
         out << "    sub rsp, 8" << std::endl;
         if (is_double) out << "    vmovsd qword [rsp], xmm0" << std::endl;
-	else out << "    vmovss dword [rsp], xmm0" << std::endl;
+	    else out << "    vmovss dword [rsp], xmm0" << std::endl;
     } else out << "    push rax" << std::endl;
 
     // Right
@@ -315,7 +312,7 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
         out << "    add rsp, 8" << std::endl; // Left is in xmm1, Right is in xmm0
     } else {
         out << "    pop rbx" << std::endl; 
-	out << "    mov rcx, rbx" << std::endl; // Left is in rbx, Right is in rax
+	    out << "    mov rcx, rbx" << std::endl; // Left is in rbx, Right is in rax
     }
 
     char type = 'd';
@@ -323,16 +320,16 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
     else if (is_double) type = 'l';
     switch (node->op_type) {
         case Token::PLUS:
-	    emit_binary_op("add", type);
+	        emit_binary_op("add", type);
             break;
         case Token::MINUS:
-	    emit_binary_op("sub", type);
+	        emit_binary_op("sub", type);
             break;
         case Token::STAR:
-	    emit_binary_op("imul", type);
+	        emit_binary_op("imul", type);
             break;
         case Token::SLASH:
-	    emit_binary_op("idiv", type);
+	        emit_binary_op("idiv", type);
             break;
         case Token::EQUAL_EQUAL:
             if (node->left->resolved_type && node->left->resolved_type->category == TypeNode::TypeCategory::PRIMITIVE && static_cast<PrimitiveTypeNode*>(node->left->resolved_type.get())->primitive_type == Token::KEYWORD_STRING) {
@@ -404,38 +401,17 @@ void CodeGenerator::visit(PrintStatementNode* node) {
              out << "    call printf" << std::endl;
              continue;
         }
-
-        auto prim_type = dynamic_cast<PrimitiveTypeNode*>(expr_type.get());
-        bool is_float = prim_type && (prim_type->primitive_type == Token::KEYWORD_FLOAT);
-        bool is_double = prim_type && (prim_type->primitive_type == Token::KEYWORD_DOUBLE);
-
-        if (is_float || is_double) {
-            if (is_float) {
-                out << "    cvtss2sd xmm0, xmm0" << std::endl;
-            }
-            out << "    lea rdi, [rel _print_float_format]" << std::endl;
-            out << "    mov rax, 1" << std::endl; // Tells printf to look at xmm0
-        } else if (prim_type && prim_type->primitive_type == Token::KEYWORD_STRING) {
-            out << "    mov rsi, rax" << std::endl;
-            out << "    lea rdi, [rel _print_str_format]" << std::endl;
-            out << "    xor rax, rax" << std::endl;
-        } else if (prim_type && prim_type->primitive_type == Token::KEYWORD_CHAR) {
-            out << "    mov rsi, rax" << std::endl;
-            out << "    lea rdi, [rel _print_char_format]" << std::endl;
-            out << "    xor rax, rax" << std::endl;
-        } else {
-            out << "    mov rsi, rax" << std::endl;
-            out << "    lea rdi, [rel _print_int_format]" << std::endl;
-            out << "    xor rax, rax" << std::endl;
-        }
-
-        out << "    call printf" << std::endl;
+        emit_print(expr_type);
     }
 }
 
 void CodeGenerator::visit(ReturnStatementNode* node) {
     if (node->expression) {
         visit(node->expression.get());
+        if (!node->resolved_type) {
+            throw std::runtime_error("CodeGen Error: Return statement has an expression but no resolved type.");
+        }
+        emit("pop", "rax");
     }
     out << "    jmp " << current_function_name << "_epilogue" << std::endl;
 }
@@ -529,7 +505,13 @@ void CodeGenerator::visit(FunctionCallNode* node) {
 
     for (int i = std::min(arg_count, (int)arg_regs_64.size()) - 1; i >= 0; --i) {
         visit(node->arguments[i].get());
-        out << "    mov " << arg_regs_32[i] << ", eax" << std::endl;
+
+        int size = 8;
+        if (node->arguments[i]->resolved_type) size = getTypeSize(node->arguments[i]->resolved_type.get());
+        else std::cerr << "Warning: Argument " << i << " in call to '" << node->function_name << "' has no resolved type. Defaulting to 8 bytes." << std::endl;
+
+        if (size == 8) out << "    mov " << arg_regs_64[i] << ", rax" << std::endl;
+        else out << "    mov " << arg_regs_32[i] << ", eax" << std::endl;
     }
 
     out << "    call " << node->function_name << std::endl;
@@ -635,6 +617,8 @@ void CodeGenerator::visit(StructDefinitionNode* node) {
 
 void CodeGenerator::visit(IntegerLiteralExpressionNode* node) {
     out << "    mov rax, " << node->value << std::endl;
+
+    if (!node->resolved_type) node->resolved_type = std::make_shared<PrimitiveTypeNode>(Token::KEYWORD_INT);
 }
 
 void CodeGenerator::visit(FloatLiteralExpressionNode* node) {
@@ -684,6 +668,7 @@ void CodeGenerator::visit(BooleanLiteralExpressionNode* node) {
 
 void CodeGenerator::visit(CharacterLiteralExpressionNode* node) {
     out << "    mov rax, " << static_cast<int>(node->value) << std::endl;
+    if (!node->resolved_type) node->resolved_type = std::make_shared<PrimitiveTypeNode>(Token::KEYWORD_BOOL);
 }
 
 void CodeGenerator::visit(AsmStatementNode* node) {
@@ -694,6 +679,7 @@ void CodeGenerator::visit(AsmStatementNode* node) {
 
 int CodeGenerator::getTypeSize(const TypeNode* type) {
     if (!type) {
+        std::cerr << "Type is null" << std::endl;
         throw std::runtime_error("Code Generation Error: Attempted to get size of a null type.");
     }
 
@@ -708,28 +694,26 @@ int CodeGenerator::getTypeSize(const TypeNode* type) {
                 case Token::KEYWORD_VOID: return 0;
                 case Token::KEYWORD_FLOAT: return 4;
                 case Token::KEYWORD_DOUBLE: return 8;
-                default: throw std::runtime_error("Code Generation Error: Unknown primitive type for size calculation.");
+                default: throw std::runtime_error("Code Generation Error: Unknown primitive type (" + std::to_string((int)prim_type->primitive_type) + ") for size calculation. (Type category: " + std::to_string((int)type->category) + ")");
             }
         }
-                case TypeNode::TypeCategory::POINTER:
-                    return 8;
-                case TypeNode::TypeCategory::ARRAY: {
-                    const ArrayTypeNode* array_type = static_cast<const ArrayTypeNode*>(type);
-                    int element_size = getTypeSize(array_type->base_type.get());
-                    if (array_type->size > 0) {
-                        return element_size * array_type->size;
-                    }
-                    return 0;
-                }
-                case TypeNode::TypeCategory::STRUCT: {
-                    const StructTypeNode* struct_type = static_cast<const StructTypeNode*>(type);
-                    Symbol* struct_def_symbol = symbolTable.lookup(struct_type->struct_name);
-                    if (!struct_def_symbol || !struct_def_symbol->structDef) {
-                        throw std::runtime_error("Code Generation Error: Undefined struct '" + struct_type->struct_name + "'.");
-                    }
-                    return struct_def_symbol->structDef->size;
-                }
-                default:
-                    throw std::runtime_error("Code Generation Error: Unknown type category for size calculation.");
+        case TypeNode::TypeCategory::POINTER: return 8;
+        case TypeNode::TypeCategory::ARRAY: {
+            const ArrayTypeNode* array_type = static_cast<const ArrayTypeNode*>(type);
+            int element_size = getTypeSize(array_type->base_type.get());
+            if (array_type->size > 0) {
+                return element_size * array_type->size;
+            }
+            return 0;
+        }
+        case TypeNode::TypeCategory::STRUCT: {
+            const StructTypeNode* struct_type = static_cast<const StructTypeNode*>(type);
+            Symbol* struct_def_symbol = symbolTable.lookup(struct_type->struct_name);
+             if (!struct_def_symbol || !struct_def_symbol->structDef) {
+                 throw std::runtime_error("Code Generation Error: Undefined struct '" + struct_type->struct_name + "'.");
+              }
+              return struct_def_symbol->structDef->size;
+          }
+          default: throw std::runtime_error("Code Generation Error: Unknown type category for size calculation.");
     }
 }

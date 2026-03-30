@@ -6,6 +6,10 @@ void CodeGenerator::emit(const std::string& instr) {
     out << "    " << instr << std::endl;
 }
 
+void CodeGenerator::emit(const std::string& instr, const std::string reg) {
+    out << "    " << instr << reg << std::endl;
+}
+
 void CodeGenerator::emit(const std::string& instr, const std::string& dest, const std::string& src) {
     out << "    " << instr << " " << dest << ", " << src << std::endl;
 }
@@ -58,7 +62,29 @@ void CodeGenerator::emit_adv(const std::unique_ptr<TypeNode>& type, const std::s
     }
 }
 
-// TODO: make an emit_print to furthur simplify the print visitor in the CG.
+void CodeGenerator::emit_print(const std::shared_ptr<TypeNode>& type) {
+    auto prim = dynamic_cast<PrimitiveTypeNode*>(type.get());
+    int size = getTypeSize(type.get());
+
+    if (isFloatingPoint(type)) {
+        if (size == 4) emit("cvtss2sd", "xmm0", "xmm0");
+        emit("lea", "rdi", "[rel _print_float_format]");
+        emit("mov", "rax", "1");
+    } else if (prim && prim->primitive_type == Token::KEYWORD_STRING) {
+        emit("mov", "rsi", "rax");
+        emit("lea", "rdi", "[rel _print_str_format]");
+        emit("xor", "rax", "rax");
+    } else if (prim && prim->primitive_type == Token::KEYWORD_CHAR) {
+        emit("mov", "rsi", "rax");
+        emit("lea", "rdi", "[rel _print_char_format]");
+        emit("xor", "rax", "rax");
+    } else {
+        emit("mov", "rsi", "rax");
+        emit("lea", "rdi", "[rel _print_int_format]");
+        emit("xor", "rax", "rax");
+    }
+    emit("call", "printf");
+}
 
 void CodeGenerator::emit_binary_op(const std::string& op_instr, char type) {
     if (type == 'f' || type == 'l') {
