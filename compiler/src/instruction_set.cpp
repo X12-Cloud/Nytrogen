@@ -7,7 +7,7 @@ void CodeGenerator::emit(const std::string& instr) {
 }
 
 void CodeGenerator::emit(const std::string& instr, const std::string reg) {
-    out << "    " << instr << reg << std::endl;
+    out << "    " << instr << " " << reg << std::endl;
 }
 
 void CodeGenerator::emit(const std::string& instr, const std::string& dest, const std::string& src) {

@@ -1,7 +1,8 @@
 int main() {
     // Test variables
-    // int: l = 2, m = 20, n = 10;
-    // print l, m, n;
+    int: l = 2, m = 20, n = 10;
+    print l, m, n; // exits with 32?
+
     int result;
     int y;
     result = 100;
