@@ -21,7 +21,7 @@ struct Config {
     bool help = false;
 } cfg;
 
-struct FlagInfo { // TODO: add this
+struct FlagInfo {
     bool* value;
     std::string description;
 };
@@ -38,59 +38,83 @@ int main(int argc, char* argv[]) {
     cfg.verbose = lua_config.verbose;
     cfg.debug = lua_config.debug;
     cfg.clean = lua_config.clean;
+    std::string output_bin_name = lua_config.project_name;
+    std::vector<std::string> sources_to_compile = lua_config.sources;
 
-    std::string input_file = "";
+    std::vector<std::string> cli_sources;
     std::string extra_flags = "";
-    std::string base_name = fs::path(input_file).stem().string();
-    std::string output_bin_name = base_name; // Default to input name
-
-    if (cfg.verbose) extra_flags += " -verbose";
-    if (cfg.debug)   extra_flags += " -debug";
-
-    // TODO: add a -help flag that would open a cool help screen, make it possible to use multiple single char flags at once
 
     // Flag map
-    std::unordered_map<std::string, bool*> flag_map = {
-        {"-obj",        &cfg.obj_only},
-        {"-c",          &cfg.obj_only},
-        {"-asm",        &cfg.asm_only},
-        {"-S",          &cfg.asm_only},
-        {"-dp",         &cfg.no_preproc},
-        {"-verbose",    &cfg.verbose},
-        {"-debug",      &cfg.debug},
-	{"--version",   &cfg.show_version},
-	{"-v",          &cfg.show_version},
-	{"-clean",      &cfg.clean},
-	{"--clear",     &cfg.clean},
-	{"-help",       &cfg.help},
+    std::unordered_map<std::string, FlagInfo> flag_map = {
+        {"--obj",     {&cfg.obj_only, "Compile to object file only."}},
+        {"--asm",     {&cfg.asm_only, "Stop after assembly generation."}},
+        {"--disable-preprocessor", {&cfg.no_preproc, "Skip the pre-processing stage."}},
+        {"--verbose", {&cfg.verbose,  "Enable detailed logging."}},
+        {"--debug",   {&cfg.debug,    "Include debug symbols."}},
+        {"--version", {&cfg.show_version, "Show Nytrogen version."}},
+        {"--clear",   {&cfg.clean,    "Clean the output directory."}},
+        {"--help",    {&cfg.help,    "Show this menu."}}
+    };
+
+    std::unordered_map<std::string, std::string> flag_aliases = {
+        {"-c", "--obj"},
+        {"-S", "--asm"},
+        {"-v", "--version"},
+        {"-dp", "--disable-preprocessor"},
+        {"-h", "--help"}
     };
 
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
 
+        if (flag_aliases.count(arg)) arg = flag_aliases[arg];
+
         if (flag_map.count(arg)) {
-            *flag_map[arg] = true;
-	    if (arg == "-debug" || arg == "-verbose") extra_flags += " " + arg;
-	    else if (cfg.show_version) {
-		std::cout << "Nytrogen Toolchain v" << NYTRO_VERSION << std::endl;
-		return 0;
-	    } else if (cfg.help) std::cout << "Im too lazy to make the help screen just read driver.cpp and u will know everything" << std::endl;
+            *flag_map[arg].value = true;
+
+            if (cfg.show_version) {
+                std::cout << "Nytrogen Toolchain v" << NYTRO_VERSION << std::endl;
+                return 0;
+            }
+            if (cfg.help) {
+                std::cout << Color::YELLOW << "Nytrogen Toolchain v" << NYTRO_VERSION << Color::RESET << "\n";
+                std::cout << "Usage: nytrogen [options] [files...]\n\n";
+                std::cout << "Options:\n";
+
+                for (auto const& [flag, info] : flag_map) {
+                    // Find if this flag has an alias
+                    std::string alias = "    "; // default padding if no alias
+                    for (auto const& [shorthand, primary] : flag_aliases) {
+                        if (primary == flag) {
+                            alias = shorthand + ",";
+                            break;
+                        }
+                    }
+
+                    // Print columns: Shorthand (padded 4) | Flag (padded 20) | Description
+                    std::printf("  %s%-4s %-22s%s %s\n", 
+                    Color::GREEN, alias.c_str(), flag.c_str(), Color::RESET, 
+                    info.description.c_str());
+                }
+                std::cout << "\nExample:\n  nytrogen -c main.ny\n";
+                return 0;
+            }
         } else if (arg == "-o" && i + 1 < argc) {
-            // Handle flags that need values separately
             output_bin_name = argv[++i];
-        } else if (arg[0] != '-') { 
-            input_file = arg;
-            base_name = fs::path(input_file).stem().string();
+        } else if (arg[0] != '-') {
+            cli_sources.push_back(arg);
         }
     }
 
-    // files to get compiled
     std::vector<std::string> files_to_compile;
-    if (!lua_config.sources.empty()) {
-	files_to_compile = lua_config.sources;
-    } else if (argc >= 2 && argv[1][0] != '-') {
-	files_to_compile = { argv[1] };
+    if (!cli_sources.empty()) {
+        files_to_compile = cli_sources; // cli priority
+    } else {
+        files_to_compile = lua_config.sources; // fallback to the sources in the lua config
     }
+
+    if (cfg.verbose) extra_flags += " -verbose";
+    if (cfg.debug)   extra_flags += " -debug";
     if (files_to_compile.empty()) {
         std::cerr << "Error: No input files found in init.lua or CLI." << std::endl;
         return 1;
@@ -98,12 +122,7 @@ int main(int argc, char* argv[]) {
 
     // extra libraries, will get added to the linker cmd
     std::vector<std::string> extra_libs;
-    if (!lua_config.extra_libs.empty()) {
-	extra_libs = lua_config.extra_libs;
-    }
-
-    base_name = fs::path(input_file).stem().string();
-    if (output_bin_name.empty()) output_bin_name = lua_config.project_name;
+    if (!lua_config.extra_libs.empty()) extra_libs = lua_config.extra_libs;
 
     // Path Resolution
     fs::path exe_path = fs::canonical("/proc/self/exe");

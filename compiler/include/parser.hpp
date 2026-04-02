@@ -1,6 +1,7 @@
 #ifndef NYTROGEN_PARSER_HPP
 #define NYTROGEN_PARSER_HPP
 
+#include "utils.hpp"
 #include "lexer.hpp"
 #include <vector>
 #include <memory>

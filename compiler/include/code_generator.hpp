@@ -1,6 +1,7 @@
 #ifndef CODE_GENERATOR_HPP
 #define CODE_GENERATOR_HPP
 
+#include "utils.hpp"
 #include <iostream>
 #include <fstream>
 #include <string>

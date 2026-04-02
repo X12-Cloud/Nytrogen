@@ -1,6 +1,7 @@
 #ifndef AST_HPP
 #define AST_HPP
 
+#include "utils.hpp"
 #include <string>
 #include <vector>
 #include <memory> // Smart pointers

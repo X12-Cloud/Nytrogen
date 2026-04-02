@@ -1,6 +1,7 @@
 #ifndef SEMANTIC_ANALYZER_HPP
 #define SEMANTIC_ANALYZER_HPP
 
+#include "utils.hpp"
 #include <memory>
 #include <string>
 #include <vector>

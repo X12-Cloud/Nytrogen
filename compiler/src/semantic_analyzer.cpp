@@ -470,6 +470,8 @@ void SemanticAnalyzer::visit(FunctionCallNode* node) {
     else throw std::runtime_error("Semantic Error: Function '" + node->function_name + "' has no return type.");
 }
 
+
+// TODO: Structs dont work for some reason, "member X not found in struct Y". 
 void SemanticAnalyzer::visit(MemberAccessNode* node) {
     std::unique_ptr<TypeNode> base_type = visitExpression(node->struct_expr.get());
 
