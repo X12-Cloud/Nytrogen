@@ -83,6 +83,9 @@ int main(int argc, char* argv[]) {
     codeGenerator.generate(output_asm_filename, is_entry);
 
     if (verbose) std::cout << "Successfully generated assembly to '" << output_asm_filename << "'\n";
+
+    if (verbose) ast_root->dump();
+
     return 0;
 }
 

@@ -19,6 +19,7 @@ struct Config {
     bool show_version = false;
     bool clean = false;
     bool help = false;
+    bool tui = false;
 } cfg;
 
 struct FlagInfo {
@@ -53,6 +54,7 @@ int main(int argc, char* argv[]) {
         {"--debug",   {&cfg.debug,    "Include debug symbols."}},
         {"--version", {&cfg.show_version, "Show Nytrogen version."}},
         {"--clear",   {&cfg.clean,    "Clean the output directory."}},
+        {"--show-tui",     {&cfg.tui, "Show a debugging tui."}}, // Very early beta
         {"--help",    {&cfg.help,    "Show this menu."}}
     };
 
@@ -61,6 +63,7 @@ int main(int argc, char* argv[]) {
         {"-S", "--asm"},
         {"-v", "--version"},
         {"-dp", "--disable-preprocessor"},
+        {"-tui", "--show-tui"},
         {"-h", "--help"}
     };
 
@@ -225,10 +228,13 @@ int main(int argc, char* argv[]) {
     // Execution
     if (cfg.verbose) std::cout << "\n--- Running output program ---" << std::endl;
     std::string run_cmd = "./" + fs::relative(final_exe, fs::current_path()).string();
+    if (cfg.tui) run_cmd += " > output.txt 2>&1"; 
     int status = std::system(run_cmd.c_str());
     if (WIFEXITED(status)) {
         std::cout << "\nExit Code: " << WEXITSTATUS(status) << std::endl;
     }
+
+    if (cfg.tui) system("./build/bin/nytro-tui"); // gonna make it check paths later
 
     return 0;
 }

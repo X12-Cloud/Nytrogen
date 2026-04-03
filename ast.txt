@@ -1,0 +1,118 @@
+ PROGRAM_ROOT
+   ENUM: Config
+   CONST_DECL: GRAVITY
+     FLOAT_LITERAL: (9.810000)
+   CONST_DECL: MAX_RETRIES
+     INT_LITERAL: (5)
+   FUNCTION_DEF: factorial
+     IF_STATEMENT
+       BINARY_OP: 
+         VAR_REF: (n)
+         INT_LITERAL: (1)
+       RETURN_STMT:
+         INT_LITERAL: (1)
+     RETURN_STMT:
+       BINARY_OP: 
+         VAR_REF: (n)
+         FUNC_CALL: factorial
+           BINARY_OP: 
+             VAR_REF: (n)
+             INT_LITERAL: (1)
+   FUNCTION_DEF: is_valid
+     IF_STATEMENT
+       BINARY_OP: 
+         VAR_REF: (mode)
+         VAR_REF: (MODE_FAST)
+       RETURN_STMT:
+         BINARY_OP: 
+           VAR_REF: (val)
+           INT_LITERAL: (0)
+     IF_STATEMENT
+       BINARY_OP: 
+         VAR_REF: (mode)
+         VAR_REF: (MODE_SECURE)
+       IF_STATEMENT
+         BINARY_OP: 
+           VAR_REF: (val)
+           INT_LITERAL: (100)
+         IF_STATEMENT
+           BINARY_OP: 
+             VAR_REF: (val)
+             INT_LITERAL: (500)
+           RETURN_STMT:
+             BOOL_LITERAL: (1)
+       RETURN_STMT:
+         BOOL_LITERAL: (0)
+     RETURN_STMT:
+       BOOL_LITERAL: (1)
+   FUNCTION_DEF: system_init
+     RETURN_STMT:
+       INT_LITERAL: (1)
+   FUNCTION_DEF: main
+     VAR_DECL
+       FUNC_CALL: system_init
+     PRINT_STMT
+       STR_LITERAL: (System Status:)
+     PRINT_STMT
+       VAR_REF: (status)
+     VAR_DECL
+     VAR_DECL
+     ASTNode
+     ASTNode
+     VAR_DECL
+       INT_LITERAL: (1)
+     VAR_DECL
+       INT_LITERAL: (1)
+     PRINT_STMT
+       STR_LITERAL: (Accessing simulated 2D array (88):)
+     PRINT_STMT
+       ARRAY_ACCESS
+         VAR_REF: (values)
+         BINARY_OP: 
+           ARRAY_ACCESS
+             VAR_REF: (row_map)
+             VAR_REF: (r)
+           VAR_REF: (c)
+     VAR_DECL
+       FUNC_CALL: factorial
+         INT_LITERAL: (5)
+     PRINT_STMT
+       STR_LITERAL: (Factorial of 5 (120):)
+     PRINT_STMT
+       VAR_REF: (fact_result)
+     VAR_DECL
+       FLOAT_LITERAL: (10.500000)
+     VAR_DECL
+       FLOAT_LITERAL: (2.000000)
+     VAR_DECL
+       BINARY_OP: 
+         BINARY_OP: 
+           VAR_REF: (velocity)
+           VAR_REF: (time)
+         BINARY_OP: 
+           BINARY_OP: 
+             FLOAT_LITERAL: (0.500000)
+             VAR_REF: (GRAVITY)
+           BINARY_OP: 
+             VAR_REF: (time)
+             VAR_REF: (time)
+     PRINT_STMT
+       STR_LITERAL: (Calculated Distance:)
+     PRINT_STMT
+       VAR_REF: (distance)
+     VAR_DECL
+       INT_LITERAL: (250)
+     VAR_DECL
+       VAR_REF: (MODE_SECURE)
+     IF_STATEMENT
+       FUNC_CALL: is_valid
+         VAR_REF: (my_val)
+         VAR_REF: (current_mode)
+       IF_STATEMENT
+         BINARY_OP: 
+           VAR_REF: (fact_result)
+           INT_LITERAL: (100)
+         PRINT_STMT
+           STR_LITERAL: (Validation Logic: SUCCESS)
+     RETURN_STMT:
+       INT_LITERAL: (0)

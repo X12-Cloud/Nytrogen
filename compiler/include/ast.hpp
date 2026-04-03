@@ -4,7 +4,9 @@
 #include "utils.hpp"
 #include <string>
 #include <vector>
-#include <memory> // Smart pointers
+#include <memory>
+#include <iostream>
+#include <fstream>
 #include "lexer.hpp"
 
 struct Symbol; // Forward declaration for Symbol
@@ -38,12 +40,12 @@ struct ASTNode {
         ARRAY_ACCESS_EXPRESSION = 18,
         STRUCT_DEFINITION = 19,
         MEMBER_ACCESS_EXPRESSION = 20,
-	ASM_STATEMENT = 21,
-	CONSTANT_LITERAL_EXPRESSION = 22,
-	ENUM_STATEMENT = 23,
-	CONSTANT_DECLARATION = 24,
-	FLOAT_LITERAL_EXPRESSION = 25,
-	DOUBLE_LITERAL_EXPRESSION = 26,
+	    ASM_STATEMENT = 21,
+	    CONSTANT_LITERAL_EXPRESSION = 22,
+	    ENUM_STATEMENT = 23,
+	    CONSTANT_DECLARATION = 24,
+	    FLOAT_LITERAL_EXPRESSION = 25,
+	    DOUBLE_LITERAL_EXPRESSION = 26,
     };
 
     NodeType node_type;
@@ -58,6 +60,53 @@ struct ASTNode {
         : node_type(type), line(line), column(column) {}
 
     virtual ~ASTNode() = default;
+
+    virtual std::string type_name() const {
+        return "ASTNode"; 
+    }
+
+    virtual std::vector<ASTNode*> get_children() const {
+        return {}; // Base node has no children
+    }
+
+    virtual std::string get_value() const {
+        return ""; 
+    }
+
+    /* void dump(int indent = 0) {
+        std::string space(indent * 2, ' ');
+
+        std::cout << space << " " << this->type_name();
+
+        std::string val = this->get_value();
+        if (!val.empty()) std::cout << " (" << val << ")";
+        std::cout << std::endl;
+
+        for (auto* child : get_children()) {
+            if (child) child->dump(indent + 1);
+        }
+    } */
+
+void dump_to_stream(std::ostream& out, int indent) {
+    std::string space(indent * 2, ' ');
+    out << space << " " << this->type_name();
+
+    std::string val = this->get_value();
+    if (!val.empty()) out << " (" << val << ")";
+    out << std::endl;
+
+    for (auto* child : get_children()) {
+        if (child) child->dump_to_stream(out, indent + 1);
+    }
+}
+
+void dump() {
+    std::ofstream ast_file("ast.txt", std::ios::trunc);
+    if (ast_file.is_open()) {
+        this->dump_to_stream(ast_file, 0);
+        ast_file.close();
+    }
+}
 };
 
 // Node representing all literals
@@ -72,6 +121,9 @@ struct LiteralExpressionNode : public ASTNode {
 struct IntegerLiteralExpressionNode : public LiteralExpressionNode {
     int value;
 
+    std::string type_name() const override { return "INT_LITERAL:"; }
+    std::string get_value() const override { return getValueAsString(); }
+
     IntegerLiteralExpressionNode(int val, int line = -1, int column = -1)
         : LiteralExpressionNode(NodeType::INTEGER_LITERAL_EXPRESSION, line, column), value(val) {}
     std::string getValueAsString() const override { return std::to_string(value); }
@@ -80,6 +132,9 @@ struct IntegerLiteralExpressionNode : public LiteralExpressionNode {
 // Node representing string literals (e.g., "Hello World")
 struct StringLiteralExpressionNode : public LiteralExpressionNode {
     std::string value;
+
+    std::string type_name() const override { return "STR_LITERAL:"; }
+    std::string get_value() const override { return getValueAsString(); }
 
     StringLiteralExpressionNode(std::string val, int line = -1, int column = -1)
         : LiteralExpressionNode(NodeType::STRING_LITERAL_EXPRESSION, line, column), value(std::move(val)) {}
@@ -90,6 +145,9 @@ struct StringLiteralExpressionNode : public LiteralExpressionNode {
 struct BooleanLiteralExpressionNode : public LiteralExpressionNode {
     bool value;
 
+    std::string type_name() const override { return "BOOL_LITERAL:"; }
+    std::string get_value() const override { return getValueAsString(); }
+
     BooleanLiteralExpressionNode(int val, int line = -1, int column = -1)
         : LiteralExpressionNode(NodeType::BOOLEAN_LITERAL_EXPRESSION, line, column), value(val) {}
     std::string getValueAsString() const override { return std::to_string(value); }
@@ -98,6 +156,9 @@ struct BooleanLiteralExpressionNode : public LiteralExpressionNode {
 // Node representing character literals (e.g., 'x')
 struct CharacterLiteralExpressionNode : public LiteralExpressionNode {
     char value;
+
+    std::string type_name() const override { return "CHAR_LITERAL:"; }
+    std::string get_value() const override { return getValueAsString(); }
 
     CharacterLiteralExpressionNode(int val, int line = -1, int column = -1)
         : LiteralExpressionNode(NodeType::CHARACTER_LITERAL_EXPRESSION, line, column), value(val) {}
@@ -109,6 +170,9 @@ struct FloatLiteralExpressionNode : public LiteralExpressionNode {
     float value;
     std::string label;
 
+    std::string type_name() const override { return "FLOAT_LITERAL:"; }
+    std::string get_value() const override { return getValueAsString(); }
+
     FloatLiteralExpressionNode(float val, int line = -1, int column = -1)
         : LiteralExpressionNode(NodeType::FLOAT_LITERAL_EXPRESSION, line, column), value(val), label("") {}
     std::string getValueAsString() const override { return std::to_string(value); }
@@ -119,6 +183,9 @@ struct DoubleLiteralExpressionNode : public LiteralExpressionNode {
     double value;
     std::string label;
 
+    std::string type_name() const override { return "DOUBLE_LITERAL:"; }
+    std::string get_value() const override { return getValueAsString(); }
+
     DoubleLiteralExpressionNode(double val, int line = -1, int column = -1)
         : LiteralExpressionNode(NodeType::DOUBLE_LITERAL_EXPRESSION, line, column), value(val), label("") {}
     std::string getValueAsString() const override { return std::to_string(value); }
@@ -127,6 +194,11 @@ struct DoubleLiteralExpressionNode : public LiteralExpressionNode {
 // Node for return statements (e.g., return x;)
 struct ReturnStatementNode : public ASTNode {
     std::unique_ptr<ASTNode> expression;
+
+    std::string type_name() const override { return "RETURN_STMT:"; }
+    std::vector<ASTNode*> get_children() const override {
+        return { expression.get() };
+    }
 
     ReturnStatementNode(std::unique_ptr<ASTNode> expr, int line = -1, int column = -1)
 	: ASTNode(NodeType::RETURN_STATEMENT, line, column), expression(std::move(expr)) {}
@@ -165,6 +237,7 @@ struct PointerTypeNode : public TypeNode {
 struct ArrayTypeNode : public TypeNode {
     std::unique_ptr<TypeNode> base_type;
     int size;
+
     ArrayTypeNode(std::unique_ptr<TypeNode> base, int sz) : TypeNode(TypeCategory::ARRAY), base_type(std::move(base)), size(sz) {}
     std::unique_ptr<TypeNode> clone() const override {
         return std::make_unique<ArrayTypeNode>(base_type->clone(), size);
@@ -202,6 +275,8 @@ struct StructDefinitionNode : public ASTNode {
     std::string name;
     std::vector<StructMember> members;
     int size; // Add size for the struct
+
+    std::string type_name() const override { return "STRUCT_DEF: " + name; }
 
     StructDefinitionNode(std::string struct_name, int line = -1, int column = -1)
         : ASTNode(NodeType::STRUCT_DEFINITION, line, column), name(std::move(struct_name)), size(0) {}
@@ -241,6 +316,15 @@ struct VariableDeclarationNode : public ASTNode {
     std::unique_ptr<TypeNode> type;
     std::vector<Declaration> declarations;
 
+    std::string type_name() const override { return "VAR_DECL"; }
+    std::vector<ASTNode*> get_children() const override {
+        std::vector<ASTNode*> refs;
+        for (auto& decl : declarations) {
+            if (decl.initial_value) refs.push_back(decl.initial_value.get());
+        }
+        return refs;
+    }
+
     VariableDeclarationNode(std::unique_ptr<TypeNode> type, std::vector<Declaration> decls)
         : ASTNode(NodeType::VARIABLE_DECLARATION), 
           type(std::move(type)), 
@@ -261,9 +345,12 @@ struct VariableAssignmentNode : public ASTNode {
 // Node for variable references in expressions (e.g., x in x + 1)
 struct VariableReferenceNode : public ASTNode {
     std::string name;
-    Symbol* resolved_symbol; // Add resolved_symbol
-    int resolved_offset; // Store the resolved offset
-    std::unique_ptr<TypeNode> resolved_type; // Store the resolved type
+    Symbol* resolved_symbol;
+    int resolved_offset;
+    std::unique_ptr<TypeNode> resolved_type;
+
+    std::string type_name() const override { return "VAR_REF:"; }
+    std::string get_value() const override { return name; }
 
     VariableReferenceNode(std::string var_name, int line = -1, int column = -1)
         : ASTNode(NodeType::VARIABLE_REFERENCE, line, column), name(std::move(var_name)), resolved_symbol(nullptr), resolved_offset(0) {}
@@ -272,8 +359,8 @@ struct VariableReferenceNode : public ASTNode {
 struct UnaryOpExpressionNode : public ASTNode {
     Token::Type op_type;
     std::unique_ptr<ASTNode> operand;
-    Symbol* resolved_symbol; // Add resolved_symbol
-    std::unique_ptr<TypeNode> resolved_type; // Add resolved_type
+    Symbol* resolved_symbol;
+    std::unique_ptr<TypeNode> resolved_type;
 
     UnaryOpExpressionNode(Token::Type op, std::unique_ptr<ASTNode> operand_node, int line = -1, int column = -1)
         : ASTNode(NodeType::UNARY_OP_EXPRESSION, line, column), op_type(op), operand(std::move(operand_node)), resolved_symbol(nullptr) {}
@@ -282,7 +369,12 @@ struct UnaryOpExpressionNode : public ASTNode {
 struct ArrayAccessNode : public ASTNode {
     std::unique_ptr<ASTNode> array_expr;
     std::unique_ptr<ASTNode> index_expr;
-    Symbol* resolved_symbol; // Add resolved_symbol
+    Symbol* resolved_symbol;
+
+    std::string type_name() const override { return "ARRAY_ACCESS"; }
+    std::vector<ASTNode*> get_children() const override {
+        return { array_expr.get(), index_expr.get() };
+    } 
 
     ArrayAccessNode(std::unique_ptr<ASTNode> array, std::unique_ptr<ASTNode> index, int line = -1, int column = -1)
         : ASTNode(NodeType::ARRAY_ACCESS_EXPRESSION, line, column), array_expr(std::move(array)), index_expr(std::move(index)), resolved_symbol(nullptr) {}
@@ -302,6 +394,13 @@ struct FunctionDefinitionNode : public ASTNode {
     std::vector<std::unique_ptr<ParameterNode>> parameters;
     std::vector<std::unique_ptr<ASTNode>> body_statements;
 
+    std::string type_name() const override { return "FUNCTION_DEF: " + name; }
+    std::vector<ASTNode*> get_children() const override {
+        std::vector<ASTNode*> refs;
+        for (auto& stmt : body_statements) refs.push_back(stmt.get());
+        return refs;
+    }
+
     FunctionDefinitionNode(std::unique_ptr<TypeNode> ret_type, const std::string& func_name, int line = -1, int column = -1)
         : ASTNode(NodeType::FUNCTION_DEFINITION, line, column),
           return_type(std::move(ret_type)),
@@ -313,7 +412,14 @@ struct FunctionDefinitionNode : public ASTNode {
 struct FunctionCallNode : public ASTNode {
     std::string function_name;
     std::vector<std::unique_ptr<ASTNode>> arguments;
-    Symbol* resolved_symbol; // Add resolved_symbol
+    Symbol* resolved_symbol;
+
+    std::string type_name() const override { return "FUNC_CALL: " + function_name; }
+    std::vector<ASTNode*> get_children() const override {
+        std::vector<ASTNode*> refs;
+        for (auto& arg : arguments) refs.push_back(arg.get());
+        return refs;
+    }
 
     FunctionCallNode(std::string name, std::vector<std::unique_ptr<ASTNode>> args, int line = -1, int column = -1)
         : ASTNode(NodeType::FUNCTION_CALL, line, column),
@@ -354,7 +460,12 @@ struct BinaryOperationExpressionNode : public ASTNode {
     std::unique_ptr<ASTNode> left;
     Token::Type op_type;
     std::unique_ptr<ASTNode> right;
-    std::unique_ptr<TypeNode> resolved_type; // Add resolved_type
+    std::unique_ptr<TypeNode> resolved_type;
+
+    std::string type_name() const override { return "BINARY_OP: "; }
+    std::vector<ASTNode*> get_children() const override {
+        return { left.get(), right.get() };
+    }
 
     BinaryOperationExpressionNode(std::unique_ptr<ASTNode> left_expr, Token::Type op, std::unique_ptr<ASTNode> right_expr, int line = -1, int column = -1)
         : ASTNode(NodeType::BINARY_OPERATION_EXPRESSION, line, column),
@@ -365,7 +476,14 @@ struct BinaryOperationExpressionNode : public ASTNode {
 
 // Node for print statements (e.g., 'print x, "hello";')
 struct PrintStatementNode : public ASTNode {
-    std::vector<std::unique_ptr<ASTNode>> expressions; // The expressions whose values will be printed
+    std::vector<std::unique_ptr<ASTNode>> expressions;
+
+    std::string type_name() const override { return "PRINT_STMT"; }
+    std::vector<ASTNode*> get_children() const override {
+        std::vector<ASTNode*> refs;
+        for (auto& expr : expressions) refs.push_back(expr.get());
+        return refs;
+    }
 
     PrintStatementNode(std::vector<std::unique_ptr<ASTNode>> exprs, int line = -1, int column = -1)
         : ASTNode(NodeType::PRINT_STATEMENT, line, column),
@@ -376,6 +494,15 @@ struct IfStatementNode : public ASTNode {
     std::unique_ptr<ASTNode> condition;
     std::vector<std::unique_ptr<ASTNode>> true_block;
     std::vector<std::unique_ptr<ASTNode>> false_block;
+
+    std::string type_name() const override { return "IF_STATEMENT"; }
+    std::vector<ASTNode*> get_children() const override {
+        std::vector<ASTNode*> refs;
+        if (condition) refs.push_back(condition.get());
+        for (auto& stmt : true_block) refs.push_back(stmt.get());
+        for (auto& stmt : false_block) refs.push_back(stmt.get());
+        return refs;
+    }
 
     IfStatementNode(std::unique_ptr<ASTNode> cond, std::vector<std::unique_ptr<ASTNode>> t_block,
                     std::vector<std::unique_ptr<ASTNode>> f_block = {},
@@ -391,6 +518,16 @@ struct ProgramNode : public ASTNode {
     std::vector<std::unique_ptr<ASTNode>> statements;
     std::vector<std::unique_ptr<FunctionDefinitionNode>> functions;
     std::vector<std::unique_ptr<StructDefinitionNode>> structs;
+
+    std::vector<ASTNode*> get_children() const override {
+        std::vector<ASTNode*> refs;
+        for (auto& stmt : statements) refs.push_back(stmt.get());
+        for (auto& func : functions) refs.push_back(func.get());
+        for (auto& str : structs) refs.push_back(str.get());
+        return refs;
+    }
+
+    std::string type_name() const override { return "PROGRAM_ROOT"; }
 
     ProgramNode(int line = -1, int column = -1)
         : ASTNode(NodeType::PROGRAM, line, column) {}
@@ -411,6 +548,11 @@ struct ConstantDeclarationNode : public ASTNode {
     std::unique_ptr<ASTNode> initial_value;
     Symbol* resolved_symbol;
 
+    std::string type_name() const override { return "CONST_DECL: " + name; }
+    std::vector<ASTNode*> get_children() const override {
+        return { initial_value.get() };
+    }
+
     ConstantDeclarationNode(std::string name, std::unique_ptr<TypeNode> type, std::unique_ptr<ASTNode> initial_val, int line = -1, int column = -1)
         : ASTNode(NodeType::CONSTANT_DECLARATION, line, column), name(std::move(name)), type(std::move(type)), initial_value(std::move(initial_val)), resolved_symbol(nullptr) {}
 };
@@ -426,6 +568,9 @@ struct EnumMemberNode {
 struct EnumStatementNode : public ASTNode {
     std::string name;
     std::vector<std::unique_ptr<EnumMemberNode>> members;
+
+    std::string type_name() const override { return "ENUM: " + name; }
+    std::vector<ASTNode*> get_children() const override { return {}; }
 
     EnumStatementNode(std::string name, std::vector<std::unique_ptr<EnumMemberNode>> members, int line = -1, int column = -1)
         : ASTNode(NodeType::ENUM_STATEMENT, line, column), name(std::move(name)), members(std::move(members)) {}

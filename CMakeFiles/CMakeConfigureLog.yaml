@@ -2192,3 +2192,136 @@ events:
       CMAKE_SYSTEM_LIBRARY_PATH:
         - "/usr/lib/X11"
 ...
+
+---
+events:
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/Internal/CheckSourceCompiles.cmake:104 (try_compile)"
+      - "/usr/share/cmake/Modules/CheckCSourceCompiles.cmake:103 (cmake_check_source_compiles)"
+      - "/usr/share/cmake/Modules/FindThreads.cmake:160 (check_c_source_compiles)"
+      - "/usr/share/cmake/Modules/FindThreads.cmake:226 (_threads_check_libc)"
+      - "/usr/share/cmake/Modules/CMakeFindDependencyMacro.cmake:93 (find_package)"
+      - "/usr/share/cmake/Modules/CMakeFindDependencyMacro.cmake:125 (__find_dependency_common)"
+      - "/usr/local/lib/cmake/ftxui/ftxui-config.cmake:28 (find_dependency)"
+      - "tui/CMakeLists.txt:1 (find_package)"
+    checks:
+      - "Performing Test CMAKE_HAVE_LIBC_PTHREAD"
+    directories:
+      source: "/home/mohamed/dev/Nytrogen/CMakeFiles/CMakeScratch/TryCompile-O8Vzzz"
+      binary: "/home/mohamed/dev/Nytrogen/CMakeFiles/CMakeScratch/TryCompile-O8Vzzz"
+    cmakeVariables:
+      CMAKE_C_FLAGS: ""
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "CMAKE_HAVE_LIBC_PTHREAD"
+      cached: true
+      stdout: |
+        Change Dir: '/home/mohamed/dev/Nytrogen/CMakeFiles/CMakeScratch/TryCompile-O8Vzzz'
+        
+        Run Build Command(s): /usr/sbin/cmake -E env VERBOSE=1 /usr/sbin/make -f Makefile cmTC_a87ee/fast
+        /usr/sbin/make  -f CMakeFiles/cmTC_a87ee.dir/build.make CMakeFiles/cmTC_a87ee.dir/build
+        make[1]: Entering directory '/home/mohamed/dev/Nytrogen/CMakeFiles/CMakeScratch/TryCompile-O8Vzzz'
+        Building C object CMakeFiles/cmTC_a87ee.dir/src.c.o
+        /usr/sbin/cc -DCMAKE_HAVE_LIBC_PTHREAD   -o CMakeFiles/cmTC_a87ee.dir/src.c.o -c /home/mohamed/dev/Nytrogen/CMakeFiles/CMakeScratch/TryCompile-O8Vzzz/src.c
+        Linking C executable cmTC_a87ee
+        /usr/sbin/cmake -E cmake_link_script CMakeFiles/cmTC_a87ee.dir/link.txt --verbose=1
+        /usr/sbin/cc CMakeFiles/cmTC_a87ee.dir/src.c.o -o cmTC_a87ee
+        make[1]: Leaving directory '/home/mohamed/dev/Nytrogen/CMakeFiles/CMakeScratch/TryCompile-O8Vzzz'
+        
+      exitCode: 0
+  -
+    kind: "find_package-v1"
+    backtrace:
+      - "tui/CMakeLists.txt:1 (find_package)"
+    name: "ftxui"
+    configs:
+      -
+        filename: "ftxuiConfig.cmake"
+        kind: "cmake"
+      -
+        filename: "ftxui-config.cmake"
+        kind: "cmake"
+    version_request:
+      exact: false
+    settings:
+      required: "required_explicit"
+      quiet: false
+      global: false
+      policy_scope: true
+      bypass_provider: false
+      names:
+        - "ftxui"
+      path_suffixes:
+        - ""
+      paths:
+        CMAKE_FIND_USE_CMAKE_PATH: true
+        CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+        CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+        CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+        CMAKE_FIND_USE_INSTALL_PREFIX: true
+        CMAKE_FIND_USE_PACKAGE_ROOT_PATH: true
+        CMAKE_FIND_USE_CMAKE_PACKAGE_REGISTRY: true
+        CMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY: true
+        CMAKE_FIND_ROOT_PATH_MODE: "BOTH"
+    candidates:
+      -
+        path: "/home/mohamed/dev/Nytrogen/CMakeFiles/pkgRedirects/ftxuiConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/home/mohamed/dev/Nytrogen/CMakeFiles/pkgRedirects/ftxui-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/home/mohamed/.cargo/ftxuiConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/home/mohamed/.cargo/ftxui-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/usr/local/ftxuiConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/usr/local/ftxui-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/usr/local/lib/cmake/ftxui/ftxuiConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+    found:
+      path: "/usr/local/lib/cmake/ftxui/ftxui-config.cmake"
+      mode: "config"
+      version: "6.1.9"
+    search_context:
+      ENV{PATH}:
+        - "/home/mohamed/.cargo/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/lib/jvm/default/bin"
+        - "/usr/bin/site_perl"
+        - "/usr/bin/vendor_perl"
+        - "/usr/bin/core_perl"
+        - "/home/mohamed/.local/bin"
+        - "/home/mohamed/.local/bin"
+      CMAKE_INSTALL_PREFIX: "/usr/local"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "/usr/local"
+        - "/usr"
+        - "/"
+        - "/usr"
+        - "/usr/local"
+        - "/usr/X11R6"
+        - "/usr/pkg"
+        - "/opt"
+...

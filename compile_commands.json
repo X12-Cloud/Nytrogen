@@ -52,5 +52,11 @@
   "command": "/usr/sbin/c++ -DNYTRO_VERSION=\\\"0.130\\\" -I/home/mohamed/dev/Nytrogen/driver/include -I/home/mohamed/dev/Nytrogen/driver/src -std=gnu++17 -o CMakeFiles/nytro-driver.dir/src/driver.cpp.o -c /home/mohamed/dev/Nytrogen/driver/src/driver.cpp",
   "file": "/home/mohamed/dev/Nytrogen/driver/src/driver.cpp",
   "output": "driver/CMakeFiles/nytro-driver.dir/src/driver.cpp.o"
+},
+{
+  "directory": "/home/mohamed/dev/Nytrogen/tui",
+  "command": "/usr/sbin/c++ -DNYTRO_VERSION=\\\"0.130\\\" -I/home/mohamed/dev/Nytrogen/tui/include -I/home/mohamed/dev/Nytrogen/tui/src -std=gnu++17 -o CMakeFiles/nytro-tui.dir/src/main.cpp.o -c /home/mohamed/dev/Nytrogen/tui/src/main.cpp",
+  "file": "/home/mohamed/dev/Nytrogen/tui/src/main.cpp",
+  "output": "tui/CMakeFiles/nytro-tui.dir/src/main.cpp.o"
 }
 ]

@@ -87,14 +87,14 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/mohamed/dev/Nytrogen/CMakeFiles /home/mohamed/dev/Nytrogen//CMakeFiles/progress.marks
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
+	cd /home/mohamed/dev/Nytrogen && $(CMAKE_COMMAND) -E cmake_progress_start /home/mohamed/dev/Nytrogen/CMakeFiles /home/mohamed/dev/Nytrogen/tui//CMakeFiles/progress.marks
+	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 tui/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/mohamed/dev/Nytrogen/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
 clean:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 clean
+	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 tui/clean
 .PHONY : clean
 
 # The main clean target
@@ -103,70 +103,56 @@ clean/fast: clean
 
 # Prepare targets for installation.
 preinstall: all
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 preinstall
+	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 tui/preinstall
 .PHONY : preinstall
 
 # Prepare targets for installation.
 preinstall/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 preinstall
+	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 tui/preinstall
 .PHONY : preinstall/fast
 
 # clear depends
 depend:
-	$(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
+	cd /home/mohamed/dev/Nytrogen && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
 .PHONY : depend
 
-#=============================================================================
-# Target rules for targets named nytro-pre
+# Convenience name for target.
+tui/CMakeFiles/nytro-tui.dir/rule:
+	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 tui/CMakeFiles/nytro-tui.dir/rule
+.PHONY : tui/CMakeFiles/nytro-tui.dir/rule
 
-# Build rule for target.
-nytro-pre: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 nytro-pre
-.PHONY : nytro-pre
-
-# fast build rule for target.
-nytro-pre/fast:
-	$(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/build
-.PHONY : nytro-pre/fast
-
-#=============================================================================
-# Target rules for targets named nytro-c
-
-# Build rule for target.
-nytro-c: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 nytro-c
-.PHONY : nytro-c
-
-# fast build rule for target.
-nytro-c/fast:
-	$(MAKE) $(MAKESILENT) -f compiler/CMakeFiles/nytro-c.dir/build.make compiler/CMakeFiles/nytro-c.dir/build
-.PHONY : nytro-c/fast
-
-#=============================================================================
-# Target rules for targets named nytro-driver
-
-# Build rule for target.
-nytro-driver: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 nytro-driver
-.PHONY : nytro-driver
-
-# fast build rule for target.
-nytro-driver/fast:
-	$(MAKE) $(MAKESILENT) -f driver/CMakeFiles/nytro-driver.dir/build.make driver/CMakeFiles/nytro-driver.dir/build
-.PHONY : nytro-driver/fast
-
-#=============================================================================
-# Target rules for targets named nytro-tui
-
-# Build rule for target.
-nytro-tui: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 nytro-tui
+# Convenience name for target.
+nytro-tui: tui/CMakeFiles/nytro-tui.dir/rule
 .PHONY : nytro-tui
 
 # fast build rule for target.
 nytro-tui/fast:
-	$(MAKE) $(MAKESILENT) -f tui/CMakeFiles/nytro-tui.dir/build.make tui/CMakeFiles/nytro-tui.dir/build
+	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f tui/CMakeFiles/nytro-tui.dir/build.make tui/CMakeFiles/nytro-tui.dir/build
 .PHONY : nytro-tui/fast
+
+src/main.o: src/main.cpp.o
+.PHONY : src/main.o
+
+# target to build an object file
+src/main.cpp.o:
+	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f tui/CMakeFiles/nytro-tui.dir/build.make tui/CMakeFiles/nytro-tui.dir/src/main.cpp.o
+.PHONY : src/main.cpp.o
+
+src/main.i: src/main.cpp.i
+.PHONY : src/main.i
+
+# target to preprocess a source file
+src/main.cpp.i:
+	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f tui/CMakeFiles/nytro-tui.dir/build.make tui/CMakeFiles/nytro-tui.dir/src/main.cpp.i
+.PHONY : src/main.cpp.i
+
+src/main.s: src/main.cpp.s
+.PHONY : src/main.s
+
+# target to generate assembly for a file
+src/main.cpp.s:
+	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f tui/CMakeFiles/nytro-tui.dir/build.make tui/CMakeFiles/nytro-tui.dir/src/main.cpp.s
+.PHONY : src/main.cpp.s
 
 # Help Target
 help:
@@ -176,10 +162,10 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
-	@echo "... nytro-c"
-	@echo "... nytro-driver"
-	@echo "... nytro-pre"
 	@echo "... nytro-tui"
+	@echo "... src/main.o"
+	@echo "... src/main.i"
+	@echo "... src/main.s"
 .PHONY : help
 
 
@@ -191,6 +177,6 @@ help:
 # No rule that depends on this can have commands that come from listfiles
 # because they might be regenerated.
 cmake_check_build_system:
-	$(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
+	cd /home/mohamed/dev/Nytrogen && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
 .PHONY : cmake_check_build_system
 

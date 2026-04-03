@@ -386,6 +386,7 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
         default:
             throw std::runtime_error("Unknown binary operator.");
     }
+    // if (!is_float && !is_double) emit("push", "rax");
 }
 
 void CodeGenerator::visit(PrintStatementNode* node) {
@@ -411,7 +412,7 @@ void CodeGenerator::visit(ReturnStatementNode* node) {
         if (!node->resolved_type) {
             throw std::runtime_error("CodeGen Error: Return statement has an expression but no resolved type.");
         }
-        emit("pop", "rax");
+        //emit("pop", "rax");
     }
     out << "    jmp " << current_function_name << "_epilogue" << std::endl;
 }
@@ -425,6 +426,7 @@ void CodeGenerator::visit(IfStatementNode* node) {
     std::string end_label = "_if_end_" + std::to_string(label_id);
 
     visit(node->condition.get());
+    //emit("pop", "rax");
     out << "    cmp rax, 0" << std::endl;
     out << "    je " << false_label << std::endl;
 
