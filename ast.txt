@@ -48,6 +48,9 @@
    FUNCTION_DEF: system_init
      RETURN_STMT:
        INT_LITERAL: (1)
+   FUNCTION_DEF: test_void
+     PRINT_STMT
+       STR_LITERAL: (void functions work :))
    FUNCTION_DEF: main
      VAR_DECL
        FUNC_CALL: system_init
@@ -114,5 +117,6 @@
            INT_LITERAL: (100)
          PRINT_STMT
            STR_LITERAL: (Validation Logic: SUCCESS)
+     FUNC_CALL: test_void
      RETURN_STMT:
        INT_LITERAL: (0)

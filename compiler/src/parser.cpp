@@ -169,6 +169,46 @@ std::unique_ptr<IfStatementNode> Parser::parseIfStatement() {
     );
 }
 
+std::unique_ptr<SwitchStatementNode> Parser::parseSwitchStatement() {
+    const Token& switch_token = peek();
+    expect(Token::KEYWORD_SWITCH, "Expected 'switch' keyword.");
+    expect(Token::LPAREN, "Expected '(' after 'switch'.");
+
+    auto condition = parseExpression();
+
+    expect(Token::RPAREN, "Expected ')' after 'switch' condition.");
+    expect(Token::LBRACE, "Expected '{' to begin 'switch' block.");
+
+    auto switch_node = std::make_unique<SwitchStatementNode>();
+    switch_node->condition = std::move(condition);
+
+    while(peek().type != Token::RBRACE) {
+        CaseNode current_case;
+        if (peek().type == Token::KEYWORD_CASE) {
+            consume();
+            current_case.constant_expr = parseExpression();
+            expect(Token::COLON, "Expected ':' after 'case' value.");
+        } else if (peek().type == Token::KEYWORD_DEFAULT) {
+            consume();
+            expect(Token::COLON, "Expected ':' after 'default'.");
+            current_case.is_default = true;
+        } else {
+            throw std::runtime_error("Expected 'case' or 'default' inside switch.");
+        }
+
+        while (peek().type != Token::KEYWORD_CASE && 
+               peek().type != Token::KEYWORD_DEFAULT && 
+               peek().type != Token::RBRACE) {
+            current_case.body.push_back(parseStatement());
+        }
+
+        switch_node->cases.push_back(std::move(current_case));
+    }
+
+    expect(Token::RBRACE, "Expected '}' to close switch.");
+    return switch_node;
+}
+
 std::unique_ptr<WhileStatementNode> Parser::parseWhileStatement() {
     const Token& while_token = peek();
     expect(Token::KEYWORD_WHILE, "Expected 'while' keyword.");

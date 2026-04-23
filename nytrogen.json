@@ -1,0 +1,8 @@
+{
+  "name": "nytrogen",
+  "version": "0.1.3",
+  "repo": "https://github.com/X12-Cloud/Nytrogen",
+  "build": "./run_scripts/clean_build.sh",
+  "dependencies": [],
+  "package": "build/bin/*"
+}

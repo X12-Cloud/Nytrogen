@@ -72,32 +72,50 @@ include driver/CMakeFiles/nytro.dir/flags.make
 driver/CMakeFiles/nytro.dir/codegen:
 .PHONY : driver/CMakeFiles/nytro.dir/codegen
 
-driver/CMakeFiles/nytro.dir/driver.cpp.o: driver/CMakeFiles/nytro.dir/flags.make
-driver/CMakeFiles/nytro.dir/driver.cpp.o: driver/driver.cpp
-driver/CMakeFiles/nytro.dir/driver.cpp.o: driver/CMakeFiles/nytro.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/mohamed/dev/Nytrogen/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object driver/CMakeFiles/nytro.dir/driver.cpp.o"
-	cd /home/mohamed/dev/Nytrogen/driver && /usr/sbin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT driver/CMakeFiles/nytro.dir/driver.cpp.o -MF CMakeFiles/nytro.dir/driver.cpp.o.d -o CMakeFiles/nytro.dir/driver.cpp.o -c /home/mohamed/dev/Nytrogen/driver/driver.cpp
+driver/CMakeFiles/nytro.dir/src/config_loader.cpp.o: driver/CMakeFiles/nytro.dir/flags.make
+driver/CMakeFiles/nytro.dir/src/config_loader.cpp.o: driver/src/config_loader.cpp
+driver/CMakeFiles/nytro.dir/src/config_loader.cpp.o: driver/CMakeFiles/nytro.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/mohamed/dev/Nytrogen/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object driver/CMakeFiles/nytro.dir/src/config_loader.cpp.o"
+	cd /home/mohamed/dev/Nytrogen/driver && /usr/sbin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT driver/CMakeFiles/nytro.dir/src/config_loader.cpp.o -MF CMakeFiles/nytro.dir/src/config_loader.cpp.o.d -o CMakeFiles/nytro.dir/src/config_loader.cpp.o -c /home/mohamed/dev/Nytrogen/driver/src/config_loader.cpp
 
-driver/CMakeFiles/nytro.dir/driver.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/nytro.dir/driver.cpp.i"
-	cd /home/mohamed/dev/Nytrogen/driver && /usr/sbin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/mohamed/dev/Nytrogen/driver/driver.cpp > CMakeFiles/nytro.dir/driver.cpp.i
+driver/CMakeFiles/nytro.dir/src/config_loader.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/nytro.dir/src/config_loader.cpp.i"
+	cd /home/mohamed/dev/Nytrogen/driver && /usr/sbin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/mohamed/dev/Nytrogen/driver/src/config_loader.cpp > CMakeFiles/nytro.dir/src/config_loader.cpp.i
 
-driver/CMakeFiles/nytro.dir/driver.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/nytro.dir/driver.cpp.s"
-	cd /home/mohamed/dev/Nytrogen/driver && /usr/sbin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/mohamed/dev/Nytrogen/driver/driver.cpp -o CMakeFiles/nytro.dir/driver.cpp.s
+driver/CMakeFiles/nytro.dir/src/config_loader.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/nytro.dir/src/config_loader.cpp.s"
+	cd /home/mohamed/dev/Nytrogen/driver && /usr/sbin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/mohamed/dev/Nytrogen/driver/src/config_loader.cpp -o CMakeFiles/nytro.dir/src/config_loader.cpp.s
+
+driver/CMakeFiles/nytro.dir/src/driver.cpp.o: driver/CMakeFiles/nytro.dir/flags.make
+driver/CMakeFiles/nytro.dir/src/driver.cpp.o: driver/src/driver.cpp
+driver/CMakeFiles/nytro.dir/src/driver.cpp.o: driver/CMakeFiles/nytro.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/mohamed/dev/Nytrogen/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object driver/CMakeFiles/nytro.dir/src/driver.cpp.o"
+	cd /home/mohamed/dev/Nytrogen/driver && /usr/sbin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT driver/CMakeFiles/nytro.dir/src/driver.cpp.o -MF CMakeFiles/nytro.dir/src/driver.cpp.o.d -o CMakeFiles/nytro.dir/src/driver.cpp.o -c /home/mohamed/dev/Nytrogen/driver/src/driver.cpp
+
+driver/CMakeFiles/nytro.dir/src/driver.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/nytro.dir/src/driver.cpp.i"
+	cd /home/mohamed/dev/Nytrogen/driver && /usr/sbin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/mohamed/dev/Nytrogen/driver/src/driver.cpp > CMakeFiles/nytro.dir/src/driver.cpp.i
+
+driver/CMakeFiles/nytro.dir/src/driver.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/nytro.dir/src/driver.cpp.s"
+	cd /home/mohamed/dev/Nytrogen/driver && /usr/sbin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/mohamed/dev/Nytrogen/driver/src/driver.cpp -o CMakeFiles/nytro.dir/src/driver.cpp.s
 
 # Object files for target nytro
 nytro_OBJECTS = \
-"CMakeFiles/nytro.dir/driver.cpp.o"
+"CMakeFiles/nytro.dir/src/config_loader.cpp.o" \
+"CMakeFiles/nytro.dir/src/driver.cpp.o"
 
 # External object files for target nytro
 nytro_EXTERNAL_OBJECTS =
 
-bin/nytro: driver/CMakeFiles/nytro.dir/driver.cpp.o
+bin/nytro: driver/CMakeFiles/nytro.dir/src/config_loader.cpp.o
+bin/nytro: driver/CMakeFiles/nytro.dir/src/driver.cpp.o
 bin/nytro: driver/CMakeFiles/nytro.dir/build.make
 bin/nytro: driver/CMakeFiles/nytro.dir/compiler_depend.ts
+bin/nytro: /usr/lib/liblua5.4.so
+bin/nytro: /usr/lib/libm.so
 bin/nytro: driver/CMakeFiles/nytro.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/mohamed/dev/Nytrogen/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking CXX executable ../bin/nytro"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/mohamed/dev/Nytrogen/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking CXX executable ../bin/nytro"
 	cd /home/mohamed/dev/Nytrogen/driver && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/nytro.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

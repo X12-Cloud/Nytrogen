@@ -1,1 +1,1 @@
-/usr/sbin/c++ -Wl,--dependency-file=CMakeFiles/nytro.dir/link.d CMakeFiles/nytro.dir/driver.cpp.o -o ../bin/nytro
+/usr/sbin/c++ -Wl,--dependency-file=CMakeFiles/nytro.dir/link.d CMakeFiles/nytro.dir/src/config_loader.cpp.o CMakeFiles/nytro.dir/src/driver.cpp.o -o ../bin/nytro  /usr/lib/liblua5.4.so -lm

@@ -65,13 +65,15 @@ int main(int argc, char* argv[]) {
     std::vector<Token> tokens = tokenize(sourceCode);
     Parser parser(std::move(tokens));
     parser.getSymbolTable().setDebugMode(debug_mode);
-    
+
     std::unique_ptr<ProgramNode> ast_root = parser.parse();
 
     if (!ast_root) {
         std::cerr << "AST generation failed during parsing. Exiting.\n";
         return 1;
     }
+
+    if (verbose) ast_root->dump();
 
     // Perform semantic analysis
     SemanticAnalyzer semanticAnalyzer(ast_root, parser.getSymbolTable());
@@ -83,8 +85,6 @@ int main(int argc, char* argv[]) {
     codeGenerator.generate(output_asm_filename, is_entry);
 
     if (verbose) std::cout << "Successfully generated assembly to '" << output_asm_filename << "'\n";
-
-    if (verbose) ast_root->dump();
 
     return 0;
 }

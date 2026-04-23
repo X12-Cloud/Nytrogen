@@ -69,7 +69,7 @@ void processFile(const std::string& input_filepath, std::ostream& output_stream,
             continue;
         }
 
-        if (line.rfind("include ", 0) == 0) {
+        if (line.rfind("#include ", 0) == 0) {
             std::string include_path;
             fs::path current_file_path(input_filepath);
             fs::path included_file_path;

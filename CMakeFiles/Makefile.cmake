@@ -77,6 +77,6 @@ set(CMAKE_MAKEFILE_PRODUCTS
 set(CMAKE_DEPEND_INFO_FILES
   "Preprocessor/CMakeFiles/nytro-pre.dir/DependInfo.cmake"
   "compiler/CMakeFiles/nytro-c.dir/DependInfo.cmake"
-  "driver/CMakeFiles/nytro-driver.dir/DependInfo.cmake"
+  "driver/CMakeFiles/nytro.dir/DependInfo.cmake"
   "tui/CMakeFiles/nytro-tui.dir/DependInfo.cmake"
   )

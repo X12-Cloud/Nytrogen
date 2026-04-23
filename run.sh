@@ -37,7 +37,7 @@ fi
 
 # Run the compiler
 # if [ ${#NYTRO_ARGS[@]} -gt 0 ] || [ "$build" = true ] || [ "$clean_build" = true ]; then
-"$SCRIPT_DIR/build/bin/nytro-driver" "${NYTRO_ARGS[@]}"
+"$SCRIPT_DIR/build/bin/nytro" "${NYTRO_ARGS[@]}"
 # else
     # echo "Usage: $0 [-cbuild/cclean] [-vf] <input_file.nyt>"
 # fi

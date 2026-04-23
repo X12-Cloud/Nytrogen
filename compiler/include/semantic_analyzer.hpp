@@ -49,6 +49,7 @@ private:
     void visit(AsmStatementNode* node);
     void visit(ConstantDeclarationNode* node);
     void visit(EnumStatementNode* node);
+    void visit(SwitchStatementNode* node);
 
     // Expression visitors (return the type of the expression)
     std::unique_ptr<TypeNode> visitExpression(ASTNode* expr);

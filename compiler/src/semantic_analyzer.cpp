@@ -1,6 +1,7 @@
 #include "semantic_analyzer.hpp"
 #include <iostream>
 #include <stdexcept>
+#include <set>
 
 // Helper to get size of a type
 int SemanticAnalyzer::getTypeSize(const TypeNode* type) {
@@ -189,7 +190,7 @@ void SemanticAnalyzer::visit(ASTNode* node) {
         case ASTNode::NodeType::STRING_LITERAL_EXPRESSION:
         case ASTNode::NodeType::BOOLEAN_LITERAL_EXPRESSION:
         case ASTNode::NodeType::CHARACTER_LITERAL_EXPRESSION:
-	case ASTNode::NodeType::FLOAT_LITERAL_EXPRESSION:
+	    case ASTNode::NodeType::FLOAT_LITERAL_EXPRESSION:
         case ASTNode::NodeType::DOUBLE_LITERAL_EXPRESSION:
             break;
         case ASTNode::NodeType::ASM_STATEMENT:
@@ -403,6 +404,38 @@ void SemanticAnalyzer::visit(IfStatementNode* node) {
     }
     for (const auto& stmt : node->false_block) {
         visit(stmt.get());
+    }
+}
+
+void SemanticAnalyzer::visit(SwitchStatementNode* node) {
+    std::unique_ptr<TypeNode> cond_type = visitExpression(node->condition.get());
+    if (cond_type->category != TypeNode::TypeCategory::PRIMITIVE ||
+        dynamic_cast<PrimitiveTypeNode*>(cond_type.get())->primitive_type != Token::KEYWORD_INT) {
+        throw std::runtime_error("Semantic Error: Switch condition must be an integer value.");
+    }
+
+    std::set<long long> seen_cases;
+    bool has_default = false;
+
+    for (auto& case_node : node->cases) {
+        if (case_node.is_default) {
+            if (has_default) throw std::runtime_error("Semantic Error: Multiple 'default' cases found.");
+            has_default = true;
+        } else {
+            auto* literal = dynamic_cast<IntegerLiteralExpressionNode*>(case_node.constant_expr.get());
+            if (!literal) {
+                throw std::runtime_error("Semantic Error: Case label must be a constant integer literal.");
+            }
+
+            if (seen_cases.count(literal->value)) {
+                throw std::runtime_error("Semantic Error: Duplicate case value '" + std::to_string(literal->value) + "'.");
+            }
+            seen_cases.insert(literal->value);
+        }
+
+        for (auto& stmt : case_node.body) {
+            this->analyze();
+        }
     }
 }
 

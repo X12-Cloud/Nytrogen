@@ -33,6 +33,10 @@ int system_init() {
     return 1;
 }
 
+void test_void() {
+    print "void functions work :)";
+}
+
 int main() {
     int status = system_init();
     print "System Status:";
@@ -70,6 +74,8 @@ int main() {
             print "Validation Logic: SUCCESS";
         }
     }
+
+    test_void();
 
     return 0;
 }

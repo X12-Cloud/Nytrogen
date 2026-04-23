@@ -117,25 +117,25 @@ depend:
 .PHONY : depend
 
 # Convenience name for target.
-driver/CMakeFiles/nytro-driver.dir/rule:
-	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 driver/CMakeFiles/nytro-driver.dir/rule
-.PHONY : driver/CMakeFiles/nytro-driver.dir/rule
+driver/CMakeFiles/nytro.dir/rule:
+	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 driver/CMakeFiles/nytro.dir/rule
+.PHONY : driver/CMakeFiles/nytro.dir/rule
 
 # Convenience name for target.
-nytro-driver: driver/CMakeFiles/nytro-driver.dir/rule
-.PHONY : nytro-driver
+nytro: driver/CMakeFiles/nytro.dir/rule
+.PHONY : nytro
 
 # fast build rule for target.
-nytro-driver/fast:
-	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f driver/CMakeFiles/nytro-driver.dir/build.make driver/CMakeFiles/nytro-driver.dir/build
-.PHONY : nytro-driver/fast
+nytro/fast:
+	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f driver/CMakeFiles/nytro.dir/build.make driver/CMakeFiles/nytro.dir/build
+.PHONY : nytro/fast
 
 src/config_loader.o: src/config_loader.cpp.o
 .PHONY : src/config_loader.o
 
 # target to build an object file
 src/config_loader.cpp.o:
-	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f driver/CMakeFiles/nytro-driver.dir/build.make driver/CMakeFiles/nytro-driver.dir/src/config_loader.cpp.o
+	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f driver/CMakeFiles/nytro.dir/build.make driver/CMakeFiles/nytro.dir/src/config_loader.cpp.o
 .PHONY : src/config_loader.cpp.o
 
 src/config_loader.i: src/config_loader.cpp.i
@@ -143,7 +143,7 @@ src/config_loader.i: src/config_loader.cpp.i
 
 # target to preprocess a source file
 src/config_loader.cpp.i:
-	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f driver/CMakeFiles/nytro-driver.dir/build.make driver/CMakeFiles/nytro-driver.dir/src/config_loader.cpp.i
+	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f driver/CMakeFiles/nytro.dir/build.make driver/CMakeFiles/nytro.dir/src/config_loader.cpp.i
 .PHONY : src/config_loader.cpp.i
 
 src/config_loader.s: src/config_loader.cpp.s
@@ -151,7 +151,7 @@ src/config_loader.s: src/config_loader.cpp.s
 
 # target to generate assembly for a file
 src/config_loader.cpp.s:
-	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f driver/CMakeFiles/nytro-driver.dir/build.make driver/CMakeFiles/nytro-driver.dir/src/config_loader.cpp.s
+	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f driver/CMakeFiles/nytro.dir/build.make driver/CMakeFiles/nytro.dir/src/config_loader.cpp.s
 .PHONY : src/config_loader.cpp.s
 
 src/driver.o: src/driver.cpp.o
@@ -159,7 +159,7 @@ src/driver.o: src/driver.cpp.o
 
 # target to build an object file
 src/driver.cpp.o:
-	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f driver/CMakeFiles/nytro-driver.dir/build.make driver/CMakeFiles/nytro-driver.dir/src/driver.cpp.o
+	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f driver/CMakeFiles/nytro.dir/build.make driver/CMakeFiles/nytro.dir/src/driver.cpp.o
 .PHONY : src/driver.cpp.o
 
 src/driver.i: src/driver.cpp.i
@@ -167,7 +167,7 @@ src/driver.i: src/driver.cpp.i
 
 # target to preprocess a source file
 src/driver.cpp.i:
-	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f driver/CMakeFiles/nytro-driver.dir/build.make driver/CMakeFiles/nytro-driver.dir/src/driver.cpp.i
+	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f driver/CMakeFiles/nytro.dir/build.make driver/CMakeFiles/nytro.dir/src/driver.cpp.i
 .PHONY : src/driver.cpp.i
 
 src/driver.s: src/driver.cpp.s
@@ -175,7 +175,7 @@ src/driver.s: src/driver.cpp.s
 
 # target to generate assembly for a file
 src/driver.cpp.s:
-	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f driver/CMakeFiles/nytro-driver.dir/build.make driver/CMakeFiles/nytro-driver.dir/src/driver.cpp.s
+	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f driver/CMakeFiles/nytro.dir/build.make driver/CMakeFiles/nytro.dir/src/driver.cpp.s
 .PHONY : src/driver.cpp.s
 
 # Help Target
@@ -186,7 +186,7 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
-	@echo "... nytro-driver"
+	@echo "... nytro"
 	@echo "... src/config_loader.o"
 	@echo "... src/config_loader.i"
 	@echo "... src/config_loader.s"

@@ -6,7 +6,7 @@
 /home/mohamed/dev/Nytrogen/compiler/CMakeFiles/nytro-c.dir
 /home/mohamed/dev/Nytrogen/compiler/CMakeFiles/edit_cache.dir
 /home/mohamed/dev/Nytrogen/compiler/CMakeFiles/rebuild_cache.dir
-/home/mohamed/dev/Nytrogen/driver/CMakeFiles/nytro-driver.dir
+/home/mohamed/dev/Nytrogen/driver/CMakeFiles/nytro.dir
 /home/mohamed/dev/Nytrogen/driver/CMakeFiles/edit_cache.dir
 /home/mohamed/dev/Nytrogen/driver/CMakeFiles/rebuild_cache.dir
 /home/mohamed/dev/Nytrogen/tui/CMakeFiles/nytro-tui.dir

@@ -46,6 +46,7 @@ struct ASTNode {
 	    CONSTANT_DECLARATION = 24,
 	    FLOAT_LITERAL_EXPRESSION = 25,
 	    DOUBLE_LITERAL_EXPRESSION = 26,
+	    SWITCH_STATEMENT = 27,
     };
 
     NodeType node_type;
@@ -73,40 +74,26 @@ struct ASTNode {
         return ""; 
     }
 
-    /* void dump(int indent = 0) {
+    void dump_to_stream(std::ostream& out, int indent) { // TODO: make it output to .json
         std::string space(indent * 2, ' ');
-
-        std::cout << space << " " << this->type_name();
+        out << space << " " << this->type_name();
 
         std::string val = this->get_value();
-        if (!val.empty()) std::cout << " (" << val << ")";
-        std::cout << std::endl;
+        if (!val.empty()) out << " (" << val << ")";
+        out << std::endl;
 
         for (auto* child : get_children()) {
-            if (child) child->dump(indent + 1);
+            if (child) child->dump_to_stream(out, indent + 1);
         }
-    } */
-
-void dump_to_stream(std::ostream& out, int indent) {
-    std::string space(indent * 2, ' ');
-    out << space << " " << this->type_name();
-
-    std::string val = this->get_value();
-    if (!val.empty()) out << " (" << val << ")";
-    out << std::endl;
-
-    for (auto* child : get_children()) {
-        if (child) child->dump_to_stream(out, indent + 1);
     }
-}
 
-void dump() {
-    std::ofstream ast_file("ast.txt", std::ios::trunc);
-    if (ast_file.is_open()) {
-        this->dump_to_stream(ast_file, 0);
-        ast_file.close();
+    void dump() {
+        std::ofstream ast_file("ast.txt", std::ios::trunc);
+        if (ast_file.is_open()) {
+            this->dump_to_stream(ast_file, 0);
+            ast_file.close();
+        }
     }
-}
 };
 
 // Node representing all literals
@@ -267,16 +254,24 @@ struct StructMember {
 
     std::unique_ptr<TypeNode> type;
     std::string name;
-    int offset; // Add offset for each member
+    int offset;
     Visibility visibility = Visibility::PUBLIC; // Default to public
 };
 
 struct StructDefinitionNode : public ASTNode {
     std::string name;
     std::vector<StructMember> members;
-    int size; // Add size for the struct
+    int size;
 
-    std::string type_name() const override { return "STRUCT_DEF: " + name; }
+    std::string type_name() const override {
+        std::string info = "STRUCT_DEF: " + name + " { ";
+        for (const auto& m : members) {
+            info += m.name + " "; // Just the names for simplicity
+        }
+        info += "}";
+        return info;
+    }
+    std::vector<ASTNode*> get_children() const override { return {}; }
 
     StructDefinitionNode(std::string struct_name, int line = -1, int column = -1)
         : ASTNode(NodeType::STRUCT_DEFINITION, line, column), name(std::move(struct_name)), size(0) {}
@@ -284,8 +279,13 @@ struct StructDefinitionNode : public ASTNode {
     std::shared_ptr<StructDefinitionNode> clone() const {
         auto new_node = std::make_shared<StructDefinitionNode>(name, line, column);
         new_node->size = size;
-        for (const auto& member : members) {
-            new_node->members.push_back({member.type->clone(), member.name, member.offset, member.visibility});
+        for (const auto& m : members) {
+            StructMember cloned_m;
+            cloned_m.name = m.name;
+            cloned_m.offset = m.offset;
+            cloned_m.visibility = m.visibility;
+            cloned_m.type = m.type->clone();
+            new_node->members.push_back(std::move(cloned_m));
         }
         return new_node;
     }
@@ -294,7 +294,9 @@ struct StructDefinitionNode : public ASTNode {
 struct MemberAccessNode : public ASTNode {
     std::unique_ptr<ASTNode> struct_expr; // The expression representing the struct instance
     std::string member_name;
-    Symbol* resolved_symbol; // Add resolved_symbol
+    Symbol* resolved_symbol;
+
+    std::string type_name() const override { return "MEMBER_ACCESS: " + member_name; }
 
     MemberAccessNode(std::unique_ptr<ASTNode> expr, std::string member, int line = -1, int column = -1)
         : ASTNode(NodeType::MEMBER_ACCESS_EXPRESSION, line, column),
@@ -356,6 +358,7 @@ struct VariableReferenceNode : public ASTNode {
         : ASTNode(NodeType::VARIABLE_REFERENCE, line, column), name(std::move(var_name)), resolved_symbol(nullptr), resolved_offset(0) {}
 };
 
+// Node for unary operations.
 struct UnaryOpExpressionNode : public ASTNode {
     Token::Type op_type;
     std::unique_ptr<ASTNode> operand;
@@ -490,6 +493,7 @@ struct PrintStatementNode : public ASTNode {
           expressions(std::move(exprs)) {}
 };
 
+// Node for if statements.
 struct IfStatementNode : public ASTNode {
     std::unique_ptr<ASTNode> condition;
     std::vector<std::unique_ptr<ASTNode>> true_block;
@@ -511,6 +515,34 @@ struct IfStatementNode : public ASTNode {
           condition(std::move(cond)),
           true_block(std::move(t_block)),
           false_block(std::move(f_block)) {}
+};
+
+// Node for switch statements.
+struct CaseNode {
+    std::unique_ptr<ASTNode> constant_expr;
+    std::vector<std::unique_ptr<ASTNode>> body;
+    bool is_default = false;
+};
+
+struct SwitchStatementNode : public ASTNode {
+    std::unique_ptr<ASTNode> condition;
+    std::vector<CaseNode> cases;
+
+    std::string type_name() const override { return "SWITCH_STATEMENT"; }
+    std::vector<ASTNode*> get_children() const override {
+        std::vector<ASTNode*> refs;
+        if (condition) refs.push_back(condition.get());
+        for (auto& c : cases) {
+            if (c.constant_expr) refs.push_back(c.constant_expr.get());
+            for (auto& stmt : c.body) {
+                refs.push_back(stmt.get());
+            }
+        }
+        return refs;
+    }
+
+    SwitchStatementNode(int line = -1, int column = -1) 
+        : ASTNode(NodeType::SWITCH_STATEMENT, line, column) {}
 };
 
 // Root node that contains all program statements

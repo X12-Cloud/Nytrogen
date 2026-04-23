@@ -1,6 +1,10 @@
 # Nytrogen Compiler
 
-## 0.122/0.130 (Current)
+## 0.131 (Current)
+### Added:
+- Switch statements
+
+## 0.122/0.130
 ### Added files:
 - (instruction_set.cpp)[compiler/src/instruction_set.cpp].
 - (utils.hpp)[compiler/include/utils.hpp].

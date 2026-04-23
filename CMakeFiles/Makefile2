@@ -132,11 +132,11 @@ compiler/clean: compiler/CMakeFiles/nytro-c.dir/clean
 # Directory level rules for directory driver
 
 # Recursive "all" directory target.
-driver/all: driver/CMakeFiles/nytro-driver.dir/all
+driver/all: driver/CMakeFiles/nytro.dir/all
 .PHONY : driver/all
 
 # Recursive "codegen" directory target.
-driver/codegen: driver/CMakeFiles/nytro-driver.dir/codegen
+driver/codegen: driver/CMakeFiles/nytro.dir/codegen
 .PHONY : driver/codegen
 
 # Recursive "preinstall" directory target.
@@ -144,7 +144,7 @@ driver/preinstall:
 .PHONY : driver/preinstall
 
 # Recursive "clean" directory target.
-driver/clean: driver/CMakeFiles/nytro-driver.dir/clean
+driver/clean: driver/CMakeFiles/nytro.dir/clean
 .PHONY : driver/clean
 
 #=============================================================================
@@ -205,7 +205,7 @@ Preprocessor/CMakeFiles/nytro-pre.dir/clean:
 compiler/CMakeFiles/nytro-c.dir/all:
 	$(MAKE) $(MAKESILENT) -f compiler/CMakeFiles/nytro-c.dir/build.make compiler/CMakeFiles/nytro-c.dir/depend
 	$(MAKE) $(MAKESILENT) -f compiler/CMakeFiles/nytro-c.dir/build.make compiler/CMakeFiles/nytro-c.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/mohamed/dev/Nytrogen/CMakeFiles --progress-num=1,2,3,4,5,6,7 "Built target nytro-c"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/mohamed/dev/Nytrogen/CMakeFiles --progress-num=4,5,6,7,8,9,10 "Built target nytro-c"
 .PHONY : compiler/CMakeFiles/nytro-c.dir/all
 
 # Build rule for subdir invocation for target.
@@ -222,7 +222,7 @@ nytro-c: compiler/CMakeFiles/nytro-c.dir/rule
 # codegen rule for target.
 compiler/CMakeFiles/nytro-c.dir/codegen:
 	$(MAKE) $(MAKESILENT) -f compiler/CMakeFiles/nytro-c.dir/build.make compiler/CMakeFiles/nytro-c.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/mohamed/dev/Nytrogen/CMakeFiles --progress-num=1,2,3,4,5,6,7 "Finished codegen for target nytro-c"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/mohamed/dev/Nytrogen/CMakeFiles --progress-num=4,5,6,7,8,9,10 "Finished codegen for target nytro-c"
 .PHONY : compiler/CMakeFiles/nytro-c.dir/codegen
 
 # clean rule for target.
@@ -231,36 +231,36 @@ compiler/CMakeFiles/nytro-c.dir/clean:
 .PHONY : compiler/CMakeFiles/nytro-c.dir/clean
 
 #=============================================================================
-# Target rules for target driver/CMakeFiles/nytro-driver.dir
+# Target rules for target driver/CMakeFiles/nytro.dir
 
 # All Build rule for target.
-driver/CMakeFiles/nytro-driver.dir/all:
-	$(MAKE) $(MAKESILENT) -f driver/CMakeFiles/nytro-driver.dir/build.make driver/CMakeFiles/nytro-driver.dir/depend
-	$(MAKE) $(MAKESILENT) -f driver/CMakeFiles/nytro-driver.dir/build.make driver/CMakeFiles/nytro-driver.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/mohamed/dev/Nytrogen/CMakeFiles --progress-num=8,9,10 "Built target nytro-driver"
-.PHONY : driver/CMakeFiles/nytro-driver.dir/all
+driver/CMakeFiles/nytro.dir/all:
+	$(MAKE) $(MAKESILENT) -f driver/CMakeFiles/nytro.dir/build.make driver/CMakeFiles/nytro.dir/depend
+	$(MAKE) $(MAKESILENT) -f driver/CMakeFiles/nytro.dir/build.make driver/CMakeFiles/nytro.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/mohamed/dev/Nytrogen/CMakeFiles --progress-num=1,2,3 "Built target nytro"
+.PHONY : driver/CMakeFiles/nytro.dir/all
 
 # Build rule for subdir invocation for target.
-driver/CMakeFiles/nytro-driver.dir/rule: cmake_check_build_system
+driver/CMakeFiles/nytro.dir/rule: cmake_check_build_system
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/mohamed/dev/Nytrogen/CMakeFiles 3
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 driver/CMakeFiles/nytro-driver.dir/all
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 driver/CMakeFiles/nytro.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/mohamed/dev/Nytrogen/CMakeFiles 0
-.PHONY : driver/CMakeFiles/nytro-driver.dir/rule
+.PHONY : driver/CMakeFiles/nytro.dir/rule
 
 # Convenience name for target.
-nytro-driver: driver/CMakeFiles/nytro-driver.dir/rule
-.PHONY : nytro-driver
+nytro: driver/CMakeFiles/nytro.dir/rule
+.PHONY : nytro
 
 # codegen rule for target.
-driver/CMakeFiles/nytro-driver.dir/codegen:
-	$(MAKE) $(MAKESILENT) -f driver/CMakeFiles/nytro-driver.dir/build.make driver/CMakeFiles/nytro-driver.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/mohamed/dev/Nytrogen/CMakeFiles --progress-num=8,9,10 "Finished codegen for target nytro-driver"
-.PHONY : driver/CMakeFiles/nytro-driver.dir/codegen
+driver/CMakeFiles/nytro.dir/codegen:
+	$(MAKE) $(MAKESILENT) -f driver/CMakeFiles/nytro.dir/build.make driver/CMakeFiles/nytro.dir/codegen
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/mohamed/dev/Nytrogen/CMakeFiles --progress-num=1,2,3 "Finished codegen for target nytro"
+.PHONY : driver/CMakeFiles/nytro.dir/codegen
 
 # clean rule for target.
-driver/CMakeFiles/nytro-driver.dir/clean:
-	$(MAKE) $(MAKESILENT) -f driver/CMakeFiles/nytro-driver.dir/build.make driver/CMakeFiles/nytro-driver.dir/clean
-.PHONY : driver/CMakeFiles/nytro-driver.dir/clean
+driver/CMakeFiles/nytro.dir/clean:
+	$(MAKE) $(MAKESILENT) -f driver/CMakeFiles/nytro.dir/build.make driver/CMakeFiles/nytro.dir/clean
+.PHONY : driver/CMakeFiles/nytro.dir/clean
 
 #=============================================================================
 # Target rules for target tui/CMakeFiles/nytro-tui.dir

@@ -9,7 +9,7 @@ enum Status {
 struct Point {
     int x;
     int y;
-}
+};
 
 const float PI = 3.14159f;
 

@@ -143,17 +143,17 @@ nytro-c/fast:
 .PHONY : nytro-c/fast
 
 #=============================================================================
-# Target rules for targets named nytro-driver
+# Target rules for targets named nytro
 
 # Build rule for target.
-nytro-driver: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 nytro-driver
-.PHONY : nytro-driver
+nytro: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 nytro
+.PHONY : nytro
 
 # fast build rule for target.
-nytro-driver/fast:
-	$(MAKE) $(MAKESILENT) -f driver/CMakeFiles/nytro-driver.dir/build.make driver/CMakeFiles/nytro-driver.dir/build
-.PHONY : nytro-driver/fast
+nytro/fast:
+	$(MAKE) $(MAKESILENT) -f driver/CMakeFiles/nytro.dir/build.make driver/CMakeFiles/nytro.dir/build
+.PHONY : nytro/fast
 
 #=============================================================================
 # Target rules for targets named nytro-tui
@@ -176,8 +176,8 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
+	@echo "... nytro"
 	@echo "... nytro-c"
-	@echo "... nytro-driver"
 	@echo "... nytro-pre"
 	@echo "... nytro-tui"
 .PHONY : help

@@ -8,7 +8,8 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
-  "/home/mohamed/dev/Nytrogen/driver/driver.cpp" "driver/CMakeFiles/nytro.dir/driver.cpp.o" "gcc" "driver/CMakeFiles/nytro.dir/driver.cpp.o.d"
+  "/home/mohamed/dev/Nytrogen/driver/src/config_loader.cpp" "driver/CMakeFiles/nytro.dir/src/config_loader.cpp.o" "gcc" "driver/CMakeFiles/nytro.dir/src/config_loader.cpp.o.d"
+  "/home/mohamed/dev/Nytrogen/driver/src/driver.cpp" "driver/CMakeFiles/nytro.dir/src/driver.cpp.o" "gcc" "driver/CMakeFiles/nytro.dir/src/driver.cpp.o.d"
   "" "bin/nytro" "gcc" "driver/CMakeFiles/nytro.dir/link.d"
   )
 

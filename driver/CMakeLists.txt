@@ -10,11 +10,11 @@ file(GLOB SOURCES "src/*.cpp")
 include_directories(include)
 include_directories(src)
 
-add_executable(nytro-driver ${SOURCES})
+add_executable(nytro ${SOURCES})
 
-target_include_directories(nytro-driver PRIVATE 
+target_include_directories(nytro PRIVATE 
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
     ${LUA_INCLUDE_DIR}
 )
 
-target_link_libraries(nytro-driver ${LUA_LIBRARIES})
+target_link_libraries(nytro ${LUA_LIBRARIES})
