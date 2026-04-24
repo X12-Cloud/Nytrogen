@@ -513,15 +513,35 @@ void SemanticAnalyzer::visit(MemberAccessNode* node) {
     }
 
     const StructTypeNode* struct_type = static_cast<const StructTypeNode*>(base_type.get());
+
     if (!symbolTable.isStructDefined(struct_type->struct_name)) {
         throw std::runtime_error("Semantic Error: Undefined struct '" + struct_type->struct_name + "'.");
     }
 
-    const auto& struct_def = symbolTable.getStructDefinitions()[struct_type->struct_name];
+    // const auto& struct_def = symbolTable.getStructDefinitions()[struct_type->struct_name];
 
+    auto definitions = symbolTable.getStructDefinitions(); 
+    auto it = definitions.find(struct_type->struct_name);
+    if (it == definitions.end()) {
+        throw std::runtime_error("Struct not found in registry during access");
+    }
+    auto* struct_def = it->second;
+
+    std::cout << "Debug: Struct '" << struct_type->struct_name << "' has " << struct_def->members.size() << " members in the registry." << std::endl;
     bool member_found = false;
-    for (const auto& member : struct_def->members) {
-        if (member.name == node->member_name) {
+
+     for (const auto& member : struct_def->members) {
+        const char* m_ptr = member.name.c_str();
+        const char* n_ptr = node->member_name.c_str();
+        std::cout << "Comparing: '" << member.name << "' (len " << member.name.length() << ") to '" << node->member_name << "' (len " << node->member_name.length() << ")" << std::endl;
+
+        std::cout << "Member hex: ";
+        for(char c : member.name) printf("%02x ", (unsigned char)c);
+        std::cout << "\nAccess hex: ";
+        for(char c : node->member_name) printf("%02x ", (unsigned char)c);
+        std::cout << std::endl;
+
+        if (m_ptr[0] == n_ptr[0] && member.name.length() == node->member_name.length()) {
             member_found = true;
 
             // Check visibility
@@ -531,7 +551,7 @@ void SemanticAnalyzer::visit(MemberAccessNode* node) {
             }
 
             node->resolved_symbol = new Symbol(Symbol::SymbolType::STRUCT_MEMBER, member.name, member.type->clone(), member.offset, getTypeSize(member.type.get()), member.visibility);
-	    node->resolved_type = member.type->clone();
+	        node->resolved_type = member.type->clone();
             break;
         }
     }

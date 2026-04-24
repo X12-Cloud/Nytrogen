@@ -36,7 +36,7 @@ int main() {
         std::cout << "qlib emu> ";
         if (!(std::cin >> cmd)) break;
         if (cmd == "exit") break;
-        
+
         std::cin >> target;
         try {
             int idx = parse_idx(target);
@@ -50,24 +50,24 @@ int main() {
                 print_q(idx);
             } 
             else if (cmd == "h") {
-		size_t off = idx * 32;
-		asm volatile (
-    		    "mov %0, %%rdi\n\t"
-    		    "call q_h"
-    		    : 
-    		    : "r"(off) 
-    		    : "rdi", "ymm0", "ymm1", "ymm2", "ymm3", "memory" 
-		);
+		        size_t off = idx * 32;
+		        asm volatile (
+    		        "mov %0, %%rdi\n\t"
+    		        "call q_h"
+    		        : 
+    		        : "r"(off) 
+    		        : "rdi", "ymm0", "ymm1", "ymm2", "ymm3", "memory" 
+		        );
                 print_q(idx);
             } else if (cmd == "x") {
-		size_t off = idx * 32;
-		asm volatile (
-    		    "mov %0, %%rdi\n\t"
-    		    "call q_x"
-    		    : 
-    		    : "r"(off) 
-    		    : "rdi", "ymm0", "ymm1", "ymm2", "ymm3", "memory" 
-		);
+		        size_t off = idx * 32;
+		        asm volatile (
+    		        "mov %0, %%rdi\n\t"
+    		        "call q_x"
+    		        : 
+    		        : "r"(off) 
+    		        : "rdi", "ymm0", "ymm1", "ymm2", "ymm3", "memory" 
+		        );
                 print_q(idx);
             }
         } catch (...) { std::cout << "Invalid target\n"; }
