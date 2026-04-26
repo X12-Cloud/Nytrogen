@@ -2,7 +2,8 @@
 
 ## 0.131 (Current)
 ### Added:
-- Switch statements
+- Switch statements.
+- Function to get distro name (QoL).
 
 ## 0.122/0.130
 ### Added files:

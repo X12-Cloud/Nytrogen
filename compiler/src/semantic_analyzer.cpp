@@ -434,7 +434,22 @@ void SemanticAnalyzer::visit(SwitchStatementNode* node) {
         }
 
         for (auto& stmt : case_node.body) {
-            this->analyze();
+            //this->analyze();
+            visit(stmt.get());
+        }
+    }
+
+    if (!seen_cases.empty()) {
+        long long min_value = *seen_cases.begin();
+        long long max_value = *seen_cases.rbegin();
+        long long range = max_value - min_value;
+
+        if (range < 256) {
+            node->use_jump_table = true;
+            node->min_case = min_value;
+            node->max_case = max_value;
+        } else {
+            node->use_jump_table = false;
         }
     }
 }

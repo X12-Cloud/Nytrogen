@@ -444,6 +444,15 @@ void CodeGenerator::visit(IfStatementNode* node) {
     out << end_label << ":" << std::endl;
 }
 
+void CodeGenerator::visit(SwitchStatementNode* node) { //TODO:
+    
+    if (node->use_jump_table) {
+
+    } else {
+        // normal comp chain
+    }
+}
+
 void CodeGenerator::visit(WhileStatementNode* node) {
     static int while_counter = 0;
     int label_id = while_counter++;
