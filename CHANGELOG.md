@@ -29,7 +29,7 @@
 - Updated floats to have a precision of 6, doubles to 15.
 
 ### Known issues:
-- Member access: structs correctly define members, but the member access node doesnt find them.
+- Member access: structs correctly define members, but the member access node doesnt find them. (Fixed in 0.131)
 
 ## 0.121
 - Feat: Add support for parenthesis in assembly statements `asm();` instead of only braces `asm {}`.
