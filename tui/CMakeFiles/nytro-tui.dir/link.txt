@@ -1,1 +1,0 @@
-/usr/sbin/c++ -Wl,--dependency-file=CMakeFiles/nytro-tui.dir/link.d "CMakeFiles/nytro-tui.dir/src/main.cpp.o" -o ../bin/nytro-tui  /usr/local/lib/libftxui-screen.a /usr/local/lib/libftxui-dom.a /usr/local/lib/libftxui-component.a /usr/local/lib/libftxui-dom.a /usr/local/lib/libftxui-screen.a

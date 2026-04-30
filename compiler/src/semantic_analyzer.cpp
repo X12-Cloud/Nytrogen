@@ -520,7 +520,6 @@ void SemanticAnalyzer::visit(FunctionCallNode* node) {
 }
 
 
-// TODO: Structs dont work for some reason, "member X not found in struct Y". 
 void SemanticAnalyzer::visit(MemberAccessNode* node) {
     std::cout << "DEBUG: Entering visit for node: " << node << std::endl;
     std::unique_ptr<TypeNode> base_type = visitExpression(node->struct_expr.get());
@@ -535,8 +534,11 @@ void SemanticAnalyzer::visit(MemberAccessNode* node) {
         throw std::runtime_error("Semantic Error: Undefined struct '" + struct_type->struct_name + "'.");
     }
 
+<<<<<<< HEAD
     // const auto& struct_def = symbolTable.getStructDefinitions()[struct_type->struct_name];
 
+=======
+>>>>>>> main
     const auto& definitions = symbolTable.getStructDefinitions(); 
     auto it = definitions.find(struct_type->struct_name);
     if (it == definitions.end()) {
@@ -548,6 +550,7 @@ void SemanticAnalyzer::visit(MemberAccessNode* node) {
     bool member_found = false;
 
      for (const auto& member : struct_def->members) {
+<<<<<<< HEAD
         // --- Debug stuff ---
         const char* m_ptr = member.name.c_str();
         const char* n_ptr = node->member_name.c_str();
@@ -567,6 +570,11 @@ void SemanticAnalyzer::visit(MemberAccessNode* node) {
             member_found = true;
             std::cout << "member_found: " << member_found << std::endl;
             //exit(0); //debug exit
+=======
+        if (strcmp(member.name.c_str(), node->member_name.c_str()) == 0) {
+            member_found = true;
+            std::cout << "member_found: " << member_found << std::endl;
+>>>>>>> main
 
             // Check visibility
             if (member.visibility == StructMember::Visibility::PRIVATE) {
@@ -776,6 +784,7 @@ std::unique_ptr<TypeNode> SemanticAnalyzer::visitExpression(ASTNode* expr) {
             auto* member_node = static_cast<MemberAccessNode*>(expr);
             visit(member_node);
             return member_node->resolved_type->clone();
+<<<<<<< HEAD
             /* visit(static_cast<MemberAccessNode*>(expr));
             std::unique_ptr<TypeNode> base_type = visitExpression(static_cast<MemberAccessNode*>(expr)->struct_expr.get());
             const StructTypeNode* struct_type = static_cast<const StructTypeNode*>(base_type.get());
@@ -792,6 +801,8 @@ std::unique_ptr<TypeNode> SemanticAnalyzer::visitExpression(ASTNode* expr) {
                 }
             }
             throw std::runtime_error("Semantic Error: Member '" + static_cast<MemberAccessNode*>(expr)->member_name + "' not found in struct '" + struct_type->struct_name + "'."); */
+=======
+>>>>>>> main
         }
         case ASTNode::NodeType::UNARY_OP_EXPRESSION: {
             auto* unary_node = static_cast<UnaryOpExpressionNode*>(expr);
