@@ -4,6 +4,12 @@ bin/
 releases/
 media/
 
+*.o
+*.d
+*.o.d
+CMakeFiles/
+CMakeCache.txt
+
 **/build
 **/out
 
