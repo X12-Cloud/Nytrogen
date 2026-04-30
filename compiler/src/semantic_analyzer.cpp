@@ -2,6 +2,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <set>
+#include <cstring>
 
 // Helper to get size of a type
 int SemanticAnalyzer::getTypeSize(const TypeNode* type) {
@@ -521,6 +522,7 @@ void SemanticAnalyzer::visit(FunctionCallNode* node) {
 
 // TODO: Structs dont work for some reason, "member X not found in struct Y". 
 void SemanticAnalyzer::visit(MemberAccessNode* node) {
+    std::cout << "DEBUG: Entering visit for node: " << node << std::endl;
     std::unique_ptr<TypeNode> base_type = visitExpression(node->struct_expr.get());
 
     if (base_type->category != TypeNode::TypeCategory::STRUCT) {
@@ -535,7 +537,7 @@ void SemanticAnalyzer::visit(MemberAccessNode* node) {
 
     // const auto& struct_def = symbolTable.getStructDefinitions()[struct_type->struct_name];
 
-    auto definitions = symbolTable.getStructDefinitions(); 
+    const auto& definitions = symbolTable.getStructDefinitions(); 
     auto it = definitions.find(struct_type->struct_name);
     if (it == definitions.end()) {
         throw std::runtime_error("Struct not found in registry during access");
@@ -546,18 +548,25 @@ void SemanticAnalyzer::visit(MemberAccessNode* node) {
     bool member_found = false;
 
      for (const auto& member : struct_def->members) {
+        // --- Debug stuff ---
         const char* m_ptr = member.name.c_str();
         const char* n_ptr = node->member_name.c_str();
-        std::cout << "Comparing: '" << member.name << "' (len " << member.name.length() << ") to '" << node->member_name << "' (len " << node->member_name.length() << ")" << std::endl;
-
+        std::cout << "Comparing: '" << member.name << "' (len " << (int)member.name.length() 
+          << ", vis: " << (int)member.visibility << ") to '"
+          << node->member_name << "' (len " << (int)node->member_name.length() << ")" << std::endl;
+        std::cout << "DEBUG: Member Name Addr: " << (void*)member.name.c_str() << std::endl;
+        std::cout << "DEBUG: Access Name Addr: " << (void*)node->member_name.c_str() << std::endl;
         std::cout << "Member hex: ";
         for(char c : member.name) printf("%02x ", (unsigned char)c);
         std::cout << "\nAccess hex: ";
         for(char c : node->member_name) printf("%02x ", (unsigned char)c);
         std::cout << std::endl;
+        // --- Debug end ---
 
-        if (m_ptr[0] == n_ptr[0] && member.name.length() == node->member_name.length()) {
+        if (strcmp(member.name.c_str(), node->member_name.c_str()) == 0) {
             member_found = true;
+            std::cout << "member_found: " << member_found << std::endl;
+            //exit(0); //debug exit
 
             // Check visibility
             if (member.visibility == StructMember::Visibility::PRIVATE) {
@@ -567,13 +576,26 @@ void SemanticAnalyzer::visit(MemberAccessNode* node) {
 
             node->resolved_symbol = new Symbol(Symbol::SymbolType::STRUCT_MEMBER, member.name, member.type->clone(), member.offset, getTypeSize(member.type.get()), member.visibility);
 	        node->resolved_type = member.type->clone();
-            break;
+            return;
         }
     }
 
     if (!member_found) {
         throw std::runtime_error("Semantic Error: Struct '" + struct_type->struct_name + "' has no member named '" + node->member_name + "'.");
     }
+}
+
+void SemanticAnalyzer::visit(StructDefinitionNode* node) {
+    // Calculate offsets
+    int offset = 0;
+    for (auto& member : node->members) {
+        member.offset = offset;
+        offset += getTypeSize(member.type.get());
+    }
+    node->size = offset;
+
+    // Register in symbol table
+    symbolTable.addStructDefinition(node->name, node);
 }
 
 void SemanticAnalyzer::visit(UnaryOpExpressionNode* node) {
@@ -610,19 +632,6 @@ void SemanticAnalyzer::visit(ArrayAccessNode* node) {
         throw std::runtime_error("Semantic Error: Array index must be an integer.");
     }
     node->resolved_type = static_cast<ArrayTypeNode*>(array_type.get())->base_type->clone();
-}
-
-void SemanticAnalyzer::visit(StructDefinitionNode* node) {
-    // Calculate offsets
-    int offset = 0;
-    for (auto& member : node->members) {
-        member.offset = offset;
-        offset += getTypeSize(member.type.get());
-    }
-    node->size = offset;
-
-    // Register in symbol table
-    symbolTable.addStructDefinition(node->name, node);
 }
 
 void SemanticAnalyzer::visit(AsmStatementNode* node) {
@@ -765,7 +774,9 @@ std::unique_ptr<TypeNode> SemanticAnalyzer::visitExpression(ASTNode* expr) {
         }
         case ASTNode::NodeType::MEMBER_ACCESS_EXPRESSION: {
             auto* member_node = static_cast<MemberAccessNode*>(expr);
-            visit(static_cast<MemberAccessNode*>(expr));
+            visit(member_node);
+            return member_node->resolved_type->clone();
+            /* visit(static_cast<MemberAccessNode*>(expr));
             std::unique_ptr<TypeNode> base_type = visitExpression(static_cast<MemberAccessNode*>(expr)->struct_expr.get());
             const StructTypeNode* struct_type = static_cast<const StructTypeNode*>(base_type.get());
             if (!symbolTable.isStructDefined(struct_type->struct_name)) {
@@ -780,7 +791,7 @@ std::unique_ptr<TypeNode> SemanticAnalyzer::visitExpression(ASTNode* expr) {
                     break;
                 }
             }
-            throw std::runtime_error("Semantic Error: Member '" + static_cast<MemberAccessNode*>(expr)->member_name + "' not found in struct '" + struct_type->struct_name + "'.");
+            throw std::runtime_error("Semantic Error: Member '" + static_cast<MemberAccessNode*>(expr)->member_name + "' not found in struct '" + struct_type->struct_name + "'."); */
         }
         case ASTNode::NodeType::UNARY_OP_EXPRESSION: {
             auto* unary_node = static_cast<UnaryOpExpressionNode*>(expr);

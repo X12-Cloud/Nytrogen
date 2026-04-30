@@ -2,8 +2,11 @@
 
 ## 0.131 (Current)
 ### Added:
-- Switch statements.
+- Switch statements (Only syntax and semantic analysis for now tho).
 - Function to get distro name (QoL).
+
+### Fixed:
+- Member access errors in the semantic analyzer (redundant logic in visit expression).
 
 ## 0.122/0.130
 ### Added files:
