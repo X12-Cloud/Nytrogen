@@ -528,6 +528,10 @@ struct SwitchStatementNode : public ASTNode {
     std::unique_ptr<ASTNode> condition;
     std::vector<CaseNode> cases;
 
+    bool use_jump_table = false;
+    long long min_case = 0;
+    long long max_case = 0;
+
     std::string type_name() const override { return "SWITCH_STATEMENT"; }
     std::vector<ASTNode*> get_children() const override {
         std::vector<ASTNode*> refs;

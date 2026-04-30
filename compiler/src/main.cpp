@@ -25,8 +25,26 @@ std::string readFileContent(const std::string& filepath) {
     return buffer.str();
 }
 
+std::string get_distro_name() {
+    std::ifstream file("/etc/os-release");
+    std::string line;
+    if (file.is_open()) {
+        while (getline(file, line)) {
+            // PRETTY_NAME usually contains the full name
+            if (line.find("PRETTY_NAME=") == 0) {
+                size_t first = line.find('\"');
+                size_t last = line.find_last_of('\"');
+                if (first != std::string::npos && last != std::string::npos && first != last) {
+                    return line.substr(first + 1, last - first - 1);
+                }
+            }
+        }
+    }
+    return "Unknown Distribution";
+}
+
 int main(int argc, char* argv[]) {
-    // std::cout << "Nytrogen Compiler (Arch Linux)\n";
+    std::cout << "Nytrogen Compiler " << get_distro_name() << std::endl;
 
     if (argc < 2) {
         std::cerr << "Error: No source file provided. Usage: ./nytro-c <source_file> [output_dir]\n";

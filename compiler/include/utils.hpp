@@ -13,6 +13,7 @@ public:
         }), s.end());
         return s;
     }
+    std::string get_distro_name();
 };
 
 #endif

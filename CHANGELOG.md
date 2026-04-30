@@ -2,7 +2,11 @@
 
 ## 0.131 (Current)
 ### Added:
-- Switch statements
+- Switch statements (Only syntax and semantic analysis for now tho).
+- Function to get distro name (QoL).
+
+### Fixed:
+- Member access errors in the semantic analyzer (redundant logic in visit expression).
 
 ## 0.122/0.130
 ### Added files:
@@ -25,7 +29,7 @@
 - Updated floats to have a precision of 6, doubles to 15.
 
 ### Known issues:
-- Member access: structs correctly define members, but the member access node doesnt find them.
+- Member access: structs correctly define members, but the member access node doesnt find them. (Fixed in 0.131)
 
 ## 0.121
 - Feat: Add support for parenthesis in assembly statements `asm();` instead of only braces `asm {}`.

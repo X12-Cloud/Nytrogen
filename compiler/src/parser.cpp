@@ -496,7 +496,7 @@ std::unique_ptr<ASTNode> Parser::parseExpression() {
     if (peek().type == Token::EQ) {
         consume(); // consume '='
         auto right = parseExpression();
-        
+
         if (dynamic_cast<VariableReferenceNode*>(left.get()) || dynamic_cast<MemberAccessNode*>(left.get()) || dynamic_cast<ArrayAccessNode*>(left.get())) {
             return std::make_unique<VariableAssignmentNode>(std::move(left), std::move(right));
         } else {
@@ -508,28 +508,27 @@ std::unique_ptr<ASTNode> Parser::parseExpression() {
 }
 
 std::unique_ptr<StructDefinitionNode> Parser::parseStructDefinition() {
-    consume(); // Consume 'struct' keyword
-    std::string struct_name = consume().value; // Consume struct name
+    consume();
+    std::string struct_name = consume().value;
     expect(Token::LBRACE, "Expected '{' after struct name.");
 
     auto struct_node = std::make_unique<StructDefinitionNode>(struct_name);
     int current_offset = 0;
-    
+
     StructMember::Visibility current_visibility = StructMember::Visibility::PUBLIC; // Default to public
 
     while (peek().type != Token::RBRACE && peek().type != Token::END_OF_FILE) {
-        // Check for access specifiers
         if (peek().type == Token::KEYWORD_PUBLIC) {
-            consume(); // Consume 'public'
+            consume();
             expect(Token::COLON, "Expected ':' after 'public' specifier.");
             current_visibility = StructMember::Visibility::PUBLIC;
-            continue; // Continue to the next token
+            continue;
         }
         if (peek().type == Token::KEYWORD_PRIVATE) {
-            consume(); // Consume 'private'
+            consume();
             expect(Token::COLON, "Expected ':' after 'private' specifier.");
             current_visibility = StructMember::Visibility::PRIVATE;
-            continue; // Continue to the next token
+            continue;
         }
 
         auto member_type = parseType();

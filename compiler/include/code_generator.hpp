@@ -43,6 +43,7 @@ private:
     void visit(PrintStatementNode* node);
     void visit(ReturnStatementNode* node);
     void visit(IfStatementNode* node);
+    void visit(SwitchStatementNode* node);
     void visit(WhileStatementNode* node);
     void visit(ForStatementNode* node);
     void visit(FunctionCallNode* node);
