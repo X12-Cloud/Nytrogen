@@ -1,38 +1,4 @@
  PROGRAM_ROOT
-   FUNCTION_DEF: sys_read
-     VAR_DECL
-     ASTNode
-     RETURN_STMT:
-       VAR_REF: (result)
-   FUNCTION_DEF: sys_write
-     VAR_DECL
-     ASTNode
-     RETURN_STMT:
-       VAR_REF: (result)
-   FUNCTION_DEF: sys_open
-     VAR_DECL
-     ASTNode
-     RETURN_STMT:
-       VAR_REF: (fd)
-   FUNCTION_DEF: sys_close
-     VAR_DECL
-     ASTNode
-     RETURN_STMT:
-       VAR_REF: (result)
-   FUNCTION_DEF: main
-     VAR_DECL
-     VAR_DECL
-       FUNC_CALL: sys_read
-         INT_LITERAL: (0)
-         VAR_REF: (buffer)
-         INT_LITERAL: (64)
-     IF_STATEMENT
-       BINARY_OP: 
-         VAR_REF: (bytes)
-         INT_LITERAL: (0)
-       FUNC_CALL: sys_write
-         INT_LITERAL: (1)
-         VAR_REF: (buffer)
-         VAR_REF: (bytes)
-     RETURN_STMT:
-       INT_LITERAL: (0)
+   FUNCTION_DEF: hi
+     PRINT_STMT
+       STR_LITERAL: (hello wrld)
