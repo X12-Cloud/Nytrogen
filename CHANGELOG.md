@@ -4,6 +4,7 @@
 ### Added:
 - Switch statements (Only syntax and semantic analysis for now tho).
 - Function to get distro name (QoL).
+- Array and string to pointer decay.
 
 ### Fixed:
 - Member access errors in the semantic analyzer (redundant logic in visit expression).

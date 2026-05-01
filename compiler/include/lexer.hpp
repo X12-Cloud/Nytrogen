@@ -20,6 +20,7 @@
     X(KEYWORD_PUBLIC, "public")   X(KEYWORD_PRIVATE, "private") \
     X(KEYWORD_EXTERN, "extern")   X(KEYWORD_AUTO, "auto")       \
     X(KEYWORD_FLOAT, "float")     X(KEYWORD_DOUBLE, "double")   \
+    X(KEYWORD_NAMESPACE, "namespace") \
     X(IDENTIFIER, "ID")           X(INTEGER_LITERAL, "INT_LIT") \
     X(STRING_LITERAL, "STR_LIT")  X(TRUE, "true")               \
     X(FALSE, "false")             X(CHARACTER_LITERAL, "CHAR_LIT") \

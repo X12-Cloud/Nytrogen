@@ -54,8 +54,24 @@ bool SemanticAnalyzer::areTypesCompatible(const TypeNode* type1, const TypeNode*
         return false; // Null types are not compatible
     }
 
+    auto isString = [](const TypeNode* t) {
+        if (t->category != TypeNode::TypeCategory::PRIMITIVE) return false;
+        auto prim = static_cast<const PrimitiveTypeNode*>(t);
+        return prim->primitive_type == Token::KEYWORD_STRING;
+    };
+
+    bool t1_is_ptr = (type1->category == TypeNode::TypeCategory::POINTER || type1->category == TypeNode::TypeCategory::ARRAY);
+    bool t2_is_ptr = (type2->category == TypeNode::TypeCategory::POINTER || type2->category == TypeNode::TypeCategory::ARRAY);
+
+    if ((t1_is_ptr && isString(type2)) || (t2_is_ptr && isString(type1))) {
+        return true;
+    }
+
     if (type1->category != type2->category) {
-        return false;
+        bool isPointer = (type1->category == TypeNode::TypeCategory::POINTER || type1->category == TypeNode::TypeCategory::ARRAY);
+        bool isOtherPointer = (type2->category == TypeNode::TypeCategory::POINTER || type2->category == TypeNode::TypeCategory::ARRAY);
+
+        if (!(isPointer && isOtherPointer)) return false;
     }
 
     switch (type1->category) {

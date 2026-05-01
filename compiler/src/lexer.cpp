@@ -16,10 +16,10 @@ static const std::unordered_map<std::string, Token::Type> KEYWORD_MAP = {
     {"const", Token::KEYWORD_CONST},   {"public", Token::KEYWORD_PUBLIC},
     {"private", Token::KEYWORD_PRIVATE}, {"extern", Token::KEYWORD_EXTERN},
     {"auto", Token::KEYWORD_AUTO},     {"void", Token::KEYWORD_VOID},
-    {"float", Token::KEYWORD_FLOAT},    {"double", Token::KEYWORD_DOUBLE}
+    {"float", Token::KEYWORD_FLOAT},    {"double", Token::KEYWORD_DOUBLE},
+    {"namespace", Token::KEYWORD_NAMESPACE}
 };
 
-// Token type to string conversion
 // Token type to string conversion
 std::string Token::typeToString() const {
     static const char* typeStrings[] = {
@@ -28,7 +28,6 @@ std::string Token::typeToString() const {
 #undef AS_STR
     };
 
-    // Since this->type is an enum (integer), we just index the array
     if (this->type >= 0 && this->type < (sizeof(typeStrings) / sizeof(typeStrings[0]))) {
         return typeStrings[this->type];
     }
@@ -84,13 +83,13 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
 	    char suffix = value.back(); // last char of value
 
 	    if (value.find('.') != std::string::npos) {
-		switch (suffix) {
-		    case 'f': tokens.push_back({Token::FLOAT_LITERAL, value, line, startColumn});
-		    break;
-		    case 'd':
-		    default: tokens.push_back({Token::DOUBLE_LITERAL, value, line, startColumn});
-		    break;
-		} 
+		    switch (suffix) {
+		        case 'f': tokens.push_back({Token::FLOAT_LITERAL, value, line, startColumn});
+		        break;
+		        case 'd':
+		        default: tokens.push_back({Token::DOUBLE_LITERAL, value, line, startColumn});
+		        break;
+		    }
 	    } else {
                 tokens.push_back({Token::INTEGER_LITERAL, value, line, startColumn});
 	    }
