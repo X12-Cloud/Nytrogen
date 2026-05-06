@@ -1,61 +1,61 @@
 [
 {
   "directory": "/home/mohamed/dev/Nytrogen/Preprocessor",
-  "command": "/usr/bin/c++ -DNYTRO_VERSION=\\\"0.131-beta\\\"  -std=gnu++17 -o CMakeFiles/nytro-pre.dir/src/main.cpp.o -c /home/mohamed/dev/Nytrogen/Preprocessor/src/main.cpp",
+  "command": "/usr/sbin/c++ -DNYTRO_VERSION=\\\"0.131-beta\\\"  -std=gnu++17 -o CMakeFiles/nytro-pre.dir/src/main.cpp.o -c /home/mohamed/dev/Nytrogen/Preprocessor/src/main.cpp",
   "file": "/home/mohamed/dev/Nytrogen/Preprocessor/src/main.cpp",
   "output": "Preprocessor/CMakeFiles/nytro-pre.dir/src/main.cpp.o"
 },
 {
   "directory": "/home/mohamed/dev/Nytrogen/compiler",
-  "command": "/usr/bin/c++ -DNYTRO_VERSION=\\\"0.131-beta\\\" -I/home/mohamed/dev/Nytrogen/compiler/include -I/home/mohamed/dev/Nytrogen/compiler/src -std=gnu++17 -o CMakeFiles/nytro-c.dir/src/code_generator.cpp.o -c /home/mohamed/dev/Nytrogen/compiler/src/code_generator.cpp",
+  "command": "/usr/sbin/c++ -DNYTRO_VERSION=\\\"0.131-beta\\\" -I/home/mohamed/dev/Nytrogen/compiler/include -I/home/mohamed/dev/Nytrogen/compiler/src -std=gnu++17 -o CMakeFiles/nytro-c.dir/src/code_generator.cpp.o -c /home/mohamed/dev/Nytrogen/compiler/src/code_generator.cpp",
   "file": "/home/mohamed/dev/Nytrogen/compiler/src/code_generator.cpp",
   "output": "compiler/CMakeFiles/nytro-c.dir/src/code_generator.cpp.o"
 },
 {
   "directory": "/home/mohamed/dev/Nytrogen/compiler",
-  "command": "/usr/bin/c++ -DNYTRO_VERSION=\\\"0.131-beta\\\" -I/home/mohamed/dev/Nytrogen/compiler/include -I/home/mohamed/dev/Nytrogen/compiler/src -std=gnu++17 -o CMakeFiles/nytro-c.dir/src/instruction_set.cpp.o -c /home/mohamed/dev/Nytrogen/compiler/src/instruction_set.cpp",
+  "command": "/usr/sbin/c++ -DNYTRO_VERSION=\\\"0.131-beta\\\" -I/home/mohamed/dev/Nytrogen/compiler/include -I/home/mohamed/dev/Nytrogen/compiler/src -std=gnu++17 -o CMakeFiles/nytro-c.dir/src/instruction_set.cpp.o -c /home/mohamed/dev/Nytrogen/compiler/src/instruction_set.cpp",
   "file": "/home/mohamed/dev/Nytrogen/compiler/src/instruction_set.cpp",
   "output": "compiler/CMakeFiles/nytro-c.dir/src/instruction_set.cpp.o"
 },
 {
   "directory": "/home/mohamed/dev/Nytrogen/compiler",
-  "command": "/usr/bin/c++ -DNYTRO_VERSION=\\\"0.131-beta\\\" -I/home/mohamed/dev/Nytrogen/compiler/include -I/home/mohamed/dev/Nytrogen/compiler/src -std=gnu++17 -o CMakeFiles/nytro-c.dir/src/lexer.cpp.o -c /home/mohamed/dev/Nytrogen/compiler/src/lexer.cpp",
+  "command": "/usr/sbin/c++ -DNYTRO_VERSION=\\\"0.131-beta\\\" -I/home/mohamed/dev/Nytrogen/compiler/include -I/home/mohamed/dev/Nytrogen/compiler/src -std=gnu++17 -o CMakeFiles/nytro-c.dir/src/lexer.cpp.o -c /home/mohamed/dev/Nytrogen/compiler/src/lexer.cpp",
   "file": "/home/mohamed/dev/Nytrogen/compiler/src/lexer.cpp",
   "output": "compiler/CMakeFiles/nytro-c.dir/src/lexer.cpp.o"
 },
 {
   "directory": "/home/mohamed/dev/Nytrogen/compiler",
-  "command": "/usr/bin/c++ -DNYTRO_VERSION=\\\"0.131-beta\\\" -I/home/mohamed/dev/Nytrogen/compiler/include -I/home/mohamed/dev/Nytrogen/compiler/src -std=gnu++17 -o CMakeFiles/nytro-c.dir/src/main.cpp.o -c /home/mohamed/dev/Nytrogen/compiler/src/main.cpp",
+  "command": "/usr/sbin/c++ -DNYTRO_VERSION=\\\"0.131-beta\\\" -I/home/mohamed/dev/Nytrogen/compiler/include -I/home/mohamed/dev/Nytrogen/compiler/src -std=gnu++17 -o CMakeFiles/nytro-c.dir/src/main.cpp.o -c /home/mohamed/dev/Nytrogen/compiler/src/main.cpp",
   "file": "/home/mohamed/dev/Nytrogen/compiler/src/main.cpp",
   "output": "compiler/CMakeFiles/nytro-c.dir/src/main.cpp.o"
 },
 {
   "directory": "/home/mohamed/dev/Nytrogen/compiler",
-  "command": "/usr/bin/c++ -DNYTRO_VERSION=\\\"0.131-beta\\\" -I/home/mohamed/dev/Nytrogen/compiler/include -I/home/mohamed/dev/Nytrogen/compiler/src -std=gnu++17 -o CMakeFiles/nytro-c.dir/src/parser.cpp.o -c /home/mohamed/dev/Nytrogen/compiler/src/parser.cpp",
+  "command": "/usr/sbin/c++ -DNYTRO_VERSION=\\\"0.131-beta\\\" -I/home/mohamed/dev/Nytrogen/compiler/include -I/home/mohamed/dev/Nytrogen/compiler/src -std=gnu++17 -o CMakeFiles/nytro-c.dir/src/parser.cpp.o -c /home/mohamed/dev/Nytrogen/compiler/src/parser.cpp",
   "file": "/home/mohamed/dev/Nytrogen/compiler/src/parser.cpp",
   "output": "compiler/CMakeFiles/nytro-c.dir/src/parser.cpp.o"
 },
 {
   "directory": "/home/mohamed/dev/Nytrogen/compiler",
-  "command": "/usr/bin/c++ -DNYTRO_VERSION=\\\"0.131-beta\\\" -I/home/mohamed/dev/Nytrogen/compiler/include -I/home/mohamed/dev/Nytrogen/compiler/src -std=gnu++17 -o CMakeFiles/nytro-c.dir/src/semantic_analyzer.cpp.o -c /home/mohamed/dev/Nytrogen/compiler/src/semantic_analyzer.cpp",
+  "command": "/usr/sbin/c++ -DNYTRO_VERSION=\\\"0.131-beta\\\" -I/home/mohamed/dev/Nytrogen/compiler/include -I/home/mohamed/dev/Nytrogen/compiler/src -std=gnu++17 -o CMakeFiles/nytro-c.dir/src/semantic_analyzer.cpp.o -c /home/mohamed/dev/Nytrogen/compiler/src/semantic_analyzer.cpp",
   "file": "/home/mohamed/dev/Nytrogen/compiler/src/semantic_analyzer.cpp",
   "output": "compiler/CMakeFiles/nytro-c.dir/src/semantic_analyzer.cpp.o"
 },
 {
   "directory": "/home/mohamed/dev/Nytrogen/driver",
-  "command": "/usr/bin/c++ -DNYTRO_VERSION=\\\"0.131-beta\\\" -I/home/mohamed/dev/Nytrogen/driver/include -I/home/mohamed/dev/Nytrogen/driver/src -std=gnu++17 -o CMakeFiles/nytro.dir/src/config_loader.cpp.o -c /home/mohamed/dev/Nytrogen/driver/src/config_loader.cpp",
+  "command": "/usr/sbin/c++ -DNYTRO_VERSION=\\\"0.131-beta\\\" -I/home/mohamed/dev/Nytrogen/driver/include -I/home/mohamed/dev/Nytrogen/driver/src -std=gnu++17 -o CMakeFiles/nytro.dir/src/config_loader.cpp.o -c /home/mohamed/dev/Nytrogen/driver/src/config_loader.cpp",
   "file": "/home/mohamed/dev/Nytrogen/driver/src/config_loader.cpp",
   "output": "driver/CMakeFiles/nytro.dir/src/config_loader.cpp.o"
 },
 {
   "directory": "/home/mohamed/dev/Nytrogen/driver",
-  "command": "/usr/bin/c++ -DNYTRO_VERSION=\\\"0.131-beta\\\" -I/home/mohamed/dev/Nytrogen/driver/include -I/home/mohamed/dev/Nytrogen/driver/src -std=gnu++17 -o CMakeFiles/nytro.dir/src/driver.cpp.o -c /home/mohamed/dev/Nytrogen/driver/src/driver.cpp",
+  "command": "/usr/sbin/c++ -DNYTRO_VERSION=\\\"0.131-beta\\\" -I/home/mohamed/dev/Nytrogen/driver/include -I/home/mohamed/dev/Nytrogen/driver/src -std=gnu++17 -o CMakeFiles/nytro.dir/src/driver.cpp.o -c /home/mohamed/dev/Nytrogen/driver/src/driver.cpp",
   "file": "/home/mohamed/dev/Nytrogen/driver/src/driver.cpp",
   "output": "driver/CMakeFiles/nytro.dir/src/driver.cpp.o"
 },
 {
   "directory": "/home/mohamed/dev/Nytrogen/tui",
-  "command": "/usr/bin/c++ -DNYTRO_VERSION=\\\"0.131-beta\\\" -I/home/mohamed/dev/Nytrogen/tui/include -I/home/mohamed/dev/Nytrogen/tui/src -std=gnu++17 -o CMakeFiles/nytro-tui.dir/src/main.cpp.o -c /home/mohamed/dev/Nytrogen/tui/src/main.cpp",
+  "command": "/usr/sbin/c++ -DNYTRO_VERSION=\\\"0.131-beta\\\" -I/home/mohamed/dev/Nytrogen/tui/include -I/home/mohamed/dev/Nytrogen/tui/src -std=gnu++17 -o CMakeFiles/nytro-tui.dir/src/main.cpp.o -c /home/mohamed/dev/Nytrogen/tui/src/main.cpp",
   "file": "/home/mohamed/dev/Nytrogen/tui/src/main.cpp",
   "output": "tui/CMakeFiles/nytro-tui.dir/src/main.cpp.o"
 }

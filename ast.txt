@@ -1,4 +1,7 @@
  PROGRAM_ROOT
-   FUNCTION_DEF: hi
-     PRINT_STMT
-       STR_LITERAL: (hello wrld)
+   NAMESPACE_DEF: ns
+     VAR_DECL
+       INT_LITERAL: (10)
+   FUNCTION_DEF: main
+     RETURN_STMT:
+       VAR_REF: (ns_x)

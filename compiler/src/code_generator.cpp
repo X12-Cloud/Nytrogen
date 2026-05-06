@@ -2,6 +2,7 @@
 #include <stdexcept>
 #include <sstream>
 #include <iomanip>
+#include <type_traits>
 
 CodeGenerator::CodeGenerator(std::unique_ptr<ProgramNode>& ast, SymbolTable& symTable)
 : program_ast(ast), symbolTable(symTable), string_label_counter(0) {}
@@ -57,6 +58,9 @@ void CodeGenerator::visit(ASTNode* node) {
             break;
         case ASTNode::NodeType::FUNCTION_DEFINITION:
             visit(static_cast<FunctionDefinitionNode*>(node));
+            break;
+        case ASTNode::NodeType::NAMESPACE_DEFINITION:
+            visit(static_cast<NamespaceDefinition*>(node));
             break;
         case ASTNode::NodeType::VARIABLE_DECLARATION:
             visit(static_cast<VariableDeclarationNode*>(node));
@@ -136,7 +140,9 @@ bool is_lvalue;
 
 void CodeGenerator::visit(ProgramNode* node) {
     for (const auto& stmt : node->statements) {
-        if (stmt->node_type == ASTNode::NodeType::VARIABLE_DECLARATION) {
+        if (stmt->node_type == ASTNode::NodeType::NAMESPACE_DEFINITION) {
+            visit(static_cast<NamespaceDefinition*>(stmt.get()));
+        } else if (stmt->node_type == ASTNode::NodeType::VARIABLE_DECLARATION) {
             auto decl_node = static_cast<VariableDeclarationNode*>(stmt.get());
             for (const auto& decl : decl_node->declarations) {
                 out << decl.name << ": resb " << getTypeSize(decl_node->type.get()) << std::endl;
@@ -197,6 +203,16 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
     current_function_name = "";
 }
 
+void CodeGenerator::visit(NamespaceDefinition* node) {
+    std::string old_ns = current_namespace_name;
+    current_namespace_name = node->name;
+
+    for (auto& m : node->members) {
+        if (m.node) visit(m.node.get());
+    }
+    current_namespace_name = old_ns;
+}
+
 void CodeGenerator::visit(ConstantDeclarationNode* node) {
     // No code generation needed for constant declarations
 }
@@ -209,16 +225,21 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
     auto prim = static_cast<PrimitiveTypeNode*>(node->type.get());
     bool is_float = prim && (prim->primitive_type == Token::KEYWORD_FLOAT);
     bool is_double = prim && (prim->primitive_type == Token::KEYWORD_DOUBLE);
+    std::string asm_label;
     for (auto& decl : node->declarations) {
         Symbol* symbol = decl.resolved_symbol;
-        if (!symbol) {
-            throw std::runtime_error("Code generation error: variable '" + decl.name + "' not found in symbol table.");
-        }
+        if (!symbol) throw std::runtime_error("Code generation error: variable '" + decl.name + "' not found in symbol table.");
 
-        if (node->type->category == TypeNode::TypeCategory::STRUCT) continue;
-        if (decl.initial_value) {
-	        visit(decl.initial_value.get());
-	        emit_adv(node->type, "rbp", symbol->offset, (is_float || is_double) ? "xmm0" : "rax");
+        std::string final_name = decl.name;
+        if (!current_namespace_name.empty()) {
+            final_name = current_namespace_name + "_" + decl.name;
+            if (decl.initial_value && decl.initial_value->is_constant()) constants.push_back({final_name, "dq", decl.initial_value->get_value()});
+            else constants.push_back({final_name, "dq", "0"});
+        } else {
+            if (decl.initial_value) {
+                visit(decl.initial_value.get());
+                emit_adv(node->type, "rbp", symbol->offset, (is_float || is_double) ? "xmm0" : "rax");
+            }
         }
     }
 }
@@ -276,6 +297,21 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
 
     if (symbol->type == Symbol::SymbolType::CONSTANT) {
         visit(symbol->value.get());
+        return;
+    }
+
+    if (symbol->name.find("::") != std::string::npos) {
+        std::string asm_label = symbol->name;
+        size_t pos;
+        while ((pos = asm_label.find("::")) != std::string::npos) {
+            asm_label.replace(pos, 2, "_");
+        }
+
+        if (is_lvalue) {
+            out << "    lea rax, [rel " << asm_label << "]" << std::endl;
+        } else {
+            out << "    mov rax, [rel " << asm_label << "]" << std::endl;
+        }
         return;
     }
 
@@ -445,7 +481,6 @@ void CodeGenerator::visit(IfStatementNode* node) {
 }
 
 void CodeGenerator::visit(SwitchStatementNode* node) { //TODO:
-    
     if (node->use_jump_table) {
 
     } else {

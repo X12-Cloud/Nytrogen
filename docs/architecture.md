@@ -63,6 +63,11 @@ The code generator traverses the AST and emits the corresponding instructions fo
 *   **Register Allocation:** Deciding which variables to store in CPU registers for faster access.
 *   **Memory Management:** Generating code to allocate and deallocate memory for variables and data structures.
 
+## Name mangling
+*   **Structure** the structure for name mangling is pretty much standard such as:
+- _N <namespace_length> <namespace_name> <var_length> <var_name> for normal variables.
+- _Z <scope_info> <name> <param_types> for functions.
+
 ## Conclusion
 
 This modular architecture makes the Nytrogen compiler easier to develop, test, and maintain. Each phase can be worked on independently, as long as it adheres to the expected inputs and outputs. This separation of concerns is a fundamental principle in modern compiler design.

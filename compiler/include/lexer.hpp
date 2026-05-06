@@ -31,7 +31,7 @@
     X(GREATER_EQUAL, ">=")        X(PLUS, "+")                  \
     X(MINUS, "-")                 X(STAR, "*")                  \
     X(SLASH, "/")                 X(ADDRESSOF, "&")             \
-    X(BANG, "!")                                                \
+    X(BANG, "!")                  X(DOUBLE_COLON, "::")         \
     X(SEMICOLON, ";")             X(LPAREN, "(")                \
     X(RPAREN, ")")                X(LBRACE, "{")                \
     X(RBRACE, "}")                X(LBRACKET, "[")              \

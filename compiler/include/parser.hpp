@@ -47,6 +47,7 @@ private:
     std::unique_ptr<ConstantDeclarationNode> parseConstantDeclaration();
     std::unique_ptr<EnumStatementNode> parseEnumStatement();
     std::unique_ptr<SwitchStatementNode> parseSwitchStatement();
+    std::unique_ptr<NamespaceDefinition> parseNamespaceDefinition();
 
     // Expression parsing methods (now hierarchical for precedence)
     std::unique_ptr<ASTNode> parseExpression(); 		// Handles + and - (lowest precedence)

@@ -47,6 +47,7 @@ struct ASTNode {
 	    FLOAT_LITERAL_EXPRESSION = 25,
 	    DOUBLE_LITERAL_EXPRESSION = 26,
 	    SWITCH_STATEMENT = 27,
+        NAMESPACE_DEFINITION = 28,
     };
 
     NodeType node_type;
@@ -70,9 +71,9 @@ struct ASTNode {
         return {}; // Base node has no children
     }
 
-    virtual std::string get_value() const {
-        return ""; 
-    }
+    virtual std::string get_value() const { return ""; }
+
+    virtual bool is_constant() const { return false; }
 
     void dump_to_stream(std::ostream& out, int indent) { // TODO: make it output to .json
         std::string space(indent * 2, ' ');
@@ -110,6 +111,7 @@ struct IntegerLiteralExpressionNode : public LiteralExpressionNode {
 
     std::string type_name() const override { return "INT_LITERAL:"; }
     std::string get_value() const override { return getValueAsString(); }
+    bool is_constant() const override { return true; }
 
     IntegerLiteralExpressionNode(int val, int line = -1, int column = -1)
         : LiteralExpressionNode(NodeType::INTEGER_LITERAL_EXPRESSION, line, column), value(val) {}
@@ -122,6 +124,7 @@ struct StringLiteralExpressionNode : public LiteralExpressionNode {
 
     std::string type_name() const override { return "STR_LITERAL:"; }
     std::string get_value() const override { return getValueAsString(); }
+    bool is_constant() const override { return true; }
 
     StringLiteralExpressionNode(std::string val, int line = -1, int column = -1)
         : LiteralExpressionNode(NodeType::STRING_LITERAL_EXPRESSION, line, column), value(std::move(val)) {}
@@ -134,6 +137,7 @@ struct BooleanLiteralExpressionNode : public LiteralExpressionNode {
 
     std::string type_name() const override { return "BOOL_LITERAL:"; }
     std::string get_value() const override { return getValueAsString(); }
+    bool is_constant() const override { return true; }
 
     BooleanLiteralExpressionNode(int val, int line = -1, int column = -1)
         : LiteralExpressionNode(NodeType::BOOLEAN_LITERAL_EXPRESSION, line, column), value(val) {}
@@ -146,6 +150,7 @@ struct CharacterLiteralExpressionNode : public LiteralExpressionNode {
 
     std::string type_name() const override { return "CHAR_LITERAL:"; }
     std::string get_value() const override { return getValueAsString(); }
+    bool is_constant() const override { return true; }
 
     CharacterLiteralExpressionNode(int val, int line = -1, int column = -1)
         : LiteralExpressionNode(NodeType::CHARACTER_LITERAL_EXPRESSION, line, column), value(val) {}
@@ -159,6 +164,7 @@ struct FloatLiteralExpressionNode : public LiteralExpressionNode {
 
     std::string type_name() const override { return "FLOAT_LITERAL:"; }
     std::string get_value() const override { return getValueAsString(); }
+    bool is_constant() const override { return true; }
 
     FloatLiteralExpressionNode(float val, int line = -1, int column = -1)
         : LiteralExpressionNode(NodeType::FLOAT_LITERAL_EXPRESSION, line, column), value(val), label("") {}
@@ -172,6 +178,7 @@ struct DoubleLiteralExpressionNode : public LiteralExpressionNode {
 
     std::string type_name() const override { return "DOUBLE_LITERAL:"; }
     std::string get_value() const override { return getValueAsString(); }
+    bool is_constant() const override { return true; }
 
     DoubleLiteralExpressionNode(double val, int line = -1, int column = -1)
         : LiteralExpressionNode(NodeType::DOUBLE_LITERAL_EXPRESSION, line, column), value(val), label("") {}
@@ -303,6 +310,61 @@ struct MemberAccessNode : public ASTNode {
           struct_expr(std::move(expr)),
           member_name(std::move(member)),
           resolved_symbol(nullptr) {}
+};
+
+struct NamespaceMember {
+    std::string name;
+    std::unique_ptr<ASTNode> node;
+};
+
+class SymbolTable; // Forward declaration
+
+struct NamespaceDefinition : public ASTNode {
+    std::string name;
+    std::vector<NamespaceMember> members;
+    int size;
+
+    SymbolTable* namespace_scope;
+
+    std::string type_name() const override {
+        return "NAMESPACE_DEF: " + name;
+    }
+
+    std::vector<ASTNode*> get_children() const override {
+        std::vector<ASTNode*> children;
+        for (const auto& m : members) {
+            if (m.node) children.push_back(m.node.get());
+        }
+        return children;
+    }
+
+    NamespaceDefinition(std::string n, int line = -1, int column = -1)
+        : ASTNode(NodeType::NAMESPACE_DEFINITION, line, column), 
+          name(std::move(n)), namespace_scope(nullptr) {}
+};
+
+class ScopeResolutionNode : public ASTNode {
+public:
+    std::string namespace_name;
+    std::unique_ptr<ASTNode> member; 
+    Symbol* resolved_symbol;
+    std::string mangled_name; 
+
+    std::string type_name() const override { 
+        return "SCOPE_RESOLUTION: " + namespace_name + "::"; 
+    }
+
+    std::vector<ASTNode*> get_children() const override {
+        return { member.get() };
+    }
+
+    ScopeResolutionNode(std::string ns, std::unique_ptr<ASTNode> mem, int line = -1, int column = -1)
+        : ASTNode(NodeType::NAMESPACE_DEFINITION, line, column),
+          namespace_name(std::move(ns)), 
+          member(std::move(mem)),
+          resolved_symbol(nullptr) {}
+
+    bool is_constant() const override { return member->is_constant(); }
 };
 
 struct ExpressionNode; // Forward declaration

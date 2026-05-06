@@ -46,6 +46,7 @@ private:
     void visit(UnaryOpExpressionNode* node);
     void visit(ArrayAccessNode* node);
     void visit(StructDefinitionNode* node);
+    void visit(NamespaceDefinition* node);
     void visit(AsmStatementNode* node);
     void visit(ConstantDeclarationNode* node);
     void visit(EnumStatementNode* node);

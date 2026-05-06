@@ -134,7 +134,7 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
         }
 
         // Identifier or keyword
-	if (std::isalpha(currentChar) || currentChar == '_') {
+	    if (std::isalpha(currentChar) || currentChar == '_') {
     	    std::string value;
     	    int startColumn = column;
     	    while (currentPos < sourceCode.length() && (std::isalnum(sourceCode[currentPos]) || sourceCode[currentPos] == '_')) {
@@ -199,6 +199,17 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
             continue;
         }
 
+        // : or ::
+        if (currentChar == ':') {
+            if (currentChar + 1 < sourceCode.length() && sourceCode[currentPos + 1] == ':') {
+                tokens.push_back({Token::DOUBLE_COLON, "::", line, column});
+                currentPos += 2; column += 2;
+            } else {
+                tokens.push_back({Token::COLON, ":", line, column});
+                currentPos++; column++; continue;
+            }
+        }
+
         // Other single-char tokens
         if (currentChar == ';') {
             tokens.push_back({Token::SEMICOLON, ";", line, column});
@@ -257,11 +268,6 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
 
         if (currentChar == '.') {
             tokens.push_back({Token::DOT, ".", line, column});
-            currentPos++; column++; continue;
-        }
-
-        if (currentChar == ':') {
-            tokens.push_back({Token::COLON, ":", line, column});
             currentPos++; column++; continue;
         }
 

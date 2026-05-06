@@ -388,7 +388,12 @@ std::unique_ptr<ASTNode> Parser::parseFactor() {
     } else if (current_token.type == Token::DOUBLE_LITERAL) {
         node = parseDoubleLiteralExpression();
     } else if (current_token.type == Token::IDENTIFIER) {
-        if (peek(1).type == Token::LPAREN) {
+        if (peek(1).type == Token::DOUBLE_COLON) {
+            const auto& ns_token = consume();
+            consume();
+            auto member = parseFactor(); 
+            node = std::make_unique<ScopeResolutionNode>(ns_token.value, std::move(member), ns_token.line, ns_token.column);
+        } else if (peek(1).type == Token::LPAREN) {
             node = parseFunctionCall();
         } else if (peek(1).type == Token::LBRACKET) {
             const auto& id_token = consume();
@@ -565,19 +570,46 @@ std::unique_ptr<StructDefinitionNode> Parser::parseStructDefinition() {
     return struct_node;
 }
 
+std::unique_ptr<NamespaceDefinition> Parser::parseNamespaceDefinition() {
+    const Token& start_token = peek();
+    expect(Token::KEYWORD_NAMESPACE, "Expected 'namespace' keyword.");
+
+    const Token& ns_name = peek();
+    expect(Token::IDENTIFIER, "Expected namespace name.");
+
+    auto namespace_node = std::make_unique<NamespaceDefinition>(ns_name.value, start_token.line, start_token.column);
+
+    expect(Token::LBRACE, "Expected '{' after namespace name.");
+
+    while (peek().type != Token::RBRACE && peek().type != Token::END_OF_FILE) {
+        auto decl_node = parseVariableDeclaration();
+
+        std::string member_name = decl_node->declarations.empty() ? "anonymous" : decl_node->declarations[0].name;
+        std::cout << "DEBUG: Parsing namespace member " << member_name << " at " << peek().line << ":" << peek().column << " - Token: " << peek().value << std::endl;
+        namespace_node->members.push_back({member_name, std::move(decl_node)});
+        if (peek().type == Token::SEMICOLON) {
+            consume();
+            continue;
+        }
+    }
+
+    expect(Token::RBRACE, "Expected '}'.");
+    return namespace_node;
+}
+
 std::unique_ptr<EnumStatementNode> Parser::parseEnumStatement() {
-    const Token& enum_start_token = peek(); // For line/column info of the enum statement
+    const Token& enum_start_token = peek();
     expect(Token::KEYWORD_ENUM, "Expected 'enum' keyword.");
 
-    const Token& name_token_val = peek(); // Peek at the potential enum name
-    expect(Token::IDENTIFIER, "Expected enum name."); // Ensure it's an identifier, also consumes it
+    const Token& name_token_val = peek();
+    expect(Token::IDENTIFIER, "Expected enum name.");
 
     expect(Token::LBRACE, "Expected '{' after enum name.");
 
     std::vector<std::unique_ptr<EnumMemberNode>> members;
     while (peek().type != Token::RBRACE) {
-        const Token& member_name_token = peek(); // Peek for the member name token
-        expect(Token::IDENTIFIER, "Expected enum member name."); // Consume the identifier (member name)
+        const Token& member_name_token = peek();
+        expect(Token::IDENTIFIER, "Expected enum member name.");
 
         std::unique_ptr<ASTNode> value = nullptr;
         if (peek().type == Token::EQ) {
@@ -677,6 +709,8 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
             return parseAsmStatement();
         case Token::KEYWORD_ENUM:
             return parseEnumStatement();
+        case Token::KEYWORD_NAMESPACE:
+            return parseNamespaceDefinition();
         default:
             throw std::runtime_error("Parser Error: Unexpected token in statement: '" +
                                      peek().value + "' at line " + std::to_string(peek().line) +

@@ -28,6 +28,7 @@ private:
     std::map<std::string, std::string> constants_map;
     int string_label_counter;
     std::string current_function_name;
+    std::string current_namespace_name;
 
     std::unique_ptr<ProgramNode>& program_ast;
     SymbolTable& symbolTable;
@@ -60,6 +61,7 @@ private:
     void visit(EnumStatementNode* node);
     void visit(DoubleLiteralExpressionNode* node);
     void visit(FloatLiteralExpressionNode* node);
+    void visit(NamespaceDefinition* node);
 
     int getTypeSize(const TypeNode* type);
 

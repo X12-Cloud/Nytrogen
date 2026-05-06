@@ -203,6 +203,9 @@ void SemanticAnalyzer::visit(ASTNode* node) {
         case ASTNode::NodeType::STRUCT_DEFINITION:
             visit(static_cast<StructDefinitionNode*>(node));
             break;
+        case ASTNode::NodeType::NAMESPACE_DEFINITION:
+            visit(static_cast<NamespaceDefinition*>(node));
+            break;
         case ASTNode::NodeType::INTEGER_LITERAL_EXPRESSION:
         case ASTNode::NodeType::STRING_LITERAL_EXPRESSION:
         case ASTNode::NodeType::BOOLEAN_LITERAL_EXPRESSION:
@@ -248,7 +251,7 @@ void SemanticAnalyzer::visit(FunctionDefinitionNode* node) {
             param_offset += size;
         }
     }
-    
+
     // Update the offset of the CURRENT scope
     symbolTable.current_scope->currentOffset = register_param_offset;
 
@@ -593,6 +596,16 @@ void SemanticAnalyzer::visit(StructDefinitionNode* node) {
 
     // Register in symbol table
     symbolTable.addStructDefinition(node->name, node);
+}
+
+void SemanticAnalyzer::visit(NamespaceDefinition* node) {
+    symbolTable.enterScope();
+
+    for (auto& member : node->members) {
+        this->visit(member.node.get());
+    }
+
+    symbolTable.exitScope();
 }
 
 void SemanticAnalyzer::visit(UnaryOpExpressionNode* node) {

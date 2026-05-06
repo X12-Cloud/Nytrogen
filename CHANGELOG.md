@@ -1,6 +1,10 @@
 # Nytrogen Compiler
 
-## 0.131 (Current)
+## 0.1315 (Current)
+### Added:
+- Namespace support.
+
+## 0.131
 ### Added:
 - Switch statements (Only syntax and semantic analysis for now tho).
 - Function to get distro name (QoL).

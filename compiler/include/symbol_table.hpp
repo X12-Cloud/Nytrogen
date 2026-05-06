@@ -32,6 +32,7 @@ struct Symbol {
 
     SymbolType type;
     std::string name;
+    std::string mangled_name;
     std::unique_ptr<TypeNode> dataType; // The type of the symbol (e.g., int, string, Point)
     std::shared_ptr<StructDefinitionNode> structDef; // For struct definitions
     int offset; // For variables: offset from base pointer; for struct members: offset within struct
