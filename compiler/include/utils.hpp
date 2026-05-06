@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cctype>
 #include <fstream>
+#include <vector>
 
 namespace Utils {
     static std::string cleanString(std::string s) {
@@ -31,5 +32,27 @@ namespace Utils {
         return "Unknown Distribution";
     }
 };
+
+namespace Mangler {
+    inline std::string mangleVariable(const std::vector<std::string>& scopes, const std::string& varName) {
+        std::string result = "_N";
+        for (const auto& scope : scopes) {
+            result += std::to_string(scope.length()) + scope;
+        }
+        result += std::to_string(varName.length()) + varName;
+        return result;
+    }
+
+    inline std::string mangleFunction(const std::vector<std::string>& scopes, const std::string& name) {
+        if (name == "main") return "main";
+
+        std::string result = "_Z";
+        for (const auto& scope : scopes) {
+            result += std::to_string(scope.length()) + scope;
+        }
+        result += std::to_string(name.length()) + name;
+        return result;
+    }
+}
 
 #endif

@@ -3,5 +3,6 @@ namespace ns {
 }
 
 int main() {
-    return ns::x;
+    print "ns::x = ", ns::x;
+    return 0;
 }

@@ -115,7 +115,12 @@ void SemanticAnalyzer::analyze() {
         for (const auto& param : func_node->parameters) {
             param_types.push_back(param->type->clone());
         }
+
+        std::string mangled = Mangler::mangleFunction(namespace_stack, func_node->name);
+
         Symbol func_symbol(Symbol::SymbolType::FUNCTION, std::string(func_node->name), std::move(return_type), std::move(param_types));
+        func_symbol.mangled_name = mangled;
+        //std::cout << func_symbol.name << ": " << func_symbol.mangled_name << std::endl;
         symbolTable.addSymbol(std::move(func_symbol));
     }
 
@@ -264,7 +269,25 @@ void SemanticAnalyzer::visit(FunctionDefinitionNode* node) {
     }
 
     currentFunctionReturnType = nullptr;
-    symbolTable.exitScope(); 
+    symbolTable.exitScope();
+}
+
+void SemanticAnalyzer::visit(NamespaceDefinition* node) {
+    namespace_stack.push_back(node->name);
+    symbolTable.enterScope();
+
+    Scope* namespace_scope = symbolTable.current_scope;
+    Symbol ns_symbol(Symbol::SymbolType::NAMESPACE_DEFINITION, node->name, namespace_scope);
+    if (namespace_scope->parent) {
+        namespace_scope->parent->addSymbol(std::move(ns_symbol));
+    }
+
+    for (auto& member : node->members) {
+        this->visit(member.node.get());
+    }
+
+    symbolTable.exitScope();
+    namespace_stack.pop_back();
 }
 
 void SemanticAnalyzer::visit(VariableDeclarationNode* node) {
@@ -277,17 +300,6 @@ void SemanticAnalyzer::visit(VariableDeclarationNode* node) {
 
         std::unique_ptr<TypeNode> actual_type;
 
-        /* if (decl.initial_value) {
-            visitExpression(decl.initial_value.get());
-        }
-
-        int var_size = getTypeSize(actual_type.get());
-        symbolTable.current_scope->currentOffset -= var_size;
-
-        Symbol symbol(Symbol::SymbolType::VARIABLE, decl.name, actual_type->clone(), symbolTable.current_scope->currentOffset, var_size);
-
-        decl.resolved_symbol = symbolTable.addSymbol(std::move(symbol)); */
-
         if (is_auto) {
             if (!decl.initial_value) {
                 throw std::runtime_error("Semantic Error: 'auto' variable '" + decl.name + "' requires an initializer.");
@@ -296,7 +308,6 @@ void SemanticAnalyzer::visit(VariableDeclarationNode* node) {
             if (!actual_type) {
                 throw std::runtime_error("Semantic Error: Could not deduce type for 'auto' variable '" + decl.name + "'.");
             }
-            // node->type = actual_type->clone(); // Update the node's type with the deduced type
         } else {
             actual_type = node->type->clone();
             if (decl.initial_value) {
@@ -313,7 +324,11 @@ void SemanticAnalyzer::visit(VariableDeclarationNode* node) {
         symbolTable.current_scope->currentOffset -= var_size;
         int offset = symbolTable.current_scope->currentOffset;
 
+        std::string unique_label = Mangler::mangleVariable(namespace_stack, decl.name);
+
         Symbol symbol(Symbol::SymbolType::VARIABLE, decl.name, actual_type->clone(), offset, var_size);
+        symbol.mangled_name = unique_label;
+        //std::cout << decl.name << ": " << symbol.mangled_name << std::endl;
         decl.resolved_symbol = symbolTable.addSymbol(std::move(symbol));
     }
 }
@@ -343,6 +358,42 @@ void SemanticAnalyzer::visit(VariableReferenceNode* node) {
     node->resolved_symbol = var_symbol;
     node->resolved_offset = var_symbol->offset;
     node->resolved_type = var_symbol->dataType->clone();
+}
+
+void SemanticAnalyzer::visit(ScopeResolutionNode* node) {
+    Symbol* ns_symbol = symbolTable.lookup(node->namespace_name);
+    if (!ns_symbol || ns_symbol->type != Symbol::SymbolType::NAMESPACE_DEFINITION) {
+        throw std::runtime_error("Semantic Error: '" + node->namespace_name + "' is not a namespace.");
+    }
+
+    Scope* old_scope = symbolTable.current_scope;
+    symbolTable.current_scope = ns_symbol->internal_scope; 
+std::string member_name;
+    if (node->member->node_type == ASTNode::NodeType::VARIABLE_REFERENCE) {
+        member_name = static_cast<VariableReferenceNode*>(node->member.get())->name;
+    } else {
+        member_name = node->member->get_value();
+    }
+
+    auto it = ns_symbol->internal_scope->symbols.find(member_name);
+
+    if (it != ns_symbol->internal_scope->symbols.end()) {
+        Symbol& resolved_sym = it->second;
+
+        if (node->member->node_type == ASTNode::NodeType::VARIABLE_REFERENCE) {
+            auto* var_ref = static_cast<VariableReferenceNode*>(node->member.get());
+            var_ref->resolved_symbol = &resolved_sym;
+            var_ref->resolved_offset = resolved_sym.offset;
+        }
+
+        node->member->resolved_type = resolved_sym.dataType->clone();
+        node->resolved_type = resolved_sym.dataType->clone();
+    } else {
+        symbolTable.current_scope = old_scope;
+        throw std::runtime_error("Semantic Error: Member '" + member_name + "' not found in namespace '" + node->namespace_name + "'.");
+    }
+
+    symbolTable.current_scope = old_scope;
 }
 
 void SemanticAnalyzer::visit(BinaryOperationExpressionNode* node) {
@@ -598,16 +649,6 @@ void SemanticAnalyzer::visit(StructDefinitionNode* node) {
     symbolTable.addStructDefinition(node->name, node);
 }
 
-void SemanticAnalyzer::visit(NamespaceDefinition* node) {
-    symbolTable.enterScope();
-
-    for (auto& member : node->members) {
-        this->visit(member.node.get());
-    }
-
-    symbolTable.exitScope();
-}
-
 void SemanticAnalyzer::visit(UnaryOpExpressionNode* node) {
     std::unique_ptr<TypeNode> operand_type = visitExpression(node->operand.get());
 
@@ -814,6 +855,15 @@ std::unique_ptr<TypeNode> SemanticAnalyzer::visitExpression(ASTNode* expr) {
             auto* decl_node = static_cast<VariableDeclarationNode*>(expr);
             visit(decl_node);
             result_type = decl_node->type->clone();
+            break;
+        }
+        case ASTNode::NodeType::SCOPE_RESOLUTION: {
+            auto* scope_node = static_cast<ScopeResolutionNode*>(expr);
+            visit(scope_node);
+            if (!scope_node->resolved_type) {
+                throw std::runtime_error("Semantic Error: Could not resolve type for namespace member.");
+            }
+            result_type = scope_node->resolved_type->clone();
             break;
         }
         default:

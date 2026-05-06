@@ -43,13 +43,13 @@
 },
 {
   "directory": "/home/mohamed/dev/Nytrogen/driver",
-  "command": "/usr/sbin/c++ -DNYTRO_VERSION=\\\"0.131-beta\\\" -I/home/mohamed/dev/Nytrogen/driver/include -I/home/mohamed/dev/Nytrogen/driver/src -std=gnu++17 -o CMakeFiles/nytro.dir/src/config_loader.cpp.o -c /home/mohamed/dev/Nytrogen/driver/src/config_loader.cpp",
+  "command": "/usr/sbin/c++ -DNYTRO_VERSION=\\\"0.131-beta\\\" -I/home/mohamed/dev/Nytrogen/driver/include -I/home/mohamed/dev/Nytrogen/driver/src -I/usr/include/lua5.4 -std=gnu++17 -o CMakeFiles/nytro.dir/src/config_loader.cpp.o -c /home/mohamed/dev/Nytrogen/driver/src/config_loader.cpp",
   "file": "/home/mohamed/dev/Nytrogen/driver/src/config_loader.cpp",
   "output": "driver/CMakeFiles/nytro.dir/src/config_loader.cpp.o"
 },
 {
   "directory": "/home/mohamed/dev/Nytrogen/driver",
-  "command": "/usr/sbin/c++ -DNYTRO_VERSION=\\\"0.131-beta\\\" -I/home/mohamed/dev/Nytrogen/driver/include -I/home/mohamed/dev/Nytrogen/driver/src -std=gnu++17 -o CMakeFiles/nytro.dir/src/driver.cpp.o -c /home/mohamed/dev/Nytrogen/driver/src/driver.cpp",
+  "command": "/usr/sbin/c++ -DNYTRO_VERSION=\\\"0.131-beta\\\" -I/home/mohamed/dev/Nytrogen/driver/include -I/home/mohamed/dev/Nytrogen/driver/src -I/usr/include/lua5.4 -std=gnu++17 -o CMakeFiles/nytro.dir/src/driver.cpp.o -c /home/mohamed/dev/Nytrogen/driver/src/driver.cpp",
   "file": "/home/mohamed/dev/Nytrogen/driver/src/driver.cpp",
   "output": "driver/CMakeFiles/nytro.dir/src/driver.cpp.o"
 },

@@ -48,6 +48,7 @@ struct ASTNode {
 	    DOUBLE_LITERAL_EXPRESSION = 26,
 	    SWITCH_STATEMENT = 27,
         NAMESPACE_DEFINITION = 28,
+        SCOPE_RESOLUTION = 29,
     };
 
     NodeType node_type;
@@ -354,15 +355,13 @@ public:
         return "SCOPE_RESOLUTION: " + namespace_name + "::"; 
     }
 
-    std::vector<ASTNode*> get_children() const override {
-        return { member.get() };
-    }
+    std::vector<ASTNode*> get_children() const override { return { member.get() }; }
 
     ScopeResolutionNode(std::string ns, std::unique_ptr<ASTNode> mem, int line = -1, int column = -1)
-        : ASTNode(NodeType::NAMESPACE_DEFINITION, line, column),
-          namespace_name(std::move(ns)), 
-          member(std::move(mem)),
-          resolved_symbol(nullptr) {}
+        : ASTNode(NodeType::SCOPE_RESOLUTION, line, column), // Use SCOPE_RESOLUTION here
+        namespace_name(std::move(ns)), 
+        member(std::move(mem)),
+        resolved_symbol(nullptr) {}
 
     bool is_constant() const override { return member->is_constant(); }
 };
@@ -412,6 +411,7 @@ struct VariableReferenceNode : public ASTNode {
     Symbol* resolved_symbol;
     int resolved_offset;
     std::unique_ptr<TypeNode> resolved_type;
+    std::vector<std::string> scopes;
 
     std::string type_name() const override { return "VAR_REF:"; }
     std::string get_value() const override { return name; }

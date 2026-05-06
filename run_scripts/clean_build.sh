@@ -12,17 +12,19 @@ echo "--- Performing a clean build of Nytrogen ---"
 echo "Removing existing 'build', 'out' directories..."
 rm -rf out/*
 rm -rf build
+mkdir build
 
 # Ensure out directory exists for the compiler tests later
 mkdir -p out
 
 echo "Configuring Nytrogen with Lua 5.4..."
 # Combine all flags into one configuration call
-cmake -B build \
+cmake -S . -B build \
   -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
   -DLUA_INCLUDE_DIR=/usr/include/lua5.4 \
-  -DLUA_LIBRARY=/usr/lib/liblua5.4.so \
-  .
+  -DLUA_LIBRARY=/usr/lib/liblua5.4.so
+
+cmake --build build -j$(nproc)
 
 echo "Building components..."
 # Build everything inside the specified build directory

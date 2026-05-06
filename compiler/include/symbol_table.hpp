@@ -13,6 +13,8 @@
 // Forward declaration for StructDefinitionNode if needed, though ast.hpp should include it
 struct EnumStatementNode;
 
+class Scope;
+
 struct EnumInfo {
     std::string name;
     std::shared_ptr<EnumStatementNode> node; // The AST node for the enum
@@ -27,12 +29,14 @@ struct Symbol {
         STRUCT_MEMBER, // For members within a struct definition
         CONSTANT,
         ENUM_TYPE,
-        ENUM_MEMBER
+        ENUM_MEMBER,
+        NAMESPACE_DEFINITION,
     };
 
     SymbolType type;
     std::string name;
     std::string mangled_name;
+    std::string is_global;
     std::unique_ptr<TypeNode> dataType; // The type of the symbol (e.g., int, string, Point)
     std::shared_ptr<StructDefinitionNode> structDef; // For struct definitions
     int offset; // For variables: offset from base pointer; for struct members: offset within struct
@@ -40,6 +44,15 @@ struct Symbol {
     std::unique_ptr<ASTNode> value; // For constants
     std::shared_ptr<EnumInfo> enumInfo; // For enum types
     StructMember::Visibility visibility; // For struct members
+
+    Scope* internal_scope = nullptr; 
+
+    SymbolTable* get_scope() { return (SymbolTable*)internal_scope; } 
+
+    // Constructor for namespaces
+    Symbol(SymbolType type, std::string name, Scope* scope)
+        : type(type), name(std::move(name)), dataType(nullptr), 
+          internal_scope(scope), offset(0), size(0), visibility(StructMember::Visibility::PUBLIC) {}
 
     // Constructor for variables/members
     Symbol(SymbolType type, std::string name, std::unique_ptr<TypeNode> dataType, int offset = 0, int size = 0, StructMember::Visibility visibility = StructMember::Visibility::PUBLIC)

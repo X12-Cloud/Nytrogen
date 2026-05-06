@@ -62,6 +62,7 @@ private:
     void visit(DoubleLiteralExpressionNode* node);
     void visit(FloatLiteralExpressionNode* node);
     void visit(NamespaceDefinition* node);
+    void visit(ScopeResolutionNode* node);
 
     int getTypeSize(const TypeNode* type);
 

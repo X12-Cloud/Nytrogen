@@ -3,5 +3,9 @@
      VAR_DECL
        INT_LITERAL: (10)
    FUNCTION_DEF: main
+     PRINT_STMT
+       STR_LITERAL: (ns::x = )
+       SCOPE_RESOLUTION: ns::
+         VAR_REF: (x)
      RETURN_STMT:
-       VAR_REF: (ns_x)
+       INT_LITERAL: (0)

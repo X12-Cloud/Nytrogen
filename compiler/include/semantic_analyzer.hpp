@@ -27,6 +27,7 @@ private:
     SymbolTable& symbolTable;
     std::string typeToString(const TypeNode* type);
     TypeNode* currentFunctionReturnType = nullptr;
+    std::vector<std::string> namespace_stack;
 
     // Visitor methods for AST nodes
     void visit(ASTNode* node);
@@ -51,6 +52,7 @@ private:
     void visit(ConstantDeclarationNode* node);
     void visit(EnumStatementNode* node);
     void visit(SwitchStatementNode* node);
+    void visit(ScopeResolutionNode* node);
 
     // Expression visitors (return the type of the expression)
     std::unique_ptr<TypeNode> visitExpression(ASTNode* expr);

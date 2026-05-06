@@ -62,6 +62,9 @@ void CodeGenerator::visit(ASTNode* node) {
         case ASTNode::NodeType::NAMESPACE_DEFINITION:
             visit(static_cast<NamespaceDefinition*>(node));
             break;
+        case ASTNode::NodeType::SCOPE_RESOLUTION:
+            visit(static_cast<ScopeResolutionNode*>(node));
+            break;
         case ASTNode::NodeType::VARIABLE_DECLARATION:
             visit(static_cast<VariableDeclarationNode*>(node));
             break;
@@ -140,14 +143,16 @@ bool is_lvalue;
 
 void CodeGenerator::visit(ProgramNode* node) {
     for (const auto& stmt : node->statements) {
-        if (stmt->node_type == ASTNode::NodeType::NAMESPACE_DEFINITION) {
+        //std::cout << "Debug: Visiting Node Type: " << (int)node->node_type << std::endl;
+        /* if (stmt->node_type == ASTNode::NodeType::NAMESPACE_DEFINITION) {
             visit(static_cast<NamespaceDefinition*>(stmt.get()));
         } else if (stmt->node_type == ASTNode::NodeType::VARIABLE_DECLARATION) {
             auto decl_node = static_cast<VariableDeclarationNode*>(stmt.get());
             for (const auto& decl : decl_node->declarations) {
                 out << decl.name << ": resb " << getTypeSize(decl_node->type.get()) << std::endl;
             }
-        }
+        } */
+        visit(stmt.get());
     }
     for (const auto& func : node->functions) {
         visit(func.get());
@@ -213,6 +218,24 @@ void CodeGenerator::visit(NamespaceDefinition* node) {
     current_namespace_name = old_ns;
 }
 
+void CodeGenerator::visit(ScopeResolutionNode* node) {
+    Symbol* ns_symbol = symbolTable.lookup(node->namespace_name);
+    if (ns_symbol && ns_symbol->internal_scope) {
+        auto it = ns_symbol->internal_scope->symbols.find(node->member->get_value());
+        if (it != ns_symbol->internal_scope->symbols.end()) {
+            Symbol& sym = it->second;
+            if (sym.dataType) {
+                node->member->resolved_type = sym.dataType->clone();
+                if (node->member->node_type == ASTNode::NodeType::VARIABLE_REFERENCE) {
+                    auto* var = static_cast<VariableReferenceNode*>(node->member.get());
+                    var->resolved_symbol = &sym;
+                }
+            }
+        }
+    }
+    visit(node->member.get());
+}
+
 void CodeGenerator::visit(ConstantDeclarationNode* node) {
     // No code generation needed for constant declarations
 }
@@ -230,11 +253,14 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
         Symbol* symbol = decl.resolved_symbol;
         if (!symbol) throw std::runtime_error("Code generation error: variable '" + decl.name + "' not found in symbol table.");
 
-        std::string final_name = decl.name;
-        if (!current_namespace_name.empty()) {
-            final_name = current_namespace_name + "_" + decl.name;
-            if (decl.initial_value && decl.initial_value->is_constant()) constants.push_back({final_name, "dq", decl.initial_value->get_value()});
-            else constants.push_back({final_name, "dq", "0"});
+        std::string final_name = symbol->mangled_name;
+
+        if (!final_name.empty() && final_name != decl.name) {
+            std::string init_val = "0";
+            if (decl.initial_value && decl.initial_value->is_constant()) {
+                init_val = decl.initial_value->get_value();
+            }
+            constants.push_back({final_name, "dq", init_val}); 
         } else {
             if (decl.initial_value) {
                 visit(decl.initial_value.get());
@@ -300,12 +326,8 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
         return;
     }
 
-    if (symbol->name.find("::") != std::string::npos) {
-        std::string asm_label = symbol->name;
-        size_t pos;
-        while ((pos = asm_label.find("::")) != std::string::npos) {
-            asm_label.replace(pos, 2, "_");
-        }
+    if (symbol->mangled_name != symbol->name) { 
+        std::string asm_label = symbol->mangled_name;
 
         if (is_lvalue) {
             out << "    lea rax, [rel " << asm_label << "]" << std::endl;
@@ -727,6 +749,8 @@ int CodeGenerator::getTypeSize(const TypeNode* type) {
     if (!type) {
         std::cerr << "Type is null" << std::endl;
         throw std::runtime_error("Code Generation Error: Attempted to get size of a null type.");
+        //std::cerr << "Warning: Encountered null type, defaulting to 8 bytes." << std::endl;
+        //return 8;
     }
 
     switch (type->category) {

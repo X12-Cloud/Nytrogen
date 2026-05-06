@@ -318,20 +318,20 @@ std::unique_ptr<TypeNode> Parser::parseType() {
 std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
     auto type = parseType();
     if (peek().type == Token::COLON) {
-	consume();
+        consume();
         std::vector<Declaration> declarations;
 	do {
     	std::string name = peek().value;
-	expect(Token::IDENTIFIER, "Expected variable name.");
+	    expect(Token::IDENTIFIER, "Expected variable name.");
     	std::unique_ptr<ASTNode> init = nullptr;
     	if (match(Token::EQ)) {
             init = parseExpression();
     	}
     	declarations.push_back({name, std::move(init)});
-	if (peek().type == Token::SEMICOLON) break;
+	    if (peek().type == Token::SEMICOLON) break;
 	} while (match(Token::COMMA));
-	// expect(Token::SEMICOLON, "Expected semicolon ';'.");
-	return std::make_unique<VariableDeclarationNode>(std::move(type), std::move(declarations));
+	    // expect(Token::SEMICOLON, "Expected semicolon ';'.");
+	    return std::make_unique<VariableDeclarationNode>(std::move(type), std::move(declarations));
     }
 
     const Token& id_token = peek();
@@ -391,7 +391,7 @@ std::unique_ptr<ASTNode> Parser::parseFactor() {
         if (peek(1).type == Token::DOUBLE_COLON) {
             const auto& ns_token = consume();
             consume();
-            auto member = parseFactor(); 
+            auto member = parseFactor();
             node = std::make_unique<ScopeResolutionNode>(ns_token.value, std::move(member), ns_token.line, ns_token.column);
         } else if (peek(1).type == Token::LPAREN) {
             node = parseFunctionCall();
@@ -585,7 +585,7 @@ std::unique_ptr<NamespaceDefinition> Parser::parseNamespaceDefinition() {
         auto decl_node = parseVariableDeclaration();
 
         std::string member_name = decl_node->declarations.empty() ? "anonymous" : decl_node->declarations[0].name;
-        std::cout << "DEBUG: Parsing namespace member " << member_name << " at " << peek().line << ":" << peek().column << " - Token: " << peek().value << std::endl;
+        //std::cout << "DEBUG: Parsing namespace member " << member_name << " at " << peek().line << ":" << peek().column << " - Token: " << peek().value << std::endl;
         namespace_node->members.push_back({member_name, std::move(decl_node)});
         if (peek().type == Token::SEMICOLON) {
             consume();

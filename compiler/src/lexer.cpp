@@ -201,13 +201,14 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
 
         // : or ::
         if (currentChar == ':') {
-            if (currentChar + 1 < sourceCode.length() && sourceCode[currentPos + 1] == ':') {
+            if (currentPos + 1 < sourceCode.length() && sourceCode[currentPos + 1] == ':') {
                 tokens.push_back({Token::DOUBLE_COLON, "::", line, column});
                 currentPos += 2; column += 2;
             } else {
                 tokens.push_back({Token::COLON, ":", line, column});
-                currentPos++; column++; continue;
+                currentPos++; column++;
             }
+            continue;
         }
 
         // Other single-char tokens
