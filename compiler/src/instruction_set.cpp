@@ -113,12 +113,12 @@ void CodeGenerator::load_adv(const std::shared_ptr<TypeNode>& type, const std::s
     std::string off_str = std::to_string(offset);
 
     if (is_fp) {
-	if (size == 4) emit("vmovss", dest_reg, "[" + base_reg + " + " + off_str + "]");
-	else emit("vmovsd", dest_reg, "[" + base_reg + "+" + off_str + "]");
+	    if (size == 4) emit("vmovss", dest_reg, "[" + base_reg + " + " + off_str + "]");
+	    else emit("vmovsd", dest_reg, "[" + base_reg + "+" + off_str + "]");
     } else {
-	if (size == 1) emit("movsx", dest_reg, "byte [" + base_reg + " + " + off_str + "]");
-	else if (size == 4) emit("movsx", dest_reg, "dword [" + base_reg + " + " + off_str + "]");
-	else emit("mov", dest_reg, "[" + base_reg + " + " + off_str + "]");
+	    if (size == 1) emit("movsx", dest_reg, "byte [" + base_reg + " + " + off_str + "]");
+	    else if (size == 4) emit("movsx", dest_reg, "dword [" + base_reg + " + " + off_str + "]");
+	    else emit("mov", dest_reg, "[" + base_reg + " + " + off_str + "]");
     }
 }
 

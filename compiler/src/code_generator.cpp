@@ -275,7 +275,7 @@ void CodeGenerator::visit(VariableAssignmentNode* node) {
     bool is_fp = isFloatingPoint(type);
     auto literal = dynamic_cast<LiteralExpressionNode*>(node->right.get());
 
-    if (literal && !is_fp) {
+    /* if (literal && !is_fp) {
 	    is_lvalue = true;
 	    visit(node->left.get());
 	    is_lvalue = false;
@@ -284,25 +284,34 @@ void CodeGenerator::visit(VariableAssignmentNode* node) {
 
 	    emit_adv(type, "rax", 0, val);
 	    return;
-    }
+    } */
 
     visit(node->right.get());
-    if (is_fp) {
-	    is_lvalue = true;
-	    visit(node->left.get());
-	    is_lvalue = false;
-
-	    emit_adv(type, "rax", 0, "xmm0");
+    auto* var_ref = dynamic_cast<VariableReferenceNode*>(node->left.get());
+    if (var_ref && !var_ref->resolved_symbol->mangled_name.empty()) {
+        // GLOBAL PATH: Store directly to the label
+        std::string label = var_ref->resolved_symbol->mangled_name;
+        if (is_fp) {
+            std::string instr = (getTypeSize(type.get()) == 4) ? "vmovss" : "vmovsd";
+            out << "    " << instr << " [rel " << label << "], xmm0" << std::endl;
+        } else {
+            out << "    mov [rel " << label << "], rax" << std::endl;
+        }
     } else {
-        emit("push", "rax");
-
-	    is_lvalue = true;
-	    visit(node->left.get());
-	    is_lvalue = false;
-	
-        emit("pop", "rbx");
-	
-	    emit_adv(type, "rax", 0, "rbx");
+        // LOCAL PATH: Existing stack-based logic
+        if (is_fp) {
+            is_lvalue = true;
+            visit(node->left.get());
+            is_lvalue = false;
+            emit_adv(type, "rax", 0, "xmm0");
+        } else {
+            emit("push", "rax");
+            is_lvalue = true;
+            visit(node->left.get());
+            is_lvalue = false;
+            emit("pop", "rbx");
+            emit_adv(type, "rax", 0, "rbx");
+        }
     }
 }
 
@@ -326,25 +335,32 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
         return;
     }
 
-    if (symbol->mangled_name != symbol->name) { 
+    auto prim = dynamic_cast<PrimitiveTypeNode*>(node->resolved_type.get());
+    bool is_double = prim && (prim->primitive_type == Token::KEYWORD_DOUBLE);
+    bool is_float = prim && (prim->primitive_type == Token::KEYWORD_FLOAT);
+    bool is_global = !symbol->mangled_name.empty() && symbol->mangled_name != symbol->name;
+
+    if (is_global) {
         std::string asm_label = symbol->mangled_name;
 
         if (is_lvalue) {
             out << "    lea rax, [rel " << asm_label << "]" << std::endl;
         } else {
-            out << "    mov rax, [rel " << asm_label << "]" << std::endl;
+            if (is_float || is_double) {
+                std::string instr = is_float ? "vmovss" : "vmovsd";
+                out << "    " << instr << " xmm0, [rel " << asm_label << "]" << std::endl;
+            } else {
+                out << "    mov rax, [rel " << asm_label << "]" << std::endl;
+            }
         }
         return;
-    }
-
-    auto prim = dynamic_cast<PrimitiveTypeNode*>(node->resolved_type.get());
-    bool is_double = prim && (prim->primitive_type == Token::KEYWORD_DOUBLE);
-    bool is_float = prim && (prim->primitive_type == Token::KEYWORD_FLOAT);
-	
-    if (is_lvalue) {
-        emit("lea", "rax", "[rbp + " + std::to_string(offset) + "]");
     } else {
-	    load_adv(node->resolved_type, (is_float || is_double) ? "xmm0" : "rax", "rbp", offset);
+        int offset = symbol->offset;
+        if (is_lvalue) {
+            emit("lea", "rax", "[rbp + " + std::to_string(offset) + "]");
+        } else {
+            load_adv(node->resolved_type, (is_float || is_double) ? "xmm0" : "rax", "rbp", offset);
+        }
     }
 }
 
@@ -714,7 +730,7 @@ void CodeGenerator::visit(DoubleLiteralExpressionNode* node) {
         constants.push_back({label, "dq", val_str});
     }
 
-    out << "    vmovsd xmm0, " << "qword [rel " << node->label << "]" << std::endl;
+    out << "    vmovsd xmm0, " << "qword [rel " << constants_map[val_str] << "]" << std::endl;
 }
 
 void CodeGenerator::visit(StringLiteralExpressionNode* node) {

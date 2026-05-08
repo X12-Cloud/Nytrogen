@@ -294,7 +294,7 @@ std::unique_ptr<TypeNode> Parser::parseType() {
         type_token.type == Token::KEYWORD_DOUBLE ||
         type_token.type == Token::KEYWORD_BOOL ||
         type_token.type == Token::KEYWORD_CHAR ||
-	type_token.type == Token::KEYWORD_VOID) {
+	    type_token.type == Token::KEYWORD_VOID) {
         consume();
         type = std::make_unique<PrimitiveTypeNode>(type_token.type);
     } else if (type_token.type == Token::KEYWORD_AUTO) {
@@ -303,6 +303,9 @@ std::unique_ptr<TypeNode> Parser::parseType() {
     } else if (type_token.type == Token::IDENTIFIER) {
         consume();
         type = std::make_unique<StructTypeNode>(type_token.value);
+    // } else if (type_token.type == Token::DOUBLE_COLON) {
+    //     consume();
+    //     type = std::make_unique<NamespaceDefinition>(type_token.value);
     } else {
         throw std::runtime_error("Expected 'int', 'string', 'bool', 'char', or a defined struct name for type.");
     }
@@ -582,15 +585,33 @@ std::unique_ptr<NamespaceDefinition> Parser::parseNamespaceDefinition() {
     expect(Token::LBRACE, "Expected '{' after namespace name.");
 
     while (peek().type != Token::RBRACE && peek().type != Token::END_OF_FILE) {
-        auto decl_node = parseVariableDeclaration();
-
-        std::string member_name = decl_node->declarations.empty() ? "anonymous" : decl_node->declarations[0].name;
-        //std::cout << "DEBUG: Parsing namespace member " << member_name << " at " << peek().line << ":" << peek().column << " - Token: " << peek().value << std::endl;
-        namespace_node->members.push_back({member_name, std::move(decl_node)});
         if (peek().type == Token::SEMICOLON) {
             consume();
             continue;
         }
+
+        auto member_node = parseStatement();
+        if (!member_node) continue; // Safety check
+
+        std::string name_to_register = "";
+
+        if (auto* v = dynamic_cast<VariableDeclarationNode*>(member_node.get())) {
+            if (!v->declarations.empty()) name_to_register = v->declarations[0].name;
+        } else if (auto* n = dynamic_cast<NamespaceDefinition*>(member_node.get())) {
+            name_to_register = n->name;
+        } else if (auto* f = dynamic_cast<FunctionDefinitionNode*>(member_node.get())) {
+            namespace_node->members.push_back({f->name, std::move(member_node)});
+        }
+
+        if (!name_to_register.empty()) {
+            namespace_node->members.push_back({name_to_register, std::move(member_node)});
+        } else {
+            // This is the "Aha!" moment: print the node type so you know what Nytrogen is seeing
+            std::cerr << "Parser Warning: Skipping unnamed node in namespace at line " << start_token.line << std::endl;
+            // Instead of throwing, just don't add it to the named members list
+        }
+
+        if (peek().type == Token::SEMICOLON) consume();
     }
 
     expect(Token::RBRACE, "Expected '}'.");
@@ -679,9 +700,13 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
         case Token::KEYWORD_FLOAT:
         case Token::KEYWORD_DOUBLE:
         case Token::KEYWORD_AUTO: {
-            auto decl_node = parseVariableDeclaration();
-            expect(Token::SEMICOLON, "Expected ';' after variable declaration.");
-            return decl_node;
+            if (peek(1).type == Token::IDENTIFIER && peek(2).type == Token::LPAREN) {
+                return parseFunctionDefinition();
+            } else {
+                auto decl_node = parseVariableDeclaration();
+                expect(Token::SEMICOLON, "Expected ';' after variable declaration.");
+                return decl_node;
+            }
         }
         case Token::IDENTIFIER: {
             if (peek(1).type == Token::LPAREN) {

@@ -211,6 +211,9 @@ void SemanticAnalyzer::visit(ASTNode* node) {
         case ASTNode::NodeType::NAMESPACE_DEFINITION:
             visit(static_cast<NamespaceDefinition*>(node));
             break;
+        case ASTNode::NodeType::SCOPE_RESOLUTION:
+            visit(static_cast<ScopeResolutionNode*>(node));
+            break;
         case ASTNode::NodeType::INTEGER_LITERAL_EXPRESSION:
         case ASTNode::NodeType::STRING_LITERAL_EXPRESSION:
         case ASTNode::NodeType::BOOLEAN_LITERAL_EXPRESSION:
@@ -270,24 +273,6 @@ void SemanticAnalyzer::visit(FunctionDefinitionNode* node) {
 
     currentFunctionReturnType = nullptr;
     symbolTable.exitScope();
-}
-
-void SemanticAnalyzer::visit(NamespaceDefinition* node) {
-    namespace_stack.push_back(node->name);
-    symbolTable.enterScope();
-
-    Scope* namespace_scope = symbolTable.current_scope;
-    Symbol ns_symbol(Symbol::SymbolType::NAMESPACE_DEFINITION, node->name, namespace_scope);
-    if (namespace_scope->parent) {
-        namespace_scope->parent->addSymbol(std::move(ns_symbol));
-    }
-
-    for (auto& member : node->members) {
-        this->visit(member.node.get());
-    }
-
-    symbolTable.exitScope();
-    namespace_stack.pop_back();
 }
 
 void SemanticAnalyzer::visit(VariableDeclarationNode* node) {
@@ -360,6 +345,24 @@ void SemanticAnalyzer::visit(VariableReferenceNode* node) {
     node->resolved_type = var_symbol->dataType->clone();
 }
 
+void SemanticAnalyzer::visit(NamespaceDefinition* node) {
+    namespace_stack.push_back(node->name);
+    symbolTable.enterScope();
+
+    Scope* namespace_scope = symbolTable.current_scope;
+    Symbol ns_symbol(Symbol::SymbolType::NAMESPACE_DEFINITION, node->name, namespace_scope);
+    if (namespace_scope->parent) {
+        namespace_scope->parent->addSymbol(std::move(ns_symbol));
+    }
+
+    for (auto& member : node->members) {
+        this->visit(member.node.get());
+    }
+
+    symbolTable.exitScope();
+    namespace_stack.pop_back();
+}
+
 void SemanticAnalyzer::visit(ScopeResolutionNode* node) {
     Symbol* ns_symbol = symbolTable.lookup(node->namespace_name);
     if (!ns_symbol || ns_symbol->type != Symbol::SymbolType::NAMESPACE_DEFINITION) {
@@ -367,30 +370,27 @@ void SemanticAnalyzer::visit(ScopeResolutionNode* node) {
     }
 
     Scope* old_scope = symbolTable.current_scope;
-    symbolTable.current_scope = ns_symbol->internal_scope; 
-std::string member_name;
-    if (node->member->node_type == ASTNode::NodeType::VARIABLE_REFERENCE) {
-        member_name = static_cast<VariableReferenceNode*>(node->member.get())->name;
-    } else {
-        member_name = node->member->get_value();
-    }
+    symbolTable.current_scope = ns_symbol->internal_scope;
 
-    auto it = ns_symbol->internal_scope->symbols.find(member_name);
-
-    if (it != ns_symbol->internal_scope->symbols.end()) {
-        Symbol& resolved_sym = it->second;
+    try {
+        this->visit(node->member.get());
 
         if (node->member->node_type == ASTNode::NodeType::VARIABLE_REFERENCE) {
-            auto* var_ref = static_cast<VariableReferenceNode*>(node->member.get());
-            var_ref->resolved_symbol = &resolved_sym;
-            var_ref->resolved_offset = resolved_sym.offset;
+            auto* var = static_cast<VariableReferenceNode*>(node->member.get());
+            node->resolved_type = var->resolved_type->clone();
+        } else if (node->member->node_type == ASTNode::NodeType::SCOPE_RESOLUTION) {
+            auto* nested = static_cast<ScopeResolutionNode*>(node->member.get());
+            if (nested->resolved_type) {
+                node->resolved_type = nested->resolved_type->clone();
+            }
+        }
+        if (!node->resolved_type) {
+            throw std::runtime_error("Semantic Error: Could not resolve type for namespace member '" + node->namespace_name + "'.");
         }
 
-        node->member->resolved_type = resolved_sym.dataType->clone();
-        node->resolved_type = resolved_sym.dataType->clone();
-    } else {
+    } catch (const std::exception& e) {
         symbolTable.current_scope = old_scope;
-        throw std::runtime_error("Semantic Error: Member '" + member_name + "' not found in namespace '" + node->namespace_name + "'.");
+        throw;
     }
 
     symbolTable.current_scope = old_scope;
