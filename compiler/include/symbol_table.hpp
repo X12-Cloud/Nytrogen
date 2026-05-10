@@ -37,10 +37,10 @@ struct Symbol {
     std::string name;
     std::string mangled_name;
     std::string is_global;
-    std::unique_ptr<TypeNode> dataType; // The type of the symbol (e.g., int, string, Point)
-    std::shared_ptr<StructDefinitionNode> structDef; // For struct definitions
-    int offset; // For variables: offset from base pointer; for struct members: offset within struct
-    int size;   // Size in bytes (for variables or struct members)
+    std::unique_ptr<TypeNode> dataType;
+    std::shared_ptr<StructDefinitionNode> structDef;
+    int offset;
+    int size;
     std::unique_ptr<ASTNode> value; // For constants
     std::shared_ptr<EnumInfo> enumInfo; // For enum types
     StructMember::Visibility visibility; // For struct members
@@ -103,12 +103,10 @@ public:
 // Main Symbol Table class
 class SymbolTable {
 public:
-    // This vector is now an ARCHIVE. We only push_back, NEVER pop_back.
     std::vector<std::unique_ptr<Scope>> all_scopes; 
-    bool debug_mode = false; // Add this
-    void setDebugMode(bool mode) { debug_mode = mode; } // Add this
-    
-    // This is our "Read/Write Head"
+    bool debug_mode = false;
+    void setDebugMode(bool mode) { debug_mode = mode; }
+
     Scope* current_scope;
 
     std::map<std::string, StructDefinitionNode*> struct_definitions;
@@ -118,18 +116,20 @@ public:
     }
 
     void enterScope() {
-        // Create new scope linked to the current one
         auto new_scope = std::make_unique<Scope>(current_scope);
         current_scope = new_scope.get(); // Move the head to the new scope
-        
         all_scopes.push_back(std::move(new_scope)); // Save to the archive
         
         if (debug_mode) std::cerr << "Debug: Entered new scope. Total scopes in archive: " << all_scopes.size() << std::endl;
     }
 
     void exitScope() {
+        if (current_scope->parent == nullptr) {
+            std::cout << "WARNING: Attempted to exit the GLOBAL scope! Ignoring." << std::endl;
+            return;
+        }
         if (current_scope && current_scope->parent) {
-            current_scope = current_scope->parent; // Just climb up! No deletion!
+            current_scope = current_scope->parent;
             if (debug_mode) std::cerr << "Debug: Exited scope. Head moved to parent." << std::endl;
         }
     }
@@ -137,15 +137,20 @@ public:
     Symbol* addSymbol(Symbol&& symbol) {
         if (current_scope) {
 	    if (debug_mode) std::cerr << "Debug: Adding symbol '" << symbol.name << "' to current scope." << std::endl;
-            // Use current_scope instead of scopes.back()
             auto result = current_scope->symbols.emplace(symbol.name, std::move(symbol));
             return &(result.first->second);
         }
         return nullptr;
     }
 
+    Symbol* lookupShallow(const std::string& name) {
+        if (current_scope) {
+            return current_scope->lookup(name);
+        }
+        return nullptr;
+    }
+
     Symbol* lookup(const std::string& name) {
-        // Search starting from current_scope and follow parent pointers
         Scope* search_head = current_scope;
         while (search_head != nullptr) {
             if (Symbol* symbol = search_head->lookup(name)) {

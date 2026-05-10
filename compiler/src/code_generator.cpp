@@ -161,6 +161,7 @@ void CodeGenerator::visit(ProgramNode* node) {
 
 void CodeGenerator::visit(FunctionDefinitionNode* node) {
     current_function_name = node->name;
+    current_stack_depth = 0;
     if (node->is_extern) {
         out << "extern " << node->name << std::endl;
         return; // No further code generation for extern functions
@@ -168,9 +169,11 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
 
     out << node->name << ":" << std::endl;
     emit("push", "rbp");
+    current_stack_depth += 8;
     emit("mov", "rbp", "rsp");
 
     emit("and", "rsp", "-16");
+    current_stack_depth = 0;
 
     std::stringstream body_buffer;
     std::streambuf* backup = out.std::ios::rdbuf(body_buffer.rdbuf());
@@ -188,7 +191,10 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
     if (local_var_space == 0) local_var_space = 64;
 
     int aligned_space = (local_var_space + 15) & ~15;
-    if (aligned_space > 0) emit("sub", "rsp", std::to_string(aligned_space));
+    if (aligned_space > 0) {
+        emit("sub", "rsp", std::to_string(aligned_space));
+        current_stack_depth += aligned_space;
+    }
 
     // Push register arguments onto the stack
     const std::vector<std::string> arg_registers = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
@@ -248,6 +254,7 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
     auto prim = static_cast<PrimitiveTypeNode*>(node->type.get());
     bool is_float = prim && (prim->primitive_type == Token::KEYWORD_FLOAT);
     bool is_double = prim && (prim->primitive_type == Token::KEYWORD_DOUBLE);
+    int size = getTypeSize(node->type.get());
     std::string asm_label;
     for (auto& decl : node->declarations) {
         Symbol* symbol = decl.resolved_symbol;
@@ -260,7 +267,11 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
             if (decl.initial_value && decl.initial_value->is_constant()) {
                 init_val = decl.initial_value->get_value();
             }
-            constants.push_back({final_name, "dq", init_val}); 
+            std::string nasm_type = "dq";
+            if (size == 4) nasm_type = "dd";
+            else if (size == 2) nasm_type = "dw";
+            else if (size == 1) nasm_type = "db";
+            constants.push_back({final_name, nasm_type, init_val}); 
         } else {
             if (decl.initial_value) {
                 visit(decl.initial_value.get());
@@ -298,7 +309,6 @@ void CodeGenerator::visit(VariableAssignmentNode* node) {
             out << "    mov [rel " << label << "], rax" << std::endl;
         }
     } else {
-        // LOCAL PATH: Existing stack-based logic
         if (is_fp) {
             is_lvalue = true;
             visit(node->left.get());
@@ -306,10 +316,12 @@ void CodeGenerator::visit(VariableAssignmentNode* node) {
             emit_adv(type, "rax", 0, "xmm0");
         } else {
             emit("push", "rax");
+            current_stack_depth += 8;
             is_lvalue = true;
             visit(node->left.get());
             is_lvalue = false;
             emit("pop", "rbx");
+            current_stack_depth -= 8;
             emit_adv(type, "rax", 0, "rbx");
         }
     }
@@ -365,27 +377,47 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
 }
 
 void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
+    std::cout << "CODEGEN DEBUG: Op " << node->op_type << " has type: "
+          << (node->resolved_type ? "VALID" : "NULL") << std::endl;
+    bool is_float = false;
+    bool is_double = false;
+    if (node->resolved_type->category == TypeNode::TypeCategory::PRIMITIVE) {
+        auto* prim = static_cast<PrimitiveTypeNode*>(node->resolved_type.get());
+        is_float = (prim->primitive_type == Token::KEYWORD_FLOAT);
+        is_double = (prim->primitive_type == Token::KEYWORD_DOUBLE);
+        std::cout << "DEBUG: Verified IsFloat: " << (is_float ? "YES" : "NO") << std::endl;
+    } else {
+        std::cout << "DEBUG: Category is NOT primitive, it is: " << (int)node->resolved_type->category << std::endl;
+    }
+    if (node->resolved_type) {
+        std::cout << "CODEGEN DATA: Category=" << (int)node->resolved_type->category 
+              << " Name=" << node->resolved_type->typeName() << std::endl;
+    }
     // Left
     visit(node->left.get());
-    auto prim = dynamic_cast<PrimitiveTypeNode*>(node->resolved_type.get());
-    bool is_double = prim && (prim->primitive_type == Token::KEYWORD_DOUBLE);
-    bool is_float = prim && (prim->primitive_type == Token::KEYWORD_FLOAT);
+    //auto prim = dynamic_cast<PrimitiveTypeNode*>(node->resolved_type.get());
+    //bool is_double = prim && (prim->primitive_type == Token::KEYWORD_DOUBLE);
+    //bool is_float = prim && (prim->primitive_type == Token::KEYWORD_FLOAT);
+
+    if (is_float) std::cout << "DEBUG: Generating Float Math for " << node->op_type << std::endl;
 
     if (is_float || is_double) {
         out << "    sub rsp, 8" << std::endl;
+        current_stack_depth += 8;
         if (is_double) out << "    vmovsd qword [rsp], xmm0" << std::endl;
 	    else out << "    vmovss dword [rsp], xmm0" << std::endl;
-    } else out << "    push rax" << std::endl;
+    } else out << "    push rax" << std::endl; current_stack_depth += 8;
 
     // Right
     visit(node->right.get());
 
     if (is_float || is_double) {
-	if (is_double) out << "    vmovsd xmm1, qword [rsp]" << std::endl;
-	else out << "    vmovss xmm1, dword [rsp]" << std::endl;
+	    if (is_double) out << "    vmovsd xmm1, qword [rsp]" << std::endl;
+	    else out << "    vmovss xmm1, dword [rsp]" << std::endl;
         out << "    add rsp, 8" << std::endl; // Left is in xmm1, Right is in xmm0
+        current_stack_depth -= 8;
     } else {
-        out << "    pop rbx" << std::endl; 
+        out << "    pop rbx" << std::endl; current_stack_depth -= 8;
 	    out << "    mov rcx, rbx" << std::endl; // Left is in rbx, Right is in rax
     }
 
@@ -585,6 +617,7 @@ void CodeGenerator::visit(FunctionCallNode* node) {
     for (int i = arg_count - 1; i >= (int)arg_regs_64.size(); --i) {
         visit(node->arguments[i].get());
         out << "    push rax" << std::endl;
+        current_stack_depth += 8;
     }
 
     for (int i = std::min(arg_count, (int)arg_regs_64.size()) - 1; i >= 0; --i) {
@@ -601,7 +634,9 @@ void CodeGenerator::visit(FunctionCallNode* node) {
     out << "    call " << node->function_name << std::endl;
 
     if (arg_count > arg_regs_64.size()) {
-        out << "    add rsp, " << (arg_count - arg_regs_64.size()) * 8 << std::endl;
+        int cleanup = (arg_count - arg_regs_64.size()) * 8;
+        out << "    add rsp, " << cleanup << std::endl;
+        current_stack_depth -= cleanup;
     }
 }
 
@@ -796,6 +831,16 @@ int CodeGenerator::getTypeSize(const TypeNode* type) {
             const StructTypeNode* struct_type = static_cast<const StructTypeNode*>(type);
             Symbol* struct_def_symbol = symbolTable.lookup(struct_type->struct_name);
              if (!struct_def_symbol || !struct_def_symbol->structDef) {
+                const auto& structs = symbolTable.getStructDefinitions();
+                if (structs.count(struct_type->struct_name)) {
+                    auto struct_ptr = structs.at(struct_type->struct_name);
+                    if (struct_ptr) {
+                        return struct_ptr->size;
+                    } else {
+                        std::cout << "CRITICAL: Struct '" << struct_type->struct_name 
+                                << "' exists in registry but pointer is NULL!" << std::endl;
+                    }
+                }
                  throw std::runtime_error("Code Generation Error: Undefined struct '" + struct_type->struct_name + "'.");
               }
               return struct_def_symbol->structDef->size;

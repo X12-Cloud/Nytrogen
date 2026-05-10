@@ -62,6 +62,16 @@ void CodeGenerator::emit_adv(const std::unique_ptr<TypeNode>& type, const std::s
     }
 }
 
+void CodeGenerator::call_external(const std::string& func_name) {
+    bool misaligned = ((current_stack_depth + 8) % 16 != 0);
+
+    if (misaligned) emit("sub", "rsp", "8");
+
+    emit("call", func_name);
+
+    if (misaligned) emit("add", "rsp", "8");
+}
+
 void CodeGenerator::emit_print(const std::shared_ptr<TypeNode>& type) {
     auto prim = dynamic_cast<PrimitiveTypeNode*>(type.get());
     int size = getTypeSize(type.get());
@@ -83,7 +93,7 @@ void CodeGenerator::emit_print(const std::shared_ptr<TypeNode>& type) {
         emit("lea", "rdi", "[rel _print_int_format]");
         emit("xor", "rax", "rax");
     }
-    emit("call", "printf");
+    call_external("printf");
 }
 
 void CodeGenerator::emit_binary_op(const std::string& op_instr, char type) {

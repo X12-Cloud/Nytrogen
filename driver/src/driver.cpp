@@ -219,6 +219,7 @@ int main(int argc, char* argv[]) {
 	all_objs += "\"" + obj_path + "\" ";
     }
     std::string link_cmd = lua_config.linker_bin + " -o \"" + final_exe + "\" " + all_objs + lib_flags + " -lc --dynamic-linker /lib64/ld-linux-x86-64.so.2";
+    //std::string link_cmd = "gcc -no-pie -o \"" + final_exe + "\" " + all_objs + lib_flags;
     if (cfg.verbose) std::cout << "Running: " << link_cmd << std::endl;
     if (std::system(link_cmd.c_str()) != 0) {
         std::cerr << Color::RED << "Linker Error: Failed to create executable." << Color::RESET << std::endl;

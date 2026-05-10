@@ -1,5 +1,3 @@
-extern int hi();
-
 enum Status {
     OFF,
     ON,
@@ -21,6 +19,7 @@ int calculate_score(int a, int b) {
 }
 
 int main() {
+    print("Hello");
     // Array Setup
     int map[3];
     int data[3];
@@ -79,8 +78,6 @@ int main() {
             print "status: fail";
         }
     }
-
-    hi();
 
     return 0;
 }

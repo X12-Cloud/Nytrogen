@@ -210,12 +210,24 @@ struct TypeNode {
     TypeCategory category;
     TypeNode(TypeCategory cat) : category(cat) {}
     virtual ~TypeNode() = default;
+    virtual std::string typeName() const = 0;
     virtual std::unique_ptr<TypeNode> clone() const = 0;
 };
 
 struct PrimitiveTypeNode : public TypeNode {
     Token::Type primitive_type;
     PrimitiveTypeNode(Token::Type type) : TypeNode(TypeCategory::PRIMITIVE), primitive_type(type) {}
+
+    std::string typeName() const override {
+        switch(primitive_type) {
+            case Token::KEYWORD_INT:    return "int";
+            case Token::KEYWORD_FLOAT:  return "float";
+            case Token::KEYWORD_DOUBLE: return "double";
+            case Token::KEYWORD_STRING: return "string";
+            case Token::KEYWORD_BOOL:   return "bool";
+            default: return "unknown_primitive";
+        }
+    }
     std::unique_ptr<TypeNode> clone() const override {
         return std::make_unique<PrimitiveTypeNode>(primitive_type);
     }
@@ -224,6 +236,9 @@ struct PrimitiveTypeNode : public TypeNode {
 struct PointerTypeNode : public TypeNode {
     std::unique_ptr<TypeNode> base_type;
     PointerTypeNode(std::unique_ptr<TypeNode> base) : TypeNode(TypeCategory::POINTER), base_type(std::move(base)) {}
+    std::string typeName() const override {
+        return base_type->typeName() + "*";
+    }
     std::unique_ptr<TypeNode> clone() const override {
         return std::make_unique<PointerTypeNode>(base_type->clone());
     }
@@ -237,6 +252,9 @@ struct ArrayTypeNode : public TypeNode {
     std::unique_ptr<TypeNode> clone() const override {
         return std::make_unique<ArrayTypeNode>(base_type->clone(), size);
     }
+    std::string typeName() const override {
+        return base_type->typeName() + "[" + std::to_string(size) + "]";
+    }
 };
 
 struct StructTypeNode : public TypeNode {
@@ -245,12 +263,18 @@ struct StructTypeNode : public TypeNode {
     std::unique_ptr<TypeNode> clone() const override {
         return std::make_unique<StructTypeNode>(struct_name);
     }
+    std::string typeName() const override {
+        return "struct " + struct_name;
+    }
 };
 
 struct AutoTypeNode : public TypeNode {
     AutoTypeNode() : TypeNode(TypeCategory::PRIMITIVE) {} // Treat as primitive for simplicity, actual type deduced later
     std::unique_ptr<TypeNode> clone() const override {
         return std::make_unique<AutoTypeNode>();
+    }
+    std::string typeName() const override {
+        return "auto (deducing)";
     }
 };
 
@@ -410,7 +434,7 @@ struct VariableReferenceNode : public ASTNode {
     std::string name;
     Symbol* resolved_symbol;
     int resolved_offset;
-    std::unique_ptr<TypeNode> resolved_type;
+    //std::unique_ptr<TypeNode> resolved_type;
     std::vector<std::string> scopes;
 
     std::string type_name() const override { return "VAR_REF:"; }
@@ -425,7 +449,7 @@ struct UnaryOpExpressionNode : public ASTNode {
     Token::Type op_type;
     std::unique_ptr<ASTNode> operand;
     Symbol* resolved_symbol;
-    std::unique_ptr<TypeNode> resolved_type;
+    //std::unique_ptr<TypeNode> resolved_type;
 
     UnaryOpExpressionNode(Token::Type op, std::unique_ptr<ASTNode> operand_node, int line = -1, int column = -1)
         : ASTNode(NodeType::UNARY_OP_EXPRESSION, line, column), op_type(op), operand(std::move(operand_node)), resolved_symbol(nullptr) {}
@@ -525,7 +549,7 @@ struct BinaryOperationExpressionNode : public ASTNode {
     std::unique_ptr<ASTNode> left;
     Token::Type op_type;
     std::unique_ptr<ASTNode> right;
-    std::unique_ptr<TypeNode> resolved_type;
+    //std::unique_ptr<TypeNode> resolved_type;
 
     std::string type_name() const override { return "BINARY_OP: "; }
     std::vector<ASTNode*> get_children() const override {

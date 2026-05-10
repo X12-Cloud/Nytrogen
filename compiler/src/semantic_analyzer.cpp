@@ -153,7 +153,7 @@ void SemanticAnalyzer::analyze() {
         throw std::runtime_error("Semantic Error: No 'main' function defined.");
     }
 
-    symbolTable.exitScope();
+    //symbolTable.exitScope();
 }
 
 void SemanticAnalyzer::visit(ASTNode* node) {
@@ -214,12 +214,24 @@ void SemanticAnalyzer::visit(ASTNode* node) {
         case ASTNode::NodeType::SCOPE_RESOLUTION:
             visit(static_cast<ScopeResolutionNode*>(node));
             break;
-        case ASTNode::NodeType::INTEGER_LITERAL_EXPRESSION:
+        case ASTNode::NodeType::FLOAT_LITERAL_EXPRESSION: {
+            auto* lit = static_cast<FloatLiteralExpressionNode*>(node);
+            lit->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_FLOAT);
+            break;
+        }
+        case ASTNode::NodeType::DOUBLE_LITERAL_EXPRESSION: {
+            auto* lit = static_cast<DoubleLiteralExpressionNode*>(node);
+            lit->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_DOUBLE);
+            break;
+        }
+        case ASTNode::NodeType::INTEGER_LITERAL_EXPRESSION: {
+            auto* lit = static_cast<IntegerLiteralExpressionNode*>(node);
+            lit->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_INT);
+            break;
+        }
         case ASTNode::NodeType::STRING_LITERAL_EXPRESSION:
         case ASTNode::NodeType::BOOLEAN_LITERAL_EXPRESSION:
         case ASTNode::NodeType::CHARACTER_LITERAL_EXPRESSION:
-	    case ASTNode::NodeType::FLOAT_LITERAL_EXPRESSION:
-        case ASTNode::NodeType::DOUBLE_LITERAL_EXPRESSION:
             break;
         case ASTNode::NodeType::ASM_STATEMENT:
             visit(static_cast<AsmStatementNode*>(node));
@@ -422,7 +434,10 @@ void SemanticAnalyzer::visit(BinaryOperationExpressionNode* node) {
             node->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_BOOL);
             break;
         default:
-            node->resolved_type = std::move(left_type);
+            if (left_type) {
+                std::cout << "Debug: Binary Op resolving to: " << typeToString(left_type.get()) << std::endl;
+            }
+            node->resolved_type = left_type->clone();
             break;
     }
 }

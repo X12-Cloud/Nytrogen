@@ -1,109 +1,3 @@
---- Performing an incremental build of Nytrogen ---
-[ 14%] Built target nytro-pre
-[ 64%] Built target nytro-c
-[ 85%] Built target nytro
-[100%] Built target nytro-tui
-CMake Warning:
-  No source or binary directory provided.  Both will be assumed to be the
-  same as the current working directory, but note that this warning will
-  become a fatal error in future CMake releases.
-
-
--- Configuring done (0.0s)
--- Generating done (0.0s)
--- Build files have been written to: /home/mohamed/dev/Nytrogen
---- Incremental build complete ---
---- Cleaning out/ directory ---
---- Running Nytrogen Preprocessor ---
-Running: "/home/mohamed/dev/Nytrogen/build/bin/nytro-pre" "stress_test.ny" > "./out/stress_test.pre.nyt"
---- Running Nytrogen Compiler ---
-Running: "/home/mohamed/dev/Nytrogen/build/bin/nytro-c" "./out/stress_test.pre.nyt" "./out/stress_test.asm"  -verbose -debug -entry
-Nytrogen Compiler Arch Linux
-
---- Processing Source File: ./out/stress_test.pre.nyt ---
-
-Debug: Entered new scope. Total scopes in archive: 2
-Debug: Adding symbol 'calculate_score' to current scope.
-Debug: Adding symbol 'main' to current scope.
-Debug: Adding symbol 'Status' to current scope.
-Debug: Adding symbol 'OFF' to current scope.
-Debug: Adding symbol 'ON' to current scope.
-Debug: Adding symbol 'PENDING' to current scope.
-Debug: Adding symbol 'PI' to current scope.
-Debug: Entered new scope. Total scopes in archive: 3
-Debug: Adding symbol 'a' to current scope.
-Debug: Adding symbol 'b' to current scope.
-Debug: Binary Op resolving to: int
-Debug: Binary Op resolving to: int
-Debug: Binary Op resolving to: int
-Debug: Binary Op resolving to: int
-Debug: Exited scope. Head moved to parent.
-Debug: Entered new scope. Total scopes in archive: 4
-Debug: Adding symbol 'map' to current scope.
-Debug: Adding symbol 'data' to current scope.
-Debug: Adding symbol 'p' to current scope.
-DEBUG: Entering visit for node: 0x55d9d8b602e0
-Debug: Struct 'Point' has 2 members in the registry.
-member_found: 1
-DEBUG: Entering visit for node: 0x55d9d8b60440
-Debug: Struct 'Point' has 2 members in the registry.
-member_found: 1
-Debug: Adding symbol 'current_status' to current scope.
-Debug: Adding symbol 'total' to current scope.
-Debug: Adding symbol 'i' to current scope.
-Debug: Entered new scope. Total scopes in archive: 5
-Debug: Binary Op resolving to: int
-Debug: Binary Op resolving to: int
-Debug: Exited scope. Head moved to parent.
-Debug: Adding symbol 'radius' to current scope.
-Debug: Binary Op resolving to: float
-Debug: Binary Op resolving to: float
-Debug: Adding symbol 'area' to current scope.
-DEBUG: Entering visit for node: 0x55d9d8b61810
-Debug: Struct 'Point' has 2 members in the registry.
-member_found: 1
-Debug: Adding symbol 'final_result' to current scope.
-Debug: Exited scope. Head moved to parent.
-CODEGEN DEBUG: Op 37 has type: VALID
-DEBUG: Verified IsFloat: NO
-CODEGEN DATA: Category=0 Name=bool
-CODEGEN DEBUG: Op 40 has type: VALID
-DEBUG: Verified IsFloat: NO
-CODEGEN DATA: Category=0 Name=int
-CODEGEN DEBUG: Op 42 has type: VALID
-DEBUG: Verified IsFloat: NO
-CODEGEN DATA: Category=0 Name=int
-CODEGEN DEBUG: Op 43 has type: VALID
-DEBUG: Verified IsFloat: NO
-CODEGEN DATA: Category=0 Name=int
-CODEGEN DEBUG: Op 41 has type: VALID
-DEBUG: Verified IsFloat: NO
-CODEGEN DATA: Category=0 Name=int
-CODEGEN DEBUG: Op 36 has type: VALID
-DEBUG: Verified IsFloat: NO
-CODEGEN DATA: Category=0 Name=bool
-CODEGEN DEBUG: Op 40 has type: VALID
-DEBUG: Verified IsFloat: NO
-CODEGEN DATA: Category=0 Name=int
-CODEGEN DEBUG: Op 40 has type: VALID
-DEBUG: Verified IsFloat: NO
-CODEGEN DATA: Category=0 Name=int
-CODEGEN DEBUG: Op 34 has type: VALID
-DEBUG: Verified IsFloat: NO
-CODEGEN DATA: Category=0 Name=bool
-CODEGEN DEBUG: Op 37 has type: VALID
-DEBUG: Verified IsFloat: NO
-CODEGEN DATA: Category=0 Name=bool
-Successfully generated assembly to './out/stress_test.asm'
-
---- Assembling stress_test.asm ---
-Running: nasm -f elf64 "./out/stress_test.asm" -o "./out/stress_test.o"
-
---- Linking ---
-Running: ld -o "./out/gtk_test" "./out/stress_test.o"  -lc --dynamic-linker /lib64/ld-linux-x86-64.so.2
-
---- Running output program ---
---- Printing output assembly file ---
 section .text
 extern printf
 extern strcmp
@@ -362,9 +256,9 @@ _while_end_0:
     cvtss2sd xmm0, xmm0
     lea rdi, [rel _print_float_format]
     mov rax, 1
-    sub rsp, 8
+    ;sub rsp, 8
     call printf
-    add rsp, 8
+    ;add rsp, 8
     lea rax, [rel _str_5]
     mov rsi, rax
     lea rdi, [rel _print_str_format]
@@ -438,14 +332,14 @@ section .data
     _str_1 db "nested index access (300):", 0
     _str_2 db "nested assignment result (999):", 0
     _N1p dq 0
-    _N14current_status dd 0
-    _N5total dd 0
-    _N1i dd 0
+    _N14current_status dq 0
+    _N5total dq 0
+    _N1i dq 0
     _str_3 db "processing index...", 0
-    _N6radius dd 5.000000
+    _N6radius dq 5.000000
     _N4area dd 0
     _str_4 db "circle area:", 0
-    _N12final_result dd 0
+    _N12final_result dq 0
     _str_5 db "final score:", 0
     _str_6 db "status: pass", 0
     _str_7 db "status: fail", 0

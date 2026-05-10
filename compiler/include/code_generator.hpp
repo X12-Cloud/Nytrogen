@@ -29,6 +29,7 @@ private:
     int string_label_counter;
     std::string current_function_name;
     std::string current_namespace_name;
+    int current_stack_depth;
 
     std::unique_ptr<ProgramNode>& program_ast;
     SymbolTable& symbolTable;
@@ -73,6 +74,7 @@ private:
     void emit_adv(const std::shared_ptr<TypeNode>& type, const std::string& base_reg, int offset, const std::string& src_val);
     void emit_adv(const std::unique_ptr<TypeNode>& type, const std::string& base_reg, int offset, const std::string& src_val);
     void emit_binary_op(const std::string& op_instr, char type);
+    void call_external(const std::string& func_name);
     void emit_print(const std::shared_ptr<TypeNode>& type);
     void load_adv(const std::shared_ptr<TypeNode>& type, const std::string& dest_reg, const std::string base_reg, int offset);
     void load_adv(const std::unique_ptr<TypeNode>& type, const std::string& dest_reg, const std::string& base_reg, int offset);
