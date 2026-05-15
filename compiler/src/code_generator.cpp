@@ -151,14 +151,14 @@ void CodeGenerator::visit(ProgramNode* node) {
 }
 
 void CodeGenerator::visit(FunctionDefinitionNode* node) {
-    current_function_name = node->name;
+    current_function_name = node->mangled_name;
     current_stack_depth = 0;
     if (node->is_extern) {
-        out << "extern " << node->name << std::endl;
+        out << "extern " << node->mangled_name << std::endl;
         return; // No further code generation for extern functions
     }
 
-    out << node->name << ":" << std::endl;
+    out << node->mangled_name << ":" << std::endl;
     emit("push", "rbp");
     current_stack_depth += 8;
     emit("mov", "rbp", "rsp");
@@ -612,6 +612,10 @@ void CodeGenerator::visit(FunctionCallNode* node) {
     const std::vector<std::string> arg_regs_32 = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
     int arg_count = node->arguments.size();
 
+    if (!node->resolved_symbol) {
+        throw std::runtime_error("CodeGen Error: Function " + node->function_name + " not found.");
+    }
+
     for (int i = arg_count - 1; i >= (int)arg_regs_64.size(); --i) {
         visit(node->arguments[i].get());
         out << "    push rax" << std::endl;
@@ -629,7 +633,9 @@ void CodeGenerator::visit(FunctionCallNode* node) {
         else out << "    mov " << arg_regs_32[i] << ", eax" << std::endl;
     }
 
-    out << "    call " << node->function_name << std::endl;
+    std::string target_label = node->resolved_symbol->mangled_name;
+
+    out << "    call " << target_label << std::endl;
 
     if (arg_count > arg_regs_64.size()) {
         int cleanup = (arg_count - arg_regs_64.size()) * 8;

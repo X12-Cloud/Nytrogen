@@ -480,6 +480,7 @@ struct ParameterNode {
 struct FunctionDefinitionNode : public ASTNode {
     std::unique_ptr<TypeNode> return_type;
     std::string name;
+    std::string mangled_name;
     std::vector<std::unique_ptr<ParameterNode>> parameters;
     std::vector<std::unique_ptr<ASTNode>> body_statements;
 

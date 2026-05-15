@@ -251,6 +251,23 @@ void SemanticAnalyzer::visit(ProgramNode* node) {
 }
 
 void SemanticAnalyzer::visit(FunctionDefinitionNode* node) {
+std::vector<std::unique_ptr<TypeNode>> paramTypes;
+    for (const auto& param : node->parameters) {
+        paramTypes.push_back(param->type->clone());
+    }
+
+    Symbol func_symbol(
+        Symbol::SymbolType::FUNCTION, 
+        node->name, 
+        node->return_type->clone(), 
+        std::move(paramTypes)
+    );
+
+    func_symbol.mangled_name = Mangler::mangleFunction(namespace_stack, node->name);
+    node->mangled_name = func_symbol.mangled_name;
+
+    symbolTable.addSymbol(std::move(func_symbol)); 
+
     symbolTable.enterScope();
 
     currentFunctionReturnType = nullptr;
@@ -391,6 +408,11 @@ void SemanticAnalyzer::visit(ScopeResolutionNode* node) {
             auto* nested = static_cast<ScopeResolutionNode*>(node->member.get());
             if (nested->resolved_type) {
                 node->resolved_type = nested->resolved_type->clone();
+            }
+        } else if (node->member->node_type == ASTNode::NodeType::FUNCTION_CALL) {
+            auto* call = static_cast<FunctionCallNode*>(node->member.get());
+            if (call->resolved_symbol && call->resolved_symbol->dataType) {
+                node->resolved_type = call->resolved_symbol->dataType->clone();
             }
         }
         if (!node->resolved_type) {

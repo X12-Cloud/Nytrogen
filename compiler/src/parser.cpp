@@ -600,15 +600,15 @@ std::unique_ptr<NamespaceDefinition> Parser::parseNamespaceDefinition() {
         } else if (auto* n = dynamic_cast<NamespaceDefinition*>(member_node.get())) {
             name_to_register = n->name;
         } else if (auto* f = dynamic_cast<FunctionDefinitionNode*>(member_node.get())) {
-            namespace_node->members.push_back({f->name, std::move(member_node)});
+            name_to_register = f->name;
+        } else if (auto* s = dynamic_cast<StructDefinitionNode*>(member_node.get())) {
+            name_to_register = s->name;
         }
 
         if (!name_to_register.empty()) {
             namespace_node->members.push_back({name_to_register, std::move(member_node)});
         } else {
-            // This is the "Aha!" moment: print the node type so you know what Nytrogen is seeing
-            std::cerr << "Parser Warning: Skipping unnamed node in namespace at line " << start_token.line << std::endl;
-            // Instead of throwing, just don't add it to the named members list
+            std::cerr << "Parser Warning: Skipping node " << (int)member_node->node_type << " in namespace at line " << start_token.line << std::endl;
         }
 
         if (peek().type == Token::SEMICOLON) consume();
