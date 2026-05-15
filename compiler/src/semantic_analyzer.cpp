@@ -264,7 +264,6 @@ void SemanticAnalyzer::visit(FunctionDefinitionNode* node) {
         int size = getTypeSize(param->type.get());
         if (i < arg_registers.size()) {
             register_param_offset -= 8; 
-            // Use symbolTable.addSymbol directly, it now targets current_scope
             symbolTable.addSymbol(Symbol(Symbol::SymbolType::VARIABLE, param->name, param->type->clone(), register_param_offset, size));
         } else {
             symbolTable.addSymbol(Symbol(Symbol::SymbolType::VARIABLE, param->name, param->type->clone(), param_offset, size));
@@ -272,7 +271,6 @@ void SemanticAnalyzer::visit(FunctionDefinitionNode* node) {
         }
     }
 
-    // Update the offset of the CURRENT scope
     symbolTable.current_scope->currentOffset = register_param_offset;
 
     currentFunctionReturnType = node->return_type.get();
@@ -325,7 +323,6 @@ void SemanticAnalyzer::visit(VariableDeclarationNode* node) {
 
         Symbol symbol(Symbol::SymbolType::VARIABLE, decl.name, actual_type->clone(), offset, var_size);
         symbol.mangled_name = unique_label;
-        //std::cout << decl.name << ": " << symbol.mangled_name << std::endl;
         decl.resolved_symbol = symbolTable.addSymbol(std::move(symbol));
     }
 }
@@ -409,10 +406,7 @@ void SemanticAnalyzer::visit(ScopeResolutionNode* node) {
 }
 
 void SemanticAnalyzer::visit(BinaryOperationExpressionNode* node) {
-    std::cout << "SEMANTIC TRACE: Node " << node << " has type pointer " << node->resolved_type.get() << std::endl;
     std::unique_ptr<TypeNode> left_type = visitExpression(node->left.get());
-    auto p = static_cast<PrimitiveTypeNode*>(left_type.get());
-    std::cout << "SEMANTIC DEBUG: Op child type is " << p->primitive_type << std::endl;
     std::unique_ptr<TypeNode> right_type = visitExpression(node->right.get());
 
     node->left->resolved_type = left_type->clone();
@@ -423,10 +417,10 @@ void SemanticAnalyzer::visit(BinaryOperationExpressionNode* node) {
     }
 
     if (left_type->category == TypeNode::TypeCategory::PRIMITIVE) {
-	auto p1 = static_cast<PrimitiveTypeNode*>(left_type.get());
+        auto p1 = static_cast<PrimitiveTypeNode*>(left_type.get());
         auto p2 = static_cast<PrimitiveTypeNode*>(right_type.get());
         if (p1->primitive_type != p2->primitive_type) {
-	    throw std::runtime_error("Semantic Error: Mixed math. Adding different primitive types is not yet supported.");
+            throw std::runtime_error("Semantic Error: Mixed math. Adding different primitive types is not yet supported.");
         }
     }
 
@@ -526,7 +520,6 @@ void SemanticAnalyzer::visit(SwitchStatementNode* node) {
         }
 
         for (auto& stmt : case_node.body) {
-            //this->analyze();
             visit(stmt.get());
         }
     }
@@ -612,7 +605,7 @@ void SemanticAnalyzer::visit(FunctionCallNode* node) {
 
 
 void SemanticAnalyzer::visit(MemberAccessNode* node) {
-    std::cout << "DEBUG: Entering visit for node: " << node << std::endl;
+    if (debug_mode) std::cout << "Debug: Entering visit for node: " << node << std::endl;
     std::unique_ptr<TypeNode> base_type = visitExpression(node->struct_expr.get());
 
     if (base_type->category != TypeNode::TypeCategory::STRUCT) {
@@ -632,13 +625,12 @@ void SemanticAnalyzer::visit(MemberAccessNode* node) {
     }
     auto* struct_def = it->second;
 
-    std::cout << "Debug: Struct '" << struct_type->struct_name << "' has " << struct_def->members.size() << " members in the registry." << std::endl;
+    if (debug_mode) std::cout << "Debug: Struct '" << struct_type->struct_name << "' has " << struct_def->members.size() << " members in the registry." << std::endl;
     bool member_found = false;
 
      for (const auto& member : struct_def->members) {
         if (strcmp(member.name.c_str(), node->member_name.c_str()) == 0) {
             member_found = true;
-            std::cout << "member_found: " << member_found << std::endl;
 
             // Check visibility
             if (member.visibility == StructMember::Visibility::PRIVATE) {
@@ -647,7 +639,7 @@ void SemanticAnalyzer::visit(MemberAccessNode* node) {
             }
 
             node->resolved_symbol = new Symbol(Symbol::SymbolType::STRUCT_MEMBER, member.name, member.type->clone(), member.offset, getTypeSize(member.type.get()), member.visibility);
-	        node->resolved_type = member.type->clone();
+            node->resolved_type = member.type->clone();
             return;
         }
     }

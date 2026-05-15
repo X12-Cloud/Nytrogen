@@ -13,17 +13,15 @@ namespace App {
         int gravity = 9;
 
         int get_total_version() {
-            return App::version + App::Math::version; 
+            return App::version + App::Math::version;
         }
     }
 }
 
 int main() {
-    print "App Version: ";
-    print App::version;
-
-    print "Math Version: ";
-    print App::Math::version;
+    print "App Version: ", App::version;
+    print "Math Version: ", App::Math::version;
+    print "Gravity: ", App::Physics::gravity;
 
     print "Total: ";
     //print App::Physics::get_total_version();

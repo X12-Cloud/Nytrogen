@@ -20,6 +20,7 @@ public:
     bool areTypesCompatible(const TypeNode* type1, const TypeNode* type2);
 
     void setIsEntryPoint(bool entry) { is_entry_point = entry; }
+    bool debug_mode = false;
 
 private:
     bool is_entry_point = false;
