@@ -1,6 +1,6 @@
  PROGRAM_ROOT
    ENUM: Status
-   CONST_DECL: PI
+   VAR_DECL
      FLOAT_LITERAL: (3.141590)
    FUNCTION_DEF: calculate_score
      IF_STATEMENT
@@ -61,13 +61,14 @@
        FLOAT_LITERAL: (5.000000)
      VAR_DECL
        BINARY_OP: 
+         VAR_REF: (radius)
+         VAR_REF: (radius)
+     VAR_DECL
+       BINARY_OP: 
          VAR_REF: (PI)
-         BINARY_OP: 
-           VAR_REF: (radius)
-           VAR_REF: (radius)
+         VAR_REF: (radiusp2)
      PRINT_STMT
        STR_LITERAL: (circle area:)
-     PRINT_STMT
        VAR_REF: (area)
      VAR_DECL
        FUNC_CALL: calculate_score

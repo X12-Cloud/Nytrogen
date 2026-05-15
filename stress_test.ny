@@ -9,7 +9,7 @@ struct Point {
     int y;
 };
 
-const float PI = 3.14159f;
+float PI = 3.14159f;
 
 int calculate_score(int a, int b) {
     if (a > b) {
@@ -62,9 +62,9 @@ int main() {
 
     // Float Math with Constants
     float radius = 5.0f;
-    float area = PI * (radius * radius);
-    print "circle area:";
-    print area;
+    float radiusp2 = radius * radius;
+    float area = PI * radiusp2;
+    print "circle area:", area;
 
     // Final Function & Logic check
     int final_result = calculate_score(total, p.y);

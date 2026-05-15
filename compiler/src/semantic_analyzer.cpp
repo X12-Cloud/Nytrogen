@@ -409,8 +409,14 @@ void SemanticAnalyzer::visit(ScopeResolutionNode* node) {
 }
 
 void SemanticAnalyzer::visit(BinaryOperationExpressionNode* node) {
+    std::cout << "SEMANTIC TRACE: Node " << node << " has type pointer " << node->resolved_type.get() << std::endl;
     std::unique_ptr<TypeNode> left_type = visitExpression(node->left.get());
+    auto p = static_cast<PrimitiveTypeNode*>(left_type.get());
+    std::cout << "SEMANTIC DEBUG: Op child type is " << p->primitive_type << std::endl;
     std::unique_ptr<TypeNode> right_type = visitExpression(node->right.get());
+
+    node->left->resolved_type = left_type->clone();
+    node->right->resolved_type = right_type->clone();
 
     if (left_type->category != right_type->category) {
         throw std::runtime_error("Semantic Error: Type mismatch in binary operation (cannot operate on " + typeToString(left_type.get()) + " and " + typeToString(right_type.get()) + ")");

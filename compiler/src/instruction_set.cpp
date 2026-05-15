@@ -63,7 +63,7 @@ void CodeGenerator::emit_adv(const std::unique_ptr<TypeNode>& type, const std::s
 }
 
 void CodeGenerator::call_external(const std::string& func_name) {
-    bool misaligned = ((current_stack_depth + 8) % 16 != 0);
+    bool misaligned = (current_stack_depth % 16 != 0);
 
     if (misaligned) emit("sub", "rsp", "8");
 
@@ -98,8 +98,8 @@ void CodeGenerator::emit_print(const std::shared_ptr<TypeNode>& type) {
 
 void CodeGenerator::emit_binary_op(const std::string& op_instr, char type) {
     if (type == 'f' || type == 'l') {
-	std::string suffix = (type == 'f') ? "ss" : "sd";
-	std::string fp_op = op_instr;
+    std::string suffix = (type == 'f') ? "ss" : "sd";
+    std::string fp_op = op_instr;
         if (op_instr == "imul") fp_op = "mul"; // imul -> vmulss
         if (op_instr == "idiv") fp_op = "div"; // idiv -> vdivss
 
@@ -108,7 +108,7 @@ void CodeGenerator::emit_binary_op(const std::string& op_instr, char type) {
         if (op_instr == "idiv") {
             emit("mov", "rcx", "rax");
             emit("mov", "rax", "rbx");
-	    emit("cqo");
+            emit("cqo");
             out << "    idiv rcx" << std::endl;
         } else {
             emit(op_instr, "rbx", "rax");

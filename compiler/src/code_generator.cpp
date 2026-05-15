@@ -200,7 +200,7 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
     const std::vector<std::string> arg_registers = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
     int register_args_size = 0;
     for (int i = 0; i < node->parameters.size() && i < arg_registers.size(); ++i) {
-        int offset = (i + 1) * -8; 
+        int offset = (i + 1) * -8;
         out << "    mov [rbp + " << offset << "], " << arg_registers[i] << std::endl;
     }
 
@@ -264,14 +264,29 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
 
         if (!final_name.empty() && final_name != decl.name) {
             std::string init_val = "0";
-            if (decl.initial_value && decl.initial_value->is_constant()) {
-                init_val = decl.initial_value->get_value();
+            bool has_non_const_init = false;
+
+            if (decl.initial_value) {
+                if (decl.initial_value->is_constant()) {
+                    init_val = decl.initial_value->get_value();
+                } else {
+                    has_non_const_init = true;
+                }
             }
-            std::string nasm_type = "dq";
-            if (size == 4) nasm_type = "dd";
-            else if (size == 2) nasm_type = "dw";
-            else if (size == 1) nasm_type = "db";
-            constants.push_back({final_name, nasm_type, init_val}); 
+
+            std::string nasm_type = (size == 4) ? "dd" : (size == 8) ? "dq" : (size == 1) ? "db" : "dw";
+            constants.push_back({final_name, nasm_type, init_val});
+
+            // FIX: If it's a global with an expression, we must generate the math code and then store it in the label.
+            if (has_non_const_init) {
+                visit(decl.initial_value.get()); // Generates math -> result in rax/xmm0
+                if (is_float || is_double) {
+                    std::string instr = is_float ? "vmovss" : "vmovsd";
+                    out << "    " << instr << " [rel " << final_name << "], xmm0" << std::endl;
+                } else {
+                    out << "    mov [rel " << final_name << "], rax" << std::endl;
+                }
+            }
         } else {
             if (decl.initial_value) {
                 visit(decl.initial_value.get());
@@ -306,7 +321,14 @@ void CodeGenerator::visit(VariableAssignmentNode* node) {
             std::string instr = (getTypeSize(type.get()) == 4) ? "vmovss" : "vmovsd";
             out << "    " << instr << " [rel " << label << "], xmm0" << std::endl;
         } else {
-            out << "    mov [rel " << label << "], rax" << std::endl;
+            int size = getTypeSize(node->left->resolved_type.get());
+            if (size == 4) {
+                emit("mov", "dword [rel " + label + "]", "eax");
+            } else if (size == 1) {
+                emit("mov", "byte [rel " + label + "]", "al");
+            } else {
+                emit("mov", "[rel " + label + "]", "rax");
+            }
         }
     } else {
         if (is_fp) {
@@ -354,6 +376,7 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
 
     if (is_global) {
         std::string asm_label = symbol->mangled_name;
+        int size = getTypeSize(node->resolved_type.get());
 
         if (is_lvalue) {
             out << "    lea rax, [rel " << asm_label << "]" << std::endl;
@@ -362,8 +385,10 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
                 std::string instr = is_float ? "vmovss" : "vmovsd";
                 out << "    " << instr << " xmm0, [rel " << asm_label << "]" << std::endl;
             } else {
-                out << "    mov rax, [rel " << asm_label << "]" << std::endl;
-            }
+                if (size == 1) out << "    movsx rax, byte [rel " << asm_label << "]" << std::endl;
+                else if (size == 4) out << "    movsx rax, dword [rel " << asm_label << "]" << std::endl;
+                else out << "    mov rax, [rel " << asm_label << "]" << std::endl;
+        }
         }
         return;
     } else {
@@ -377,27 +402,26 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
 }
 
 void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
+    std::cout << "CODEGEN TRACE: Node " << node << " has type pointer " << node->resolved_type.get() << std::endl;
     std::cout << "CODEGEN DEBUG: Op " << node->op_type << " has type: "
           << (node->resolved_type ? "VALID" : "NULL") << std::endl;
     bool is_float = false;
     bool is_double = false;
+
     if (node->resolved_type->category == TypeNode::TypeCategory::PRIMITIVE) {
-        auto* prim = static_cast<PrimitiveTypeNode*>(node->resolved_type.get());
-        is_float = (prim->primitive_type == Token::KEYWORD_FLOAT);
-        is_double = (prim->primitive_type == Token::KEYWORD_DOUBLE);
-        std::cout << "DEBUG: Verified IsFloat: " << (is_float ? "YES" : "NO") << std::endl;
-    } else {
-        std::cout << "DEBUG: Category is NOT primitive, it is: " << (int)node->resolved_type->category << std::endl;
+        auto prim = std::static_pointer_cast<PrimitiveTypeNode>(node->resolved_type);
+        is_float = (prim->primitive_type == Token::KEYWORD_FLOAT || prim->primitive_type == Token::FLOAT_LITERAL);
+        is_double = (prim->primitive_type == Token::KEYWORD_DOUBLE || prim->primitive_type == Token::DOUBLE_LITERAL);
     }
-    if (node->resolved_type) {
-        std::cout << "CODEGEN DATA: Category=" << (int)node->resolved_type->category 
-              << " Name=" << node->resolved_type->typeName() << std::endl;
+    if (node->resolved_type->category == TypeNode::TypeCategory::PRIMITIVE) {
+        auto prim = std::static_pointer_cast<PrimitiveTypeNode>(node->resolved_type);
+        std::cout << "DEBUG: Primitive Type ID found: " << prim->primitive_type << std::endl;
+        std::cout << "DEBUG: Expected FLOAT_LITERAL: " << Token::FLOAT_LITERAL << std::endl;
+        std::cout << "DEBUG: Expected KEYWORD_FLOAT: " << Token::KEYWORD_FLOAT << std::endl;
     }
+
     // Left
     visit(node->left.get());
-    //auto prim = dynamic_cast<PrimitiveTypeNode*>(node->resolved_type.get());
-    //bool is_double = prim && (prim->primitive_type == Token::KEYWORD_DOUBLE);
-    //bool is_float = prim && (prim->primitive_type == Token::KEYWORD_FLOAT);
 
     if (is_float) std::cout << "DEBUG: Generating Float Math for " << node->op_type << std::endl;
 
@@ -406,7 +430,10 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
         current_stack_depth += 8;
         if (is_double) out << "    vmovsd qword [rsp], xmm0" << std::endl;
 	    else out << "    vmovss dword [rsp], xmm0" << std::endl;
-    } else out << "    push rax" << std::endl; current_stack_depth += 8;
+    } else {
+        out << "    push rax" << std::endl;
+        current_stack_depth += 8;
+    }
 
     // Right
     visit(node->right.get());
