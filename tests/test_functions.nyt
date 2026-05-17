@@ -1,5 +1,6 @@
 int add(int a, int b) {
-    return a + b;
+    //return a + b;
+    return "hi"; // error cuz it aint an int
 }
 
 int main() {

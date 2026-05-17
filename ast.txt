@@ -1,19 +1,11 @@
  PROGRAM_ROOT
-   CONST_DECL: REPEAT_CHECK
-     INT_LITERAL: (100)
-   CONST_DECL: INNER_CHECK
-     INT_LITERAL: (200)
-   CONST_DECL: LOCAL_CONSTANT
-     INT_LITERAL: (42)
-   FUNCTION_DEF: get_local_constant
+   FUNCTION_DEF: add
      RETURN_STMT:
-       VAR_REF: (LOCAL_CONSTANT)
+       STR_LITERAL: (hi)
    FUNCTION_DEF: main
+     VAR_DECL
+     ASTNode
      PRINT_STMT
-       VAR_REF: (LOCAL_CONSTANT)
-     PRINT_STMT
-       VAR_REF: (REPEAT_CHECK)
-     PRINT_STMT
-       STR_LITERAL: (hello)
+       VAR_REF: (result)
      RETURN_STMT:
        INT_LITERAL: (0)
