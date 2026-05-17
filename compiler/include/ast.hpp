@@ -81,11 +81,13 @@ struct ASTNode {
         out << space << " " << this->type_name();
 
         std::string val = this->get_value();
-        if (!val.empty()) out << " (" << val << ")";
+        if (!val.empty()) { out << " (" << val << ")";
+}
         out << std::endl;
 
         for (auto* child : get_children()) {
-            if (child) child->dump_to_stream(out, indent + 1);
+            if (child != nullptr) { child->dump_to_stream(out, indent + 1);
+}
         }
     }
 
@@ -141,8 +143,8 @@ struct BooleanLiteralExpressionNode : public LiteralExpressionNode {
     bool is_constant() const override { return true; }
 
     BooleanLiteralExpressionNode(int val, int line = -1, int column = -1)
-        : LiteralExpressionNode(NodeType::BOOLEAN_LITERAL_EXPRESSION, line, column), value(val) {}
-    std::string getValueAsString() const override { return std::to_string(value); }
+        : LiteralExpressionNode(NodeType::BOOLEAN_LITERAL_EXPRESSION, line, column), value(val != 0) {}
+    std::string getValueAsString() const override { return value ? "true" : "false"; }
 };
 
 // Node representing character literals (e.g., 'x')
@@ -358,7 +360,8 @@ struct NamespaceDefinition : public ASTNode {
     std::vector<ASTNode*> get_children() const override {
         std::vector<ASTNode*> children;
         for (const auto& m : members) {
-            if (m.node) children.push_back(m.node.get());
+            if (m.node) { children.push_back(m.node.get());
+}
         }
         return children;
     }
@@ -407,7 +410,8 @@ struct VariableDeclarationNode : public ASTNode {
     std::vector<ASTNode*> get_children() const override {
         std::vector<ASTNode*> refs;
         for (auto& decl : declarations) {
-            if (decl.initial_value) refs.push_back(decl.initial_value.get());
+            if (decl.initial_value) { refs.push_back(decl.initial_value.get());
+}
         }
         return refs;
     }
@@ -487,7 +491,8 @@ struct FunctionDefinitionNode : public ASTNode {
     std::string type_name() const override { return "FUNCTION_DEF: " + name; }
     std::vector<ASTNode*> get_children() const override {
         std::vector<ASTNode*> refs;
-        for (auto& stmt : body_statements) refs.push_back(stmt.get());
+        for (auto& stmt : body_statements) { refs.push_back(stmt.get());
+}
         return refs;
     }
 
@@ -507,7 +512,8 @@ struct FunctionCallNode : public ASTNode {
     std::string type_name() const override { return "FUNC_CALL: " + function_name; }
     std::vector<ASTNode*> get_children() const override {
         std::vector<ASTNode*> refs;
-        for (auto& arg : arguments) refs.push_back(arg.get());
+        for (auto& arg : arguments) { refs.push_back(arg.get());
+}
         return refs;
     }
 
@@ -571,7 +577,8 @@ struct PrintStatementNode : public ASTNode {
     std::string type_name() const override { return "PRINT_STMT"; }
     std::vector<ASTNode*> get_children() const override {
         std::vector<ASTNode*> refs;
-        for (auto& expr : expressions) refs.push_back(expr.get());
+        for (auto& expr : expressions) { refs.push_back(expr.get());
+}
         return refs;
     }
 
@@ -589,9 +596,12 @@ struct IfStatementNode : public ASTNode {
     std::string type_name() const override { return "IF_STATEMENT"; }
     std::vector<ASTNode*> get_children() const override {
         std::vector<ASTNode*> refs;
-        if (condition) refs.push_back(condition.get());
-        for (auto& stmt : true_block) refs.push_back(stmt.get());
-        for (auto& stmt : false_block) refs.push_back(stmt.get());
+        if (condition) { refs.push_back(condition.get());
+}
+        for (auto& stmt : true_block) { refs.push_back(stmt.get());
+}
+        for (auto& stmt : false_block) { refs.push_back(stmt.get());
+}
         return refs;
     }
 
@@ -622,9 +632,11 @@ struct SwitchStatementNode : public ASTNode {
     std::string type_name() const override { return "SWITCH_STATEMENT"; }
     std::vector<ASTNode*> get_children() const override {
         std::vector<ASTNode*> refs;
-        if (condition) refs.push_back(condition.get());
+        if (condition) { refs.push_back(condition.get());
+}
         for (auto& c : cases) {
-            if (c.constant_expr) refs.push_back(c.constant_expr.get());
+            if (c.constant_expr) { refs.push_back(c.constant_expr.get());
+}
             for (auto& stmt : c.body) {
                 refs.push_back(stmt.get());
             }
@@ -644,9 +656,12 @@ struct ProgramNode : public ASTNode {
 
     std::vector<ASTNode*> get_children() const override {
         std::vector<ASTNode*> refs;
-        for (auto& stmt : statements) refs.push_back(stmt.get());
-        for (auto& func : functions) refs.push_back(func.get());
-        for (auto& str : structs) refs.push_back(str.get());
+        for (auto& stmt : statements) { refs.push_back(stmt.get());
+}
+        for (auto& func : functions) { refs.push_back(func.get());
+}
+        for (auto& str : structs) { refs.push_back(str.get());
+}
         return refs;
     }
 

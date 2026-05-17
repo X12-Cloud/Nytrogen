@@ -22,11 +22,13 @@ void CodeGenerator::generate(const std::string& output_filename, bool is_entry_p
     out << "section .text" << std::endl;
     out << "extern printf" << std::endl;
     out << "extern strcmp" << std::endl;
-    if (is_entry_point) out << "global _start" << std::endl;
+    if (is_entry_point) { out << "global _start" << std::endl;
+}
 
     for (const auto& func : program_ast->functions) {
-        if (!func->body_statements.empty()) out << "global " << func->name << std::endl;
-	    else out << "extern " << func->name << std::endl;
+        if (!func->body_statements.empty()) { out << "global " << func->name << std::endl;
+	    } else { out << "extern " << func->name << std::endl;
+}
     }
 
     // entry point
@@ -50,7 +52,8 @@ void CodeGenerator::generate(const std::string& output_filename, bool is_entry_p
 }
 
 void CodeGenerator::visit(ASTNode* node) {
-    if (!node) return;
+    if (!node) { return;
+}
 
     switch (node->node_type) {
         case ASTNode::NodeType::PROGRAM:
@@ -178,8 +181,10 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
 
     // Calculate total local variable space from current scope
     int local_var_space = 0;
-    if (!symbolTable.all_scopes.empty()) local_var_space = -symbolTable.all_scopes.back()->currentOffset;
-    if (local_var_space == 0) local_var_space = 64;
+    if (!symbolTable.all_scopes.empty()) { local_var_space = -symbolTable.all_scopes.back()->currentOffset;
+}
+    if (local_var_space == 0) { local_var_space = 64;
+}
 
     int aligned_space = (local_var_space + 15) & ~15;
     if (aligned_space > 0) {
@@ -210,7 +215,8 @@ void CodeGenerator::visit(NamespaceDefinition* node) {
     current_namespace_name = node->name;
 
     for (auto& m : node->members) {
-        if (m.node) visit(m.node.get());
+        if (m.node) { visit(m.node.get());
+}
     }
     current_namespace_name = old_ns;
 }
@@ -249,7 +255,8 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
     std::string asm_label;
     for (auto& decl : node->declarations) {
         Symbol* symbol = decl.resolved_symbol;
-        if (!symbol) throw std::runtime_error("Code generation error: variable '" + decl.name + "' not found in symbol table.");
+        if (!symbol) { throw std::runtime_error("Code generation error: variable '" + decl.name + "' not found in symbol table.");
+}
 
         std::string final_name = symbol->mangled_name;
 
@@ -363,19 +370,18 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
                 std::string instr = is_float ? "vmovss" : "vmovsd";
                 out << "    " << instr << " xmm0, [rel " << asm_label << "]" << std::endl;
             } else {
-                if (size == 1) out << "    movsx rax, byte [rel " << asm_label << "]" << std::endl;
-                else if (size == 4) out << "    movsx rax, dword [rel " << asm_label << "]" << std::endl;
-                else out << "    mov rax, [rel " << asm_label << "]" << std::endl;
-        }
+                if (size == 1) { out << "    movsx rax, byte [rel " << asm_label << "]" << std::endl;
+                } else if (size == 4) { out << "    movsx rax, dword [rel " << asm_label << "]" << std::endl;
+                } else { out << "    mov rax, [rel " << asm_label << "]" << std::endl; }
+            }
         }
         return;
+    }
+    offset = symbol -> offset;
+    if (is_lvalue) {
+        emit("lea", "rax", "[rbp + " + std::to_string(offset) + "]");
     } else {
-        int offset = symbol->offset;
-        if (is_lvalue) {
-            emit("lea", "rax", "[rbp + " + std::to_string(offset) + "]");
-        } else {
-            load_adv(node->resolved_type, (is_float || is_double) ? "xmm0" : "rax", "rbp", offset);
-        }
+        load_adv(node->resolved_type, (is_float || is_double) ? "xmm0" : "rax", "rbp", offset);
     }
 }
 
@@ -402,8 +408,9 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
     if (is_float || is_double) {
         out << "    sub rsp, 8" << std::endl;
         current_stack_depth += 8;
-        if (is_double) out << "    vmovsd qword [rsp], xmm0" << std::endl;
-        else out << "    vmovss dword [rsp], xmm0" << std::endl;
+        if (is_double) { out << "    vmovsd qword [rsp], xmm0" << std::endl;
+        } else { out << "    vmovss dword [rsp], xmm0" << std::endl;
+}
     } else {
         out << "    push rax" << std::endl;
         current_stack_depth += 8;
@@ -413,8 +420,9 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
     visit(node->right.get());
 
     if (is_float || is_double) {
-        if (is_double) out << "    vmovsd xmm1, qword [rsp]" << std::endl;
-        else out << "    vmovss xmm1, dword [rsp]" << std::endl;
+        if (is_double) { out << "    vmovsd xmm1, qword [rsp]" << std::endl;
+        } else { out << "    vmovss xmm1, dword [rsp]" << std::endl;
+}
         out << "    add rsp, 8" << std::endl; // Left is in xmm1, Right is in xmm0
         current_stack_depth -= 8;
     } else {
@@ -423,8 +431,9 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
     }
 
     char type = 'd';
-    if (is_float) type = 'f';
-    else if (is_double) type = 'l';
+    if (is_float) { type = 'f';
+    } else if (is_double) { type = 'l';
+}
     switch (node->op_type) {
         case Token::PLUS:
 	        emit_binary_op("add", type);
@@ -626,11 +635,13 @@ void CodeGenerator::visit(FunctionCallNode* node) {
         visit(node->arguments[i].get());
 
         int size = 8;
-        if (node->arguments[i]->resolved_type) size = getTypeSize(node->arguments[i]->resolved_type.get());
-        else std::cerr << "Warning: Argument " << i << " in call to '" << node->function_name << "' has no resolved type. Defaulting to 8 bytes." << std::endl;
+        if (node->arguments[i]->resolved_type) { size = getTypeSize(node->arguments[i]->resolved_type.get());
+        } else { std::cerr << "Warning: Argument " << i << " in call to '" << node->function_name << "' has no resolved type. Defaulting to 8 bytes." << std::endl;
+}
 
-        if (size == 8) out << "    mov " << arg_regs_64[i] << ", rax" << std::endl;
-        else out << "    mov " << arg_regs_32[i] << ", eax" << std::endl;
+        if (size == 8) { out << "    mov " << arg_regs_64[i] << ", rax" << std::endl;
+        } else { out << "    mov " << arg_regs_32[i] << ", eax" << std::endl;
+}
     }
 
     std::string target_label = node->resolved_symbol->mangled_name;
@@ -739,7 +750,8 @@ void CodeGenerator::visit(StructDefinitionNode* node) {
 void CodeGenerator::visit(IntegerLiteralExpressionNode* node) {
     out << "    mov rax, " << node->value << std::endl;
 
-    if (!node->resolved_type) node->resolved_type = std::make_shared<PrimitiveTypeNode>(Token::KEYWORD_INT);
+    if (!node->resolved_type) { node->resolved_type = std::make_shared<PrimitiveTypeNode>(Token::KEYWORD_INT);
+}
 }
 
 void CodeGenerator::visit(FloatLiteralExpressionNode* node) {
@@ -789,7 +801,8 @@ void CodeGenerator::visit(BooleanLiteralExpressionNode* node) {
 
 void CodeGenerator::visit(CharacterLiteralExpressionNode* node) {
     out << "    mov rax, " << static_cast<int>(node->value) << std::endl;
-    if (!node->resolved_type) node->resolved_type = std::make_shared<PrimitiveTypeNode>(Token::KEYWORD_BOOL);
+    if (!node->resolved_type) { node->resolved_type = std::make_shared<PrimitiveTypeNode>(Token::KEYWORD_BOOL);
+}
 }
 
 void CodeGenerator::visit(AsmStatementNode* node) {
@@ -836,10 +849,9 @@ int CodeGenerator::getTypeSize(const TypeNode* type) {
                     auto struct_ptr = structs.at(struct_type->struct_name);
                     if (struct_ptr) {
                         return struct_ptr->size;
-                    } else {
-                        std::cout << "CRITICAL: Struct '" << struct_type->struct_name 
+                    }                         std::cout << "CRITICAL: Struct '" << struct_type->struct_name 
                                 << "' exists in registry but pointer is NULL!" << std::endl;
-                    }
+                   
                 }
                  throw std::runtime_error("Code Generation Error: Undefined struct '" + struct_type->struct_name + "'.");
               }

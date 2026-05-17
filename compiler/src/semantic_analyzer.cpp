@@ -55,7 +55,8 @@ bool SemanticAnalyzer::areTypesCompatible(const TypeNode* type1, const TypeNode*
     }
 
     auto isString = [](const TypeNode* t) {
-        if (t->category != TypeNode::TypeCategory::PRIMITIVE) return false;
+        if (t->category != TypeNode::TypeCategory::PRIMITIVE) { return false;
+}
         auto prim = static_cast<const PrimitiveTypeNode*>(t);
         return prim->primitive_type == Token::KEYWORD_STRING;
     };
@@ -71,7 +72,8 @@ bool SemanticAnalyzer::areTypesCompatible(const TypeNode* type1, const TypeNode*
         bool isPointer = (type1->category == TypeNode::TypeCategory::POINTER || type1->category == TypeNode::TypeCategory::ARRAY);
         bool isOtherPointer = (type2->category == TypeNode::TypeCategory::POINTER || type2->category == TypeNode::TypeCategory::ARRAY);
 
-        if (!(isPointer && isOtherPointer)) return false;
+        if (!(isPointer && isOtherPointer)) { return false;
+}
     }
 
     switch (type1->category) {
@@ -152,7 +154,8 @@ void SemanticAnalyzer::analyze() {
 }
 
 void SemanticAnalyzer::visit(ASTNode* node) {
-    if (!node) return;
+    if (!node) { return;
+}
 
     switch (node->node_type) {
         case ASTNode::NodeType::PROGRAM:
@@ -319,7 +322,8 @@ void SemanticAnalyzer::visit(VariableDeclarationNode* node) {
             actual_type = node->type->clone();
             if (decl.initial_value) {
                 auto expr_type = visitExpression(decl.initial_value.get());
-                if (!areTypesCompatible(expr_type.get(), actual_type.get())) Utils::report_error("Semantic Error", "Type mismatch for initialization of '" + decl.name + "'.", node->line);
+                if (!areTypesCompatible(expr_type.get(), actual_type.get())) { Utils::report_error("Semantic Error", "Type mismatch for initialization of '" + decl.name + "'.", node->line);
+}
             }
         }
 
@@ -462,7 +466,8 @@ void SemanticAnalyzer::visit(BinaryOperationExpressionNode* node) {
 void SemanticAnalyzer::visit(PrintStatementNode* node) {
     for (const auto& expr : node->expressions) {
         expr->resolved_type = std::move(visitExpression(expr.get()));
-        if (!expr->resolved_type) Utils::report_error("Semantic Error", "Could not resolve type for print expression.", node->line);
+        if (!expr->resolved_type) { Utils::report_error("Semantic Error", "Could not resolve type for print expression.", node->line);
+}
     }
 }
 
@@ -523,7 +528,8 @@ void SemanticAnalyzer::visit(SwitchStatementNode* node) {
 
     for (auto& case_node : node->cases) {
         if (case_node.is_default) {
-            if (has_default) Utils::report_error("Semantic Error", "Multiple 'default' cases found.", node->line);
+            if (has_default) { Utils::report_error("Semantic Error", "Multiple 'default' cases found.", node->line);
+}
             has_default = true;
         } else {
             auto* literal = dynamic_cast<IntegerLiteralExpressionNode*>(case_node.constant_expr.get());
@@ -621,13 +627,15 @@ void SemanticAnalyzer::visit(FunctionCallNode* node) {
                                      " of function '" + node->function_name + "'.", node->line);
         }
     }
-    if (func_symbol->dataType) node->resolved_type = func_symbol->dataType->clone();
-    else Utils::report_error("Semantic Error", "Function '" + node->function_name + "' has no return type.", node->line);
+    if (func_symbol->dataType) { node->resolved_type = func_symbol->dataType->clone();
+    } else { Utils::report_error("Semantic Error", "Function '" + node->function_name + "' has no return type.", node->line);
+}
 }
 
 
 void SemanticAnalyzer::visit(MemberAccessNode* node) {
-    if (debug_mode) std::cout << "Debug: Entering visit for node: " << node << std::endl;
+    if (debug_mode) { std::cout << "Debug: Entering visit for node: " << node << std::endl;
+}
     std::unique_ptr<TypeNode> base_type = visitExpression(node->struct_expr.get());
 
     if (base_type->category != TypeNode::TypeCategory::STRUCT) {
@@ -647,7 +655,8 @@ void SemanticAnalyzer::visit(MemberAccessNode* node) {
     }
     auto* struct_def = it->second;
 
-    if (debug_mode) std::cout << "Debug: Struct '" << struct_type->struct_name << "' has " << struct_def->members.size() << " members in the registry." << std::endl;
+    if (debug_mode) { std::cout << "Debug: Struct '" << struct_type->struct_name << "' has " << struct_def->members.size() << " members in the registry." << std::endl;
+}
     bool member_found = false;
 
      for (const auto& member : struct_def->members) {
@@ -836,14 +845,16 @@ std::unique_ptr<TypeNode> SemanticAnalyzer::visitExpression(ASTNode* expr) {
             auto* var_node = static_cast<VariableReferenceNode*>(expr);
             visit(var_node); 
             Symbol* sym = symbolTable.lookup(var_node->name);
-            if (!sym || !sym->dataType) Utils::report_error("Semantic Error", "Variable not found or unresolved.", var_node->line);
+            if (!sym || !sym->dataType) { Utils::report_error("Semantic Error", "Variable not found or unresolved.", var_node->line);
+}
             result_type = sym->dataType->clone();
             break;
         }
         case ASTNode::NodeType::BINARY_OPERATION_EXPRESSION: {
             auto* bin_node = static_cast<BinaryOperationExpressionNode*>(expr);
             visit(bin_node);
-            if (!bin_node->resolved_type) Utils::report_error("Semantic Error", "Binary op failed type resolution", bin_node->line);
+            if (!bin_node->resolved_type) { Utils::report_error("Semantic Error", "Binary op failed type resolution", bin_node->line);
+}
 
             result_type = bin_node->resolved_type->clone();
             break;
@@ -867,7 +878,8 @@ std::unique_ptr<TypeNode> SemanticAnalyzer::visitExpression(ASTNode* expr) {
         case ASTNode::NodeType::UNARY_OP_EXPRESSION: {
             auto* unary_node = static_cast<UnaryOpExpressionNode*>(expr);
             visit(unary_node);
-            if (!unary_node->resolved_type) Utils::report_error("Semantic Error", "Unary op failed type resolution", unary_node->line);
+            if (!unary_node->resolved_type) { Utils::report_error("Semantic Error", "Unary op failed type resolution", unary_node->line);
+}
 
             result_type = unary_node->resolved_type->clone();
             break;
@@ -946,7 +958,8 @@ std::unique_ptr<TypeNode> SemanticAnalyzer::visitDoubleLiteralExpression(DoubleL
 }
 
 std::string SemanticAnalyzer::typeToString(const TypeNode* type) {
-    if (!type) return "null";
+    if (!type) { return "null";
+}
     switch (type->category) {
         case TypeNode::TypeCategory::PRIMITIVE: {
             auto p = static_cast<const PrimitiveTypeNode*>(type);

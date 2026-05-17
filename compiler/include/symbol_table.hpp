@@ -6,9 +6,9 @@
 #include <vector>
 #include <map>
 #include <memory>
-#include <iostream> // For std::cerr and std::endl
-#include <ostream>  // For std::endl
-#include "ast.hpp" // For TypeNode and other AST types
+#include <iostream>
+#include <ostream>
+#include "ast.hpp"
 
 // Forward declaration for StructDefinitionNode if needed, though ast.hpp should include it
 struct EnumStatementNode;
@@ -120,7 +120,8 @@ public:
         current_scope = new_scope.get(); // Move the head to the new scope
         all_scopes.push_back(std::move(new_scope)); // Save to the archive
         
-        if (debug_mode) std::cerr << "Debug: Entered new scope. Total scopes in archive: " << all_scopes.size() << std::endl;
+        if (debug_mode) { std::cerr << "Debug: Entered new scope. Total scopes in archive: " << all_scopes.size() << std::endl;
+}
     }
 
     void exitScope() {
@@ -128,15 +129,17 @@ public:
             std::cout << "WARNING: Attempted to exit the GLOBAL scope! Ignoring." << std::endl;
             return;
         }
-        if (current_scope && current_scope->parent) {
+        if (current_scope != nullptr && current_scope->parent != nullptr) {
             current_scope = current_scope->parent;
-            if (debug_mode) std::cerr << "Debug: Exited scope. Head moved to parent." << std::endl;
+            if (debug_mode) { std::cerr << "Debug: Exited scope. Head moved to parent." << std::endl;
+}
         }
     }
 
     Symbol* addSymbol(Symbol&& symbol) {
-        if (current_scope) {
-	    if (debug_mode) std::cerr << "Debug: Adding symbol '" << symbol.name << "' to current scope." << std::endl;
+        if (current_scope != nullptr) {
+	    if (debug_mode) { std::cerr << "Debug: Adding symbol '" << symbol.name << "' to current scope." << std::endl;
+}
             auto result = current_scope->symbols.emplace(symbol.name, std::move(symbol));
             return &(result.first->second);
         }
@@ -144,7 +147,7 @@ public:
     }
 
     Symbol* lookupShallow(const std::string& name) {
-        if (current_scope) {
+        if (current_scope != nullptr) {
             return current_scope->lookup(name);
         }
         return nullptr;

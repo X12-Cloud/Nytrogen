@@ -59,7 +59,8 @@ namespace Mangler {
     }
 
     inline std::string mangleFunction(const std::vector<std::string>& scopes, const std::string& name) {
-        if (name == "main") return "main";
+        if (name == "main") { return "main";
+}
 
         std::string result = "_N";
         for (const auto& scope : scopes) {

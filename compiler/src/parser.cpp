@@ -37,8 +37,11 @@ bool Parser::match(Token::Type type) {
 void Parser::expect(Token::Type expected_type, const std::string& error_msg) {
     const Token& current_token = peek();
     if (current_token.type != expected_type) {
-        std::string full_msg = error_msg + " (Expected " + current_token.typeToString() + 
-                    ", but got '" + current_token.value + "')";
+        Token dummy_expected_token;
+        dummy_expected_token.type = expected_type;
+
+        std::string full_msg = error_msg + " (Expected " + dummy_expected_token.typeToString() + 
+                               ", but got '" + current_token.value + "')";
         report_parser_error(current_token, full_msg);
         synchronize();
     } else {
@@ -114,7 +117,8 @@ std::unique_ptr<BooleanLiteralExpressionNode> Parser::parseBooleanLiteralExpress
     if (bool_token.type == Token::TRUE) {
         consume();
         return std::make_unique<BooleanLiteralExpressionNode>(true, bool_token.line, bool_token.column);
-    } else if (bool_token.type == Token::FALSE) {
+    }
+    if (bool_token.type == Token::FALSE) {
         consume();
         return std::make_unique<BooleanLiteralExpressionNode>(false, bool_token.line, bool_token.column);
     }
@@ -130,14 +134,16 @@ std::unique_ptr<CharacterLiteralExpressionNode> Parser::parseCharacterLiteralExp
 std::unique_ptr<FloatLiteralExpressionNode> Parser::parseFloatLiteralExpression() {
     const Token& token = consume();
     std::string valStr = token.value;
-    if (valStr.back() == 'f') valStr.pop_back();
+    if (valStr.back() == 'f') { valStr.pop_back();
+}
     return std::make_unique<FloatLiteralExpressionNode>(std::stof(valStr), token.line, token.column);
 }
 
 std::unique_ptr<DoubleLiteralExpressionNode> Parser::parseDoubleLiteralExpression() {
     const Token& token = consume();
     std::string valStr = token.value;
-    if (valStr.back() == 'd') valStr.pop_back();
+    if (valStr.back() == 'd') { valStr.pop_back();
+}
     return std::make_unique<DoubleLiteralExpressionNode>(std::stod(valStr), token.line, token.column);
 }
 
@@ -272,28 +278,23 @@ std::unique_ptr<WhileStatementNode> Parser::parseWhileStatement() {
     expect(Token::LPAREN, "Expected '(' after 'for'.");
 
     std::unique_ptr<ASTNode> initializer = nullptr;
-    // Parse initializer (optional)
     if (peek().type != Token::SEMICOLON) {
-        // If it starts with a type keyword, it's a declaration
         if (peek().type == Token::KEYWORD_INT || peek().type == Token::KEYWORD_STRING ||
             peek().type == Token::KEYWORD_BOOL || peek().type == Token::KEYWORD_CHAR) {
             initializer = parseVariableDeclaration();
         } else {
-            // Otherwise, it's an expression (assignment or function call)
             initializer = parseExpression();
         }
     }
     expect(Token::SEMICOLON, "Expected ';' after for loop initializer.");
 
     std::unique_ptr<ASTNode> condition = nullptr;
-    // Parse condition (optional)
     if (peek().type != Token::SEMICOLON) {
         condition = parseExpression();
     }
     expect(Token::SEMICOLON, "Expected ';' after for loop condition.");
 
     std::unique_ptr<ASTNode> increment = nullptr;
-    // Parse increment (optional)
     if (peek().type != Token::RPAREN) {
         increment = parseExpression();
     }
@@ -336,9 +337,6 @@ std::unique_ptr<TypeNode> Parser::parseType() {
     } else if (type_token.type == Token::IDENTIFIER) {
         consume();
         type = std::make_unique<StructTypeNode>(type_token.value);
-    // } else if (type_token.type == Token::DOUBLE_COLON) {
-    //     consume();
-    //     type = std::make_unique<NamespaceDefinition>(type_token.value);
     } else {
         throw std::runtime_error("Expected 'int', 'string', 'bool', 'char', or a defined struct name for type.");
     }
@@ -356,25 +354,25 @@ std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
     if (peek().type == Token::COLON) {
         consume();
         std::vector<Declaration> declarations;
-	do {
-    	std::string name = peek().value;
-	    expect(Token::IDENTIFIER, "Expected variable name.");
-    	std::unique_ptr<ASTNode> init = nullptr;
-    	if (match(Token::EQ)) {
+    do {
+        std::string name = peek().value;
+        expect(Token::IDENTIFIER, "Expected variable name.");
+        std::unique_ptr<ASTNode> init = nullptr;
+        if (match(Token::EQ)) {
             init = parseExpression();
-    	}
-    	declarations.push_back({name, std::move(init)});
-	    if (peek().type == Token::SEMICOLON) break;
-	} while (match(Token::COMMA));
-	    // expect(Token::SEMICOLON, "Expected semicolon ';'.");
-	    return std::make_unique<VariableDeclarationNode>(std::move(type), std::move(declarations));
+        }
+        declarations.push_back({name, std::move(init)});
+        if (peek().type == Token::SEMICOLON) { break;
+}
+    } while (match(Token::COMMA));
+        return std::make_unique<VariableDeclarationNode>(std::move(type), std::move(declarations));
     }
 
     const Token& id_token = peek();
     expect(Token::IDENTIFIER, "Expected variable name after type.");
 
     if (peek().type == Token::LBRACKET) {
-        consume(); // Consume '['
+        consume();
         const Token& size_token = peek();
         expect(Token::INTEGER_LITERAL, "Expected integer literal for array size.");
         int size = std::stoi(size_token.value);
@@ -384,18 +382,17 @@ std::unique_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration() {
 
     std::unique_ptr<ASTNode> initial_value = nullptr;
     if (peek().type == Token::EQ) {
-        consume(); // Consume '='
+        consume();
         initial_value = parseExpression();
     }
 
-    // return std::make_unique<VariableDeclarationNode>(id_token.value, std::move(type), std::move(initial_value), id_token.line, id_token.column);
     std::vector<Declaration> declarations;
     declarations.push_back({id_token.value, std::move(initial_value)}); 
     return std::make_unique<VariableDeclarationNode>(std::move(type), std::move(declarations));
 }
 
 std::unique_ptr<FunctionCallNode> Parser::parseFunctionCall() {
-    const Token& id_token = consume(); // Consume the function name identifier
+    const Token& id_token = consume();
 
     expect(Token::LPAREN, "Expected '(' after function name for a function call.");
 
@@ -403,7 +400,7 @@ std::unique_ptr<FunctionCallNode> Parser::parseFunctionCall() {
     if (peek().type != Token::RPAREN) {
         arguments.push_back(parseExpression());
         while (peek().type == Token::COMMA) {
-            consume(); // Consume the comma
+            consume();
             arguments.push_back(parseExpression());
         }
     }
@@ -434,7 +431,7 @@ std::unique_ptr<ASTNode> Parser::parseFactor() {
         } else if (peek(1).type == Token::LBRACKET) {
             const auto& id_token = consume();
             auto var_ref = std::make_unique<VariableReferenceNode>(id_token.value, id_token.line, id_token.column);
-            consume(); // consume '['
+            consume();
             auto index_expr = parseExpression();
             expect(Token::RBRACKET, "Expected ']' after array index.");
             node = std::make_unique<ArrayAccessNode>(std::move(var_ref), std::move(index_expr));
@@ -460,7 +457,7 @@ std::unique_ptr<ASTNode> Parser::parseFactor() {
 
     // Handle member access (e.g., struct_instance.member)
     while (peek().type == Token::DOT) {
-        consume(); // Consume '.'
+        consume();
         const Token& member_name_token = consume();
         if (member_name_token.type != Token::IDENTIFIER) {
             throw std::runtime_error("Expected identifier after '.' for member access.");
@@ -477,9 +474,9 @@ std::unique_ptr<ASTNode> Parser::parseUnaryExpression() {
         auto operand = parseUnaryExpression();
         return std::make_unique<UnaryOpExpressionNode>(op_token.type, std::move(operand), op_token.line, op_token.column);
     }
-    else if (peek().type == Token::BANG) {
-	const Token& op_token = consume();
-	auto operand = parseUnaryExpression();
+    if (peek().type == Token::BANG) {
+        const Token& op_token = consume();
+        auto operand = parseUnaryExpression();
         return std::make_unique<UnaryOpExpressionNode>(op_token.type, std::move(operand), op_token.line, op_token.column);
     }
     return parseFactor();
@@ -535,14 +532,15 @@ std::unique_ptr<ASTNode> Parser::parseExpression() {
     auto left = parseComparisonExpression();
 
     if (peek().type == Token::EQ) {
-        consume(); // consume '='
+        consume();
         auto right = parseExpression();
 
-        if (dynamic_cast<VariableReferenceNode*>(left.get()) || dynamic_cast<MemberAccessNode*>(left.get()) || dynamic_cast<ArrayAccessNode*>(left.get())) {
+        if (dynamic_cast<VariableReferenceNode*>(left.get()) != nullptr || 
+            dynamic_cast<MemberAccessNode*>(left.get()) != nullptr || 
+            dynamic_cast<ArrayAccessNode*>(left.get()) != nullptr) {
             return std::make_unique<VariableAssignmentNode>(std::move(left), std::move(right));
-        } else {
-            throw std::runtime_error("Invalid left-hand side in assignment expression.");
         }
+        throw std::runtime_error("Invalid left-hand side in assignment expression.");
     }
 
     return left;
@@ -581,20 +579,19 @@ std::unique_ptr<StructDefinitionNode> Parser::parseStructDefinition() {
             switch (primitive_type->primitive_type) {
                 case Token::KEYWORD_INT: member_size = 4;
                     break;
-                case Token::KEYWORD_CHAR: member_size = 1;
-                    break;
-                case Token::KEYWORD_BOOL: member_size = 1;
+                case Token::KEYWORD_CHAR:
+                case Token::KEYWORD_BOOL:
+                    member_size = 1;
                     break;
                 default: member_size = 0; // Should not happen
             }
-        } else if (auto pointer_type = dynamic_cast<PointerTypeNode*>(member_type.get())) {
-            member_size = 8; // Size of a pointer
-        } else if (auto array_type = dynamic_cast<ArrayTypeNode*>(member_type.get())) {
+        } else if (dynamic_cast<PointerTypeNode*>(member_type.get()) != nullptr || 
+                   dynamic_cast<ArrayTypeNode*>(member_type.get()) != nullptr) {
             // This is a simplification. A proper implementation would need to know the size of the base type.
             member_size = 8; // Treat array as a pointer for now
         } else if (auto struct_type = dynamic_cast<StructTypeNode*>(member_type.get())) {
             // We can't know the size of another struct at parse time, so we'll have to calculate it in the semantic analyzer
-            member_size = 0; 
+            member_size = 0;
         }
 
         struct_node->members.push_back({std::move(member_type), member_name, current_offset, current_visibility});
@@ -624,12 +621,14 @@ std::unique_ptr<NamespaceDefinition> Parser::parseNamespaceDefinition() {
         }
 
         auto member_node = parseStatement();
-        if (!member_node) continue; // Safety check
+        if (!member_node) { continue; // Safety check
+}
 
         std::string name_to_register = "";
 
         if (auto* v = dynamic_cast<VariableDeclarationNode*>(member_node.get())) {
-            if (!v->declarations.empty()) name_to_register = v->declarations[0].name;
+            if (!v->declarations.empty()) { name_to_register = v->declarations[0].name;
+}
         } else if (auto* n = dynamic_cast<NamespaceDefinition*>(member_node.get())) {
             name_to_register = n->name;
         } else if (auto* f = dynamic_cast<FunctionDefinitionNode*>(member_node.get())) {
@@ -644,7 +643,8 @@ std::unique_ptr<NamespaceDefinition> Parser::parseNamespaceDefinition() {
             std::cerr << "Parser Warning: Skipping node " << (int)member_node->node_type << " in namespace at line " << start_token.line << std::endl;
         }
 
-        if (peek().type == Token::SEMICOLON) consume();
+        if (peek().type == Token::SEMICOLON) { consume();
+}
     }
 
     expect(Token::RBRACE, "Expected '}'.");
@@ -667,7 +667,7 @@ std::unique_ptr<EnumStatementNode> Parser::parseEnumStatement() {
 
         std::unique_ptr<ASTNode> value = nullptr;
         if (peek().type == Token::EQ) {
-            consume(); // consume '='
+            consume();
             value = parseExpression();
         }
 
@@ -692,12 +692,12 @@ std::unique_ptr<AsmStatementNode> Parser::parseAsmStatement() {
     bool is_paren_block = false;
 
     if (peek().type == Token::LPAREN) {
-	consume();
-	is_paren_block = true;
-	closing_type = Token::RPAREN;
+        consume();
+        is_paren_block = true;
+        closing_type = Token::RPAREN;
     } else if (peek().type == Token::LBRACE) {
-	consume();
-	closing_type = Token::RBRACE;
+        consume();
+        closing_type = Token::RBRACE;
     } else {
         throw std::runtime_error("Expected '(' or '{' after 'asm'.");
     }
@@ -713,7 +713,8 @@ std::unique_ptr<AsmStatementNode> Parser::parseAsmStatement() {
     }
 
     expect(closing_type, "Expected closing delimeter for asm block.");
-    if (is_paren_block) expect(Token::SEMICOLON, "Expected ';' after inline assembly statement");
+    if (is_paren_block) { expect(Token::SEMICOLON, "Expected ';' after inline assembly statement");
+}
     return std::make_unique<AsmStatementNode>(std::move(asm_lines), asm_token.line, asm_token.column);
 }
 
@@ -735,18 +736,17 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
         case Token::KEYWORD_AUTO: {
             if (peek(1).type == Token::IDENTIFIER && peek(2).type == Token::LPAREN) {
                 return parseFunctionDefinition();
-            } else {
-                auto decl_node = parseVariableDeclaration();
+            }                 auto decl_node = parseVariableDeclaration();
                 expect(Token::SEMICOLON, "Expected ';' after variable declaration.");
                 return decl_node;
-            }
+           
         }
         case Token::IDENTIFIER: {
             if (peek(1).type == Token::LPAREN) {
                 auto func_call = parseFunctionCall();
                 expect(Token::SEMICOLON, "Expected ';' after function call statement.");
                 return func_call;
-            } else if (peek(1).type == Token::IDENTIFIER) {
+            } if (peek(1).type == Token::IDENTIFIER) {
                 auto decl_node = parseVariableDeclaration();
                 expect(Token::SEMICOLON, "Expected ';' after variable declaration.");
                 return decl_node;
@@ -770,9 +770,9 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
         case Token::KEYWORD_NAMESPACE:
             return parseNamespaceDefinition();
         default:
-            throw std::runtime_error("Parser Error: Unexpected token in statement: '" +
-                                     peek().value + "' at line " + std::to_string(peek().line) +
-                                     ", column " + std::to_string(peek().column) + ".");
+            Utils::report_error("Parser Error", "Unexpected token in statement: '" +
+                                peek().value + "' at line " + std::to_string(peek().line) +
+                                ", column " + std::to_string(peek().column) + ".");
     }
 }
 
@@ -802,7 +802,7 @@ std::vector<std::unique_ptr<ParameterNode>> Parser::parseParameters() {
 std::unique_ptr<FunctionDefinitionNode> Parser::parseFunctionDefinition() {
     bool is_extern_func = false;
     if (peek().type == Token::KEYWORD_EXTERN) {
-        consume(); // Consume 'extern'
+        consume();
         is_extern_func = true;
     }
 
@@ -815,7 +815,7 @@ std::unique_ptr<FunctionDefinitionNode> Parser::parseFunctionDefinition() {
         std::move(return_type), function_name_token.value,
         function_name_token.line, function_name_token.column
     );
-    func_def_node->is_extern = is_extern_func; // Set the flag
+    func_def_node->is_extern = is_extern_func;
 
     func_def_node->parameters = parseParameters();
 
@@ -839,18 +839,18 @@ std::unique_ptr<ProgramNode> Parser::parse() {
     while (peek().type != Token::END_OF_FILE) {
         if (peek().type == Token::KEYWORD_EXTERN || (peek(1).type == Token::IDENTIFIER && peek(2).type == Token::LPAREN)) {
             program_node->functions.push_back(parseFunctionDefinition());
-        } else if (peek().type == Token::KEYWORD_STRUCT) { // This is for struct definition
+        } else if (peek().type == Token::KEYWORD_STRUCT) {
             auto struct_def = parseStructDefinition();
             if (struct_def) {
                 program_node->structs.push_back(std::move(struct_def));
             }
             if (peek().type == Token::SEMICOLON) {
-                consume(); // Consume optional semicolon after struct definition
+                consume();
             }
-        } else if (peek().type == Token::KEYWORD_ENUM) { // This is for enum definition
+        } else if (peek().type == Token::KEYWORD_ENUM) {
             program_node->statements.push_back(parseEnumStatement());
             if (peek().type == Token::SEMICOLON) {
-                consume(); // Consume optional semicolon after enum definition
+                consume();
             }
         }
         else { // Everything else is a statement

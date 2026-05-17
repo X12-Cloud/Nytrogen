@@ -58,9 +58,11 @@ int main(int argc, char* argv[]) {
     }
 
     std::string sourceCode = readFileContent(input_filepath);
-    if (sourceCode.empty()) return 2;
+    if (sourceCode.empty()) { return 2;
+}
 
-    if (verbose) std::cout << "\n--- Processing Source File: " << input_filepath << " ---\n\n";
+    if (verbose) { std::cout << "\n--- Processing Source File: " << input_filepath << " ---\n\n";
+}
 
     std::vector<Token> tokens = tokenize(sourceCode);
     Parser parser(std::move(tokens));
@@ -78,7 +80,8 @@ int main(int argc, char* argv[]) {
         std::exit(1);
     }
 
-    if (verbose) ast_root->dump();
+    if (verbose) { ast_root->dump();
+}
 
     // Perform semantic analysis
     SemanticAnalyzer semanticAnalyzer(ast_root, parser.getSymbolTable());
@@ -89,7 +92,8 @@ int main(int argc, char* argv[]) {
     CodeGenerator codeGenerator(ast_root, semanticAnalyzer.getSymbolTable());
     codeGenerator.generate(output_asm_filename, is_entry);
 
-    if (verbose) std::cout << "Successfully generated assembly to '" << output_asm_filename << "'\n";
+    if (verbose) { std::cout << "Successfully generated assembly to '" << output_asm_filename << "'\n";
+}
 
     return 0;
 }
