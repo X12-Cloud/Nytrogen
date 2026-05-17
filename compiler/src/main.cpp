@@ -69,8 +69,13 @@ int main(int argc, char* argv[]) {
     std::unique_ptr<ProgramNode> ast_root = parser.parse();
 
     if (!ast_root) {
-        std::cerr << "AST generation failed during parsing. Exiting.\n";
+        std::cerr << ANSI_RED << "AST generation failed during parsing. Exiting.\n";
         return 1;
+    }
+
+    if (parser.has_errors) {
+        std::cerr << ANSI_RED << "Compilation aborted due to previous parser errors.\n" << ANSI_RESET;
+        std::exit(1);
     }
 
     if (verbose) ast_root->dump();

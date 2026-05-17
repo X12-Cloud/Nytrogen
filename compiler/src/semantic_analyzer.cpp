@@ -7,7 +7,7 @@
 // Helper to get size of a type
 int SemanticAnalyzer::getTypeSize(const TypeNode* type) {
     if (!type) {
-        throw std::runtime_error("Semantic Error: Attempted to get size of a null type.");
+        Utils::report_error("Semantic Error", "Attempted to get size of a null type.");
     }
 
     switch (type->category) {
@@ -21,7 +21,7 @@ int SemanticAnalyzer::getTypeSize(const TypeNode* type) {
                 case Token::KEYWORD_CHAR: return 1; // 1 byte for char
                 case Token::KEYWORD_STRING: return 8; // 8 bytes for string (pointer)
                 case Token::KEYWORD_VOID: return 0; // Void has no size
-                default: throw std::runtime_error("Semantic Error: Unknown primitive type for size calculation.");
+                default: Utils::report_error("Semantic Error", "Unknown primitive type for size calculation.");
             }
         }
         case TypeNode::TypeCategory::POINTER:
@@ -29,7 +29,7 @@ int SemanticAnalyzer::getTypeSize(const TypeNode* type) {
         case TypeNode::TypeCategory::ARRAY: {
             const ArrayTypeNode* array_type = static_cast<const ArrayTypeNode*>(type);
             if (array_type->size <= 0) {
-                throw std::runtime_error("Semantic Error: Unsized arrays not allowed for local variables.");
+                Utils::report_error("Semantic Error", "Unsized arrays not allowed for local variables.");
             }
             int element_size = getTypeSize(array_type->base_type.get());
             if (array_type->size > 0) {
@@ -40,12 +40,12 @@ int SemanticAnalyzer::getTypeSize(const TypeNode* type) {
         case TypeNode::TypeCategory::STRUCT: {
             const StructTypeNode* struct_type = static_cast<const StructTypeNode*>(type);
             if (!symbolTable.isStructDefined(struct_type->struct_name)) {
-                throw std::runtime_error("Semantic Error: Undefined struct '" + struct_type->struct_name + "'.");
+                Utils::report_error("Semantic Error", "Undefined struct '" + struct_type->struct_name + "'.");
             }
             return symbolTable.getStructDefinitions()[struct_type->struct_name]->size;
         }
         default:
-            throw std::runtime_error("Semantic Error: Unknown type category for size calculation.");
+            Utils::report_error("Semantic Error", "Unknown type category for size calculation.");
     }
 }
 
@@ -139,15 +139,15 @@ void SemanticAnalyzer::analyze() {
             has_main = true;
             if (func->return_type->category != TypeNode::TypeCategory::PRIMITIVE ||
                 static_cast<PrimitiveTypeNode*>(func->return_type.get())->primitive_type != Token::KEYWORD_INT) {
-                throw std::runtime_error("Semantic Error: 'main' function must return int.");
+                    Utils::report_error("Semantic Error", "'main' function must return int.");
                 }
                 if (!func->parameters.empty()) {
-                    throw std::runtime_error("Semantic Error: 'main' function should have no parameters.");
+                    Utils::report_error("Semantic Error", "'main' function should have no parameters.");
                 }
         }
     }
     if (is_entry_point && !has_main) {
-        throw std::runtime_error("Semantic Error: No 'main' function defined.");
+        Utils::report_error("Semantic Error", "No 'main' function defined.");
     }
 }
 
@@ -238,7 +238,7 @@ void SemanticAnalyzer::visit(ASTNode* node) {
             visit(static_cast<EnumStatementNode*>(node));
             break;
         default:
-            throw std::runtime_error("Semantic Error: Unknown AST node type encountered during analysis.");
+            Utils::report_error("Semantic Error", "Unknown AST node type encountered during analysis.");
     }
 }
 
@@ -302,31 +302,28 @@ void SemanticAnalyzer::visit(VariableDeclarationNode* node) {
 
     for (auto& decl : node->declarations) {
         if (symbolTable.current_scope->lookup(decl.name)) {
-            throw std::runtime_error("Semantic Error: Redefinition of variable '" + decl.name + "'.");
+            Utils::report_error("Semantic Error", "Redefinition of variable '" + decl.name + "'.");
         }
 
         std::unique_ptr<TypeNode> actual_type;
 
         if (is_auto) {
             if (!decl.initial_value) {
-                //throw std::runtime_error("Semantic Error: 'auto' variable '" + decl.name + "' requires an initializer.");
                 Utils::report_error("Semantic Error", "'auto' variable '" + decl.name + "' requires an initializer.", node->line);
             }
             actual_type = visitExpression(decl.initial_value.get());
             if (!actual_type) {
-                //throw std::runtime_error("Semantic Error: Could not deduce type for 'auto' variable '" + decl.name + "'.");
                 Utils::report_error("Semantic Error", "Could not deduce type for 'auto' variable '" + decl.name + "'.", node->line);
             }
         } else {
             actual_type = node->type->clone();
             if (decl.initial_value) {
                 auto expr_type = visitExpression(decl.initial_value.get());
-                if (!areTypesCompatible(expr_type.get(), actual_type.get())) throw std::runtime_error("Type mismatch for '" + decl.name + "'");
+                if (!areTypesCompatible(expr_type.get(), actual_type.get())) Utils::report_error("Semantic Error", "Type mismatch for initialization of '" + decl.name + "'.", node->line);
             }
         }
 
         if (!actual_type) {
-            //throw std::runtime_error("Semantic Error: Type deduction failed for '" + decl.name + "'.");
             Utils::report_error("Semantic Error", "Type deduction failed for '" + decl.name + "'.", node->line);
         }
 
@@ -347,7 +344,6 @@ void SemanticAnalyzer::visit(VariableAssignmentNode* node) {
         auto* var_ref = static_cast<VariableReferenceNode*>(node->left.get());
         Symbol* symbol = symbolTable.lookup(var_ref->name);
         if (symbol && symbol->type == Symbol::SymbolType::CONSTANT) {
-            //throw std::runtime_error("Semantic Error: Cannot assign to constant '" + var_ref->name + "'.");
             Utils::report_error("Semantic Error", "Cannot assign to constant '" + var_ref->name + "'.", node->line);
         }
     }
@@ -356,7 +352,6 @@ void SemanticAnalyzer::visit(VariableAssignmentNode* node) {
     std::unique_ptr<TypeNode> right_type = visitExpression(node->right.get());
 
     if (!areTypesCompatible(left_type.get(), right_type.get())) {
-        //throw std::runtime_error("Semantic Error: Type mismatch in assignment.");
         Utils::report_error("Semantic Error", "Type mismatch in assignment.", node->line);
     }
 }
@@ -364,7 +359,6 @@ void SemanticAnalyzer::visit(VariableAssignmentNode* node) {
 void SemanticAnalyzer::visit(VariableReferenceNode* node) {
     Symbol* var_symbol = symbolTable.lookup(node->name);
     if (!var_symbol) {
-        //throw std::runtime_error("Semantic Error: Use of undeclared variable '" + node->name + "'.");
         Utils::report_error("Semantic Error", "Use of undeclared variable '" + node->name + "'.", node->line);
     }
     node->resolved_symbol = var_symbol;
@@ -393,7 +387,6 @@ void SemanticAnalyzer::visit(NamespaceDefinition* node) {
 void SemanticAnalyzer::visit(ScopeResolutionNode* node) {
     Symbol* ns_symbol = symbolTable.lookup(node->namespace_name);
     if (!ns_symbol || ns_symbol->type != Symbol::SymbolType::NAMESPACE_DEFINITION) {
-        //throw std::runtime_error("Semantic Error: '" + node->namespace_name + "' is not a namespace.");
         Utils::report_error("Semantic Error", "'" + node->namespace_name + "' is not a namespace.", node->line);
     }
 
@@ -418,7 +411,6 @@ void SemanticAnalyzer::visit(ScopeResolutionNode* node) {
             }
         }
         if (!node->resolved_type) {
-            //throw std::runtime_error("Semantic Error: Could not resolve type for namespace member '" + node->namespace_name + "'.");
             Utils::report_error("Semantic Error", "Could not resolve type for namespace member '" + node->namespace_name + "'.", node->line);
         }
 
@@ -438,7 +430,6 @@ void SemanticAnalyzer::visit(BinaryOperationExpressionNode* node) {
     node->right->resolved_type = right_type->clone();
 
     if (left_type->category != right_type->category) {
-        //throw std::runtime_error("Semantic Error: Type mismatch in binary operation (cannot operate on " + typeToString(left_type.get()) + " and " + typeToString(right_type.get()) + ")");
         Utils::report_error("Semantic Error", "Type mismatch in binary operation (cannot operate on " + typeToString(left_type.get()) + " and " + typeToString(right_type.get()) + ")", node->line);
     }
 
@@ -446,7 +437,6 @@ void SemanticAnalyzer::visit(BinaryOperationExpressionNode* node) {
         auto p1 = static_cast<PrimitiveTypeNode*>(left_type.get());
         auto p2 = static_cast<PrimitiveTypeNode*>(right_type.get());
         if (p1->primitive_type != p2->primitive_type) {
-            //throw std::runtime_error("Semantic Error: Mixed math. Adding different primitive types is not yet supported.");
             Utils::report_error("Semantic Error", "Mixed math. Adding different primitive types is not yet supported.", node->line);
         }
     }
@@ -483,12 +473,10 @@ void SemanticAnalyzer::visit(ReturnStatementNode* node) {
         if (currentFunctionReturnType->category == TypeNode::TypeCategory::PRIMITIVE) {
             auto prim = static_cast<PrimitiveTypeNode*>(currentFunctionReturnType);
             if (prim->primitive_type == Token::KEYWORD_VOID) {
-                //throw std::runtime_error("Semantic Error: Cannot return a value from a void function.");
                 Utils::report_error("Semantic Error", "Cannot return a value from a void function.", node->line);
 
             }
             if (!areTypesCompatible(node->resolved_type.get(), currentFunctionReturnType)) {
-                //throw std::runtime_error("Semantic Error: Return type mismatch in function.");
                 Utils::report_error("Semantic Error", "Return type mismatch in function.", node->line);
             }
         }
@@ -503,7 +491,6 @@ void SemanticAnalyzer::visit(ReturnStatementNode* node) {
             }
         }
         if (!isFunctionVoid) {
-            //throw std::runtime_error("Semantic Error: Non-void function must return a value.");
             Utils::report_error("Semantic Error", "Non-void function must return a value.", node->line);
         }
     }
@@ -513,7 +500,6 @@ void SemanticAnalyzer::visit(IfStatementNode* node) {
     std::unique_ptr<TypeNode> cond_type = visitExpression(node->condition.get());
     if (cond_type->category != TypeNode::TypeCategory::PRIMITIVE ||
         static_cast<PrimitiveTypeNode*>(cond_type.get())->primitive_type != Token::KEYWORD_BOOL && static_cast<PrimitiveTypeNode*>(cond_type.get())->primitive_type != Token::INTEGER_LITERAL) {
-        // throw std::runtime_error("Semantic Error: If condition must be a boolean expression.");
         Utils::report_error("Semantic Error", "If condition must be a boolean expression.", node->line);
     }
 
@@ -529,7 +515,6 @@ void SemanticAnalyzer::visit(SwitchStatementNode* node) {
     std::unique_ptr<TypeNode> cond_type = visitExpression(node->condition.get());
     if (cond_type->category != TypeNode::TypeCategory::PRIMITIVE ||
         dynamic_cast<PrimitiveTypeNode*>(cond_type.get())->primitive_type != Token::KEYWORD_INT) {
-        //throw std::runtime_error("Semantic Error: Switch condition must be an integer value.");
         Utils::report_error("Semantic Error", "Switch condition must be an integer value.", node->line);
     }
 
@@ -547,7 +532,6 @@ void SemanticAnalyzer::visit(SwitchStatementNode* node) {
             }
 
             if (seen_cases.count(literal->value)) {
-                //throw std::runtime_error("Semantic Error: Duplicate case value '" + std::to_string(literal->value) + "'.");
                 Utils::report_error("Semantic Error", "Duplicate case value '" + std::to_string(literal->value) + "'.", node->line);
             }
             seen_cases.insert(literal->value);
@@ -577,7 +561,6 @@ void SemanticAnalyzer::visit(WhileStatementNode* node) {
     std::unique_ptr<TypeNode> cond_type = visitExpression(node->condition.get());
     if (cond_type->category != TypeNode::TypeCategory::PRIMITIVE ||
         static_cast<PrimitiveTypeNode*>(cond_type.get())->primitive_type != Token::KEYWORD_BOOL) {
-        //throw std::runtime_error("Semantic Error: While condition must be a boolean expression.");
         Utils::report_error("Semantic Error", "While condition must be a boolean expression.", node->line);
     }
 
@@ -598,7 +581,6 @@ void SemanticAnalyzer::visit(ForStatementNode* node) {
         std::unique_ptr<TypeNode> cond_type = visitExpression(node->condition.get());
         if (cond_type->category != TypeNode::TypeCategory::PRIMITIVE ||
             static_cast<PrimitiveTypeNode*>(cond_type.get())->primitive_type != Token::KEYWORD_BOOL) {
-            //throw std::runtime_error("Semantic Error: For loop condition must be a boolean expression.");
             Utils::report_error("Semantic Error", "For loop condition must be a boolean expression.", node->line);
         }
     }
@@ -615,7 +597,6 @@ void SemanticAnalyzer::visit(ForStatementNode* node) {
 void SemanticAnalyzer::visit(FunctionCallNode* node) {
     Symbol* func_symbol = symbolTable.lookup(node->function_name);
     if (!func_symbol || func_symbol->type != Symbol::SymbolType::FUNCTION) {
-        //throw std::runtime_error("Semantic Error: Call to undeclared function '" + node->function_name + "'.");
         Utils::report_error("Semantic Error", "Call to undeclared function '" + node->function_name + "'.", node->line);
     }
     node->resolved_symbol = func_symbol;
@@ -635,7 +616,6 @@ void SemanticAnalyzer::visit(FunctionCallNode* node) {
         std::unique_ptr<TypeNode> arg_type = visitExpression(node->arguments[i].get());
         node->arguments[i]->resolved_type = arg_type->clone();
         if (!areTypesCompatible(arg_type.get(), func_symbol->parameterTypes[i].get())) {
-            //throw std::runtime_error("Semantic Error: Type mismatch in argument " + std::to_string(i + 1) +
             //                         " of function '" + node->function_name + "'.");
             Utils::report_error("Semantic Error", "Type mismatch in argument " + std::to_string(i + 1) +
                                      " of function '" + node->function_name + "'.", node->line);
@@ -651,21 +631,18 @@ void SemanticAnalyzer::visit(MemberAccessNode* node) {
     std::unique_ptr<TypeNode> base_type = visitExpression(node->struct_expr.get());
 
     if (base_type->category != TypeNode::TypeCategory::STRUCT) {
-        //throw std::runtime_error("Semantic Error: Member access operator '.' used on non-struct type.");
         Utils::report_error("Semantic Error", "Member access operator '.' used on non-struct type.", node->line);
     }
 
     const StructTypeNode* struct_type = static_cast<const StructTypeNode*>(base_type.get());
 
     if (!symbolTable.isStructDefined(struct_type->struct_name)) {
-        //throw std::runtime_error("Semantic Error: Undefined struct '" + struct_type->struct_name + "'.");
         Utils::report_error("Semantic Error", "Undefined struct '" + struct_type->struct_name + "'.", node->line);
     }
 
     const auto& definitions = symbolTable.getStructDefinitions(); 
     auto it = definitions.find(struct_type->struct_name);
     if (it == definitions.end()) {
-        //throw std::runtime_error("Struct not found in registry during access");
         Utils::report_error("Semantic Error", "Struct not found in registry during access", node->line);
     }
     auto* struct_def = it->second;
@@ -680,7 +657,6 @@ void SemanticAnalyzer::visit(MemberAccessNode* node) {
             // Check visibility
             if (member.visibility == StructMember::Visibility::PRIVATE) {
                 // A more complex check would be needed for friend classes or member functions
-                //throw std::runtime_error("Semantic Error: Cannot access private member '" + node->member_name + "' of struct '" + struct_type->struct_name + "'.");
                 Utils::report_error("Semantic Error", "Cannot access private member '" + node->member_name + "' of struct '" + struct_type->struct_name + "'.", node->line);
             }
 
@@ -691,7 +667,6 @@ void SemanticAnalyzer::visit(MemberAccessNode* node) {
     }
 
     if (!member_found) {
-        //throw std::runtime_error("Semantic Error: Struct '" + struct_type->struct_name + "' has no member named '" + node->member_name + "'.");
         Utils::report_error("Semantic Error", "Struct '" + struct_type->struct_name + "' has no member named '" + node->member_name + "'.", node->line);
     }
 }
@@ -714,21 +689,18 @@ void SemanticAnalyzer::visit(UnaryOpExpressionNode* node) {
 
     if (node->op_type == Token::ADDRESSOF) {
         if (node->operand->node_type != ASTNode::NodeType::VARIABLE_REFERENCE) {
-            //throw std::runtime_error("Semantic Error: Address-of operator '&' can only be applied to variables.");
             Utils::report_error("Semantic Error", "Address-of operator '&' can only be applied to variables.", node->line);
         }
         node->resolved_symbol = static_cast<VariableReferenceNode*>(node->operand.get())->resolved_symbol;
         node->resolved_type = std::make_unique<PointerTypeNode>(std::move(operand_type));
     } else if (node->op_type == Token::STAR) {
         if (operand_type->category != TypeNode::TypeCategory::POINTER) {
-            //throw std::runtime_error("Semantic Error: Dereference operator '*' can only be applied to pointer types.");
             Utils::report_error("Semantic Error", "Dereference operator '*' can only be applied to pointer types.", node->line);
         }
         node->resolved_type = static_cast<PointerTypeNode*>(operand_type.get())->base_type->clone();
     } else if (node->op_type == Token::BANG) {
 	node->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::INTEGER_LITERAL);
     } else {
-        //throw std::runtime_error("Semantic Error: Unknown unary operator.");
         Utils::report_error("Semantic Error", "Unknown unary operator.", node->line);
     }
 }
@@ -738,13 +710,11 @@ void SemanticAnalyzer::visit(ArrayAccessNode* node) {
     std::unique_ptr<TypeNode> index_type = visitExpression(node->index_expr.get());
 
     if (array_type->category != TypeNode::TypeCategory::ARRAY) {
-        //throw std::runtime_error("Semantic Error: Array access operator '[]' used on non-array type.");
         Utils::report_error("Semantic Error", "Array access operator '[]' used on non-array type.", node->line);
     }
 
     if (index_type->category != TypeNode::TypeCategory::PRIMITIVE ||
         static_cast<PrimitiveTypeNode*>(index_type.get())->primitive_type != Token::KEYWORD_INT) {
-        //throw std::runtime_error("Semantic Error: Array index must be an integer.");
         Utils::report_error("Semantic Error", "Array index must be an integer.", node->line);
     }
     node->resolved_type = static_cast<ArrayTypeNode*>(array_type.get())->base_type->clone();
@@ -756,7 +726,6 @@ void SemanticAnalyzer::visit(AsmStatementNode* node) {
 
 void SemanticAnalyzer::visit(ConstantDeclarationNode* node) {
     if (symbolTable.current_scope->lookup(node->name)) {
-        //throw std::runtime_error("Semantic Error: Redefinition of symbol '" + node->name + "'.");
         Utils::report_error("Semantic Error", "Redefinition of symbol '" + node->name + "'.", node->line);
     }
 
@@ -767,13 +736,11 @@ void SemanticAnalyzer::visit(ConstantDeclarationNode* node) {
         node->initial_value->node_type != ASTNode::NodeType::CHARACTER_LITERAL_EXPRESSION &&
 	    node->initial_value->node_type != ASTNode::NodeType::FLOAT_LITERAL_EXPRESSION &&
 	    node->initial_value->node_type != ASTNode::NodeType::DOUBLE_LITERAL_EXPRESSION) {
-        //throw std::runtime_error("Semantic Error: Constant initializer must be a literal value.");
         Utils::report_error("Semantic Error", "Constant initializer must be a literal value.", node->line);
     }
 
     std::unique_ptr<TypeNode> expr_type = visitExpression(node->initial_value.get());
     if (!areTypesCompatible(expr_type.get(), node->type.get())) {
-        //throw std::runtime_error("Semantic Error: Type mismatch in constant initialization for '" + node->name + "'.");
         Utils::report_error("Semantic Error", "Type mismatch in constant initialization for '" + node->name + "'.", node->line);
     }
 
@@ -808,7 +775,6 @@ void SemanticAnalyzer::visit(ConstantDeclarationNode* node) {
 
 void SemanticAnalyzer::visit(EnumStatementNode* node) {
     if (symbolTable.current_scope->lookup(node->name)) {
-        //throw std::runtime_error("Semantic Error: Redefinition of symbol '" + node->name + "'.");
         Utils::report_error("Semantic Error", "Redefinition of symbol '" + node->name + "'.", node->line);
     }
 
@@ -820,14 +786,12 @@ void SemanticAnalyzer::visit(EnumStatementNode* node) {
     int current_value = 0;
     for (const auto& member : node->members) {
         if (symbolTable.current_scope->lookup(member->name)) {
-            //throw std::runtime_error("Semantic Error: Redefinition of symbol '" + member->name + "'.");
             Utils::report_error("Semantic Error", "Redefinition of symbol '" + member->name + "'.", node->line);
         }
 
         if (member->value) {
             // TODO: for now, we only support integer literals as enum values
             if (member->value->node_type != ASTNode::NodeType::INTEGER_LITERAL_EXPRESSION) {
-                //throw std::runtime_error("Semantic Error: Enum member value must be an integer literal.");
                 Utils::report_error("Semantic Error", "Enum member value must be an integer literal.", node->line);
             }
             current_value = static_cast<IntegerLiteralExpressionNode*>(member->value.get())->value;
@@ -844,7 +808,6 @@ void SemanticAnalyzer::visit(EnumStatementNode* node) {
 
 std::unique_ptr<TypeNode> SemanticAnalyzer::visitExpression(ASTNode* expr) {
     if (!expr) {
-        //throw std::runtime_error("Semantic Error: Attempted to visit a null expression.");
         Utils::report_error("Semantic Error", "Attempted to visit a null expression.");
     }
 
@@ -890,7 +853,6 @@ std::unique_ptr<TypeNode> SemanticAnalyzer::visitExpression(ASTNode* expr) {
             visit(func_node);
             Symbol* func_symbol = symbolTable.lookup(static_cast<FunctionCallNode*>(expr)->function_name);
             if (!func_symbol) {
-                //throw std::runtime_error("Semantic Error: Function '" + static_cast<FunctionCallNode*>(expr)->function_name + "' not found.");
                 Utils::report_error("Semantic Error", "Function '" + static_cast<FunctionCallNode*>(expr)->function_name + "' not found.", func_node->line);
             }
             func_node->resolved_type = func_symbol->dataType->clone(); 
@@ -936,14 +898,12 @@ std::unique_ptr<TypeNode> SemanticAnalyzer::visitExpression(ASTNode* expr) {
             auto* scope_node = static_cast<ScopeResolutionNode*>(expr);
             visit(scope_node);
             if (!scope_node->resolved_type) {
-                //throw std::runtime_error("Semantic Error: Could not resolve type for namespace member.");
                 Utils::report_error("Semantic Error", "Could not resolve type for namespace member.", scope_node->line);
             }
             result_type = scope_node->resolved_type->clone();
             break;
         }
         default:
-            // throw std::runtime_error("Semantic Error: Unexpected AST node type in visitExpression.");
             Utils::report_error("Semantic Error", "Unexpected AST node type in visitExpression.");
     }
 
@@ -953,7 +913,6 @@ std::unique_ptr<TypeNode> SemanticAnalyzer::visitExpression(ASTNode* expr) {
     }
 
     Utils::report_error("Semantic Error", "Expression resolution returned null.");
-    //return nullptr;
 }
 
 std::unique_ptr<TypeNode> SemanticAnalyzer::visitIntegerLiteralExpression(IntegerLiteralExpressionNode* node) {

@@ -26,25 +26,58 @@ const Token& Parser::consume() {
     return tokens[current_token_index++];
 }
 
-void Parser::expect(Token::Type expected_type, const std::string& error_msg) {
-    const Token& current_token = peek();
-    if (current_token.type != expected_type) {
-        throw std::runtime_error(error_msg +
-            " (Got " + current_token.typeToString() +
-            " '" + current_token.value +
-            "' at line " + std::to_string(current_token.line) +
-            ", column " + std::to_string(current_token.column) + ")");
-    } else {
-        consume();
-    }
-}
-
 bool Parser::match(Token::Type type) {
     if (peek().type == type) {
         consume();
         return true;
     }
     return false;
+}
+
+void Parser::expect(Token::Type expected_type, const std::string& error_msg) {
+    const Token& current_token = peek();
+    if (current_token.type != expected_type) {
+        std::string full_msg = error_msg + " (Expected " + current_token.typeToString() + 
+                    ", but got '" + current_token.value + "')";
+        report_parser_error(current_token, full_msg);
+        synchronize();
+    } else {
+        consume();
+    }
+}
+
+void Parser::report_parser_error(const Token& token, const std::string& msg) {
+    std::cerr << ANSI_RED << "Parser Error: " << ANSI_RESET 
+              << ANSI_WHITE << msg << " "
+              << ANSI_YELLOW << "(Line " << token.line << ", Col " << token.column << ")" 
+              << ANSI_RESET << std::endl;
+    has_errors = true;
+}
+
+void Parser::synchronize() {
+    consume();
+    while (peek().type != Token::END_OF_FILE) {
+        if (peek().type == Token::SEMICOLON) {
+            consume();
+            return;
+        }
+        switch (peek().type) {
+            case Token::KEYWORD_INT:
+            case Token::KEYWORD_FLOAT:
+            case Token::KEYWORD_DOUBLE:
+            case Token::KEYWORD_CHAR:
+            case Token::KEYWORD_BOOL:
+            case Token::KEYWORD_STRUCT:
+            case Token::KEYWORD_ENUM:
+            case Token::KEYWORD_RETURN:
+            case Token::KEYWORD_IF:
+            case Token::KEYWORD_WHILE:
+                return;
+            default:
+                consume();
+                break;
+        }
+    }
 }
 
 std::unique_ptr<ConstantDeclarationNode> Parser::parseConstantDeclaration() {
