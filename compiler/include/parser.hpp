@@ -1,30 +1,32 @@
 #ifndef NYTROGEN_PARSER_HPP
 #define NYTROGEN_PARSER_HPP
 
-#include "utils.hpp"
-#include "lexer.hpp"
-#include <vector>
-#include <memory>
-#include <string>
 #include <map>
+#include <memory>
 #include <stdexcept>
+#include <string>
+#include <vector>
+
 #include "ast.hpp"
+#include "lexer.hpp"
 #include "symbol_table.hpp"
+#include "utils.hpp"
 
 // Parser class handles syntax analysis and AST construction
 class Parser {
-public:
+   public:
     Parser(std::vector<Token> tokens);
     std::unique_ptr<ProgramNode> parse();
     SymbolTable& getSymbolTable() { return symbol_table; }
     bool has_errors = false;
     void report_parser_error(const Token& token, const std::string& msg);
     void synchronize();
-private:
+
+   private:
     std::vector<Token> tokens;
     size_t current_token_index;
     std::map<std::string, int> declared_variables;
-    SymbolTable symbol_table; // Add SymbolTable member
+    SymbolTable symbol_table;  // Add SymbolTable member
 
     // Token handling methods
     const Token& peek(size_t offset = 0) const;
@@ -32,7 +34,8 @@ private:
     void expect(Token::Type expected_type, const std::string& error_msg);
     bool match(Token::Type type);
 
-    std::unique_ptr<ASTNode> parseStatement(); // General statement parsing (e.g., return, var decl, assignment)
+    std::unique_ptr<ASTNode>
+    parseStatement();  // General statement parsing (e.g., return, var decl, assignment)
     std::unique_ptr<VariableDeclarationNode> parseVariableDeclaration();
     std::unique_ptr<VariableAssignmentNode> parseVariableAssignment();
     std::unique_ptr<VariableReferenceNode> parseVariableReference();
@@ -52,14 +55,16 @@ private:
     std::unique_ptr<NamespaceDefinition> parseNamespaceDefinition();
 
     // Expression parsing methods (now hierarchical for precedence)
-    std::unique_ptr<ASTNode> parseExpression(); 		// Handles + and - (lowest precedence)
-    std::unique_ptr<ASTNode> parseComparisonExpression(); 	// Handles == and > or < and <= or >= 
-    std::unique_ptr<ASTNode> parseTerm();       		// Handles * and / (medium precedence)
-    std::unique_ptr<ASTNode> parseFactor();     		// Handles literals, variables, and parentheses (highest precedence)
+    std::unique_ptr<ASTNode> parseExpression();            // Handles + and - (lowest precedence)
+    std::unique_ptr<ASTNode> parseComparisonExpression();  // Handles == and > or < and <= or >=
+    std::unique_ptr<ASTNode> parseTerm();                  // Handles * and / (medium precedence)
+    std::unique_ptr<ASTNode>
+    parseFactor();  // Handles literals, variables, and parentheses (highest precedence)
     std::unique_ptr<ASTNode> parseAdditiveExpression();
     std::unique_ptr<ASTNode> parseUnaryExpression();
 
-    std::unique_ptr<IntegerLiteralExpressionNode> parseIntegerLiteralExpression(); // Specific helper for int literals
+    std::unique_ptr<IntegerLiteralExpressionNode>
+    parseIntegerLiteralExpression();  // Specific helper for int literals
     std::unique_ptr<FloatLiteralExpressionNode> parseFloatLiteralExpression();
     std::unique_ptr<DoubleLiteralExpressionNode> parseDoubleLiteralExpression();
     std::unique_ptr<StringLiteralExpressionNode> parseStringLiteralExpression();
@@ -68,4 +73,4 @@ private:
     std::unique_ptr<FunctionDefinitionNode> parseFunctionDefinition();
 };
 
-#endif // NYTROGEN_PARSER_HPP
+#endif  // NYTROGEN_PARSER_HPP

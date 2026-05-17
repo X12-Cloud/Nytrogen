@@ -1,4 +1,5 @@
 #include "file_parser.hpp"
+
 #include <fstream>
 #include <sstream>
 
@@ -72,7 +73,7 @@ void FileParser::parse(const std::string& filepath, std::ostream& output_stream)
             }
         }
         if (currently_skipping) {
-            continue; // Ignore this line completely
+            continue;  // Ignore this line completely
         }
 
         // DIRECTIVE ROUTE: #define
@@ -92,7 +93,8 @@ void FileParser::parse(const std::string& filepath, std::ostream& output_stream)
             size_t end_delim = line.find_last_of("\">");
 
             if (start_delim != std::string::npos && end_delim != std::string::npos) {
-                std::string include_path = line.substr(start_delim + 1, end_delim - start_delim - 1);
+                std::string include_path =
+                    line.substr(start_delim + 1, end_delim - start_delim - 1);
                 bool is_stdlib = (line[start_delim] == '<');
 
                 // Resolve the correct path using the file handler

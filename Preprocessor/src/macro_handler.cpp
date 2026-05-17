@@ -1,13 +1,12 @@
 #include "macro_handler.hpp"
+
+#include <cctype>
 #include <chrono>
 #include <ctime>
 #include <iomanip>
 #include <sstream>
-#include <cctype>
 
-MacroHandler::MacroHandler() {
-    predefineBuiltins();
-}
+MacroHandler::MacroHandler() { predefineBuiltins(); }
 
 void MacroHandler::define(const std::string& name, const std::string& value) {
     m_macros[name] = value;
@@ -41,14 +40,15 @@ std::string MacroHandler::expandMacros(const std::string& line) {
         char ch = line[i];
 
         // Comment safety check
-        if (!in_string && !in_char_literal && ch == '/' && i + 1 < line.size() && line[i+1] == '/') {
+        if (!in_string && !in_char_literal && ch == '/' && i + 1 < line.size() &&
+            line[i + 1] == '/') {
             flushToken();
             result += line.substr(i);
             return result;
         }
 
         // String literal boundaries
-        if (ch == '"' && (i == 0 || line[i-1] != '\\') && !in_char_literal) {
+        if (ch == '"' && (i == 0 || line[i - 1] != '\\') && !in_char_literal) {
             flushToken();
             in_string = !in_string;
             result += ch;
@@ -56,7 +56,7 @@ std::string MacroHandler::expandMacros(const std::string& line) {
         }
 
         // Char literal boundaries
-        if (ch == '\'' && (i == 0 || line[i-1] != '\\') && !in_string) {
+        if (ch == '\'' && (i == 0 || line[i - 1] != '\\') && !in_string) {
             flushToken();
             in_char_literal = !in_char_literal;
             result += ch;
@@ -64,7 +64,7 @@ std::string MacroHandler::expandMacros(const std::string& line) {
         }
 
         // Build identifiers/tokens
-        if (!in_string && !in_char_literal && (std::isalnum(ch) || ch == '_')) {
+        if (!in_string && !in_char_literal && ((std::isalnum(ch) != 0) || ch == '_')) {
             current_token += ch;
         } else {
             flushToken();
@@ -87,9 +87,9 @@ void MacroHandler::predefineBuiltins() {
     ss_time << std::put_time(local_tm, "\"%H:%M:%S\"");
 
     m_macros["__DATE_TIME__"] = ss_datetime.str();
-    m_macros["__DATE__"]      = ss_date.str();
-    m_macros["__TIME__"]      = ss_time.str();
-    m_macros["__VERSION__"]   = NYTRO_VERSION;
+    m_macros["__DATE__"] = ss_date.str();
+    m_macros["__TIME__"] = ss_time.str();
+    m_macros["__VERSION__"] = NYTRO_VERSION;
 
 #if defined(__linux__)
     m_macros["__SYSTEM__"] = "\"Linux\"";

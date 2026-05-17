@@ -1,18 +1,17 @@
-#include <iostream>
-#include <string>
 #include <fstream>
-#include <sstream>
-#include <vector>
+#include <iostream>
 #include <map>
-#include <unordered_map>
+#include <sstream>
 #include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
+#include "ast.hpp"
+#include "code_generator.hpp"
 #include "lexer.hpp"
 #include "parser.hpp"
-#include "ast.hpp"
 #include "semantic_analyzer.hpp"
-
-#include "code_generator.hpp"
 
 std::string readFileContent(const std::string& filepath) {
     std::ifstream file(filepath);
@@ -29,7 +28,8 @@ int main(int argc, char* argv[]) {
     std::cout << "Nytrogen Compiler " << Utils::get_distro_name() << std::endl;
 
     if (argc < 2) {
-        std::cerr << "Error: No source file provided. Usage: ./nytro-c <source_file> [output_dir]\n";
+        std::cerr
+            << "Error: No source file provided. Usage: ./nytro-c <source_file> [output_dir]\n";
         return 2;
     }
 
@@ -37,7 +37,7 @@ int main(int argc, char* argv[]) {
     std::string output_asm_filename = "out.asm";
     if (argc > 2) {
         output_asm_filename = argv[2];
-    } 
+    }
     bool debug_mode = false;
     bool verbose = false;
     bool is_entry = false;
@@ -58,11 +58,13 @@ int main(int argc, char* argv[]) {
     }
 
     std::string sourceCode = readFileContent(input_filepath);
-    if (sourceCode.empty()) { return 2;
-}
+    if (sourceCode.empty()) {
+        return 2;
+    }
 
-    if (verbose) { std::cout << "\n--- Processing Source File: " << input_filepath << " ---\n\n";
-}
+    if (verbose) {
+        std::cout << "\n--- Processing Source File: " << input_filepath << " ---\n\n";
+    }
 
     std::vector<Token> tokens = tokenize(sourceCode);
     Parser parser(std::move(tokens));
@@ -76,12 +78,14 @@ int main(int argc, char* argv[]) {
     }
 
     if (parser.has_errors) {
-        std::cerr << ANSI_RED << "Compilation aborted due to previous parser errors.\n" << ANSI_RESET;
+        std::cerr << ANSI_RED << "Compilation aborted due to previous parser errors.\n"
+                  << ANSI_RESET;
         std::exit(1);
     }
 
-    if (verbose) { ast_root->dump();
-}
+    if (verbose) {
+        ast_root->dump();
+    }
 
     // Perform semantic analysis
     SemanticAnalyzer semanticAnalyzer(ast_root, parser.getSymbolTable());
@@ -92,9 +96,9 @@ int main(int argc, char* argv[]) {
     CodeGenerator codeGenerator(ast_root, semanticAnalyzer.getSymbolTable());
     codeGenerator.generate(output_asm_filename, is_entry);
 
-    if (verbose) { std::cout << "Successfully generated assembly to '" << output_asm_filename << "'\n";
-}
+    if (verbose) {
+        std::cout << "Successfully generated assembly to '" << output_asm_filename << "'\n";
+    }
 
     return 0;
 }
-

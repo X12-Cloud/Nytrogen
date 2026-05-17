@@ -5,7 +5,9 @@
 - Namespace support.
 
 ### Reworked:
-- Remade the preprocessor into a moer modular and abstract archeticure.
+- Remade the preprocessor into a more modular and abstract archeticure.
+- Colorised and Beautified error reporting in semantic analyser and parser.
+- Used clang-tidy to fix warnings, clang-format to beatify the compiler, driver and preprocessor.
 
 ## 0.131
 ### Added:

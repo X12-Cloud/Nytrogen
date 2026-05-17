@@ -1,11 +1,13 @@
-#include <iostream>
-#include <string>
-#include <vector>
+#include <sys/wait.h>
+
+#include <algorithm>
 #include <cstdlib>
 #include <filesystem>
-#include <algorithm>
-#include <sys/wait.h>
+#include <iostream>
+#include <string>
 #include <unordered_map>
+#include <vector>
+
 #include "config_loader.hpp"
 
 namespace fs = std::filesystem;
@@ -28,14 +30,14 @@ struct FlagInfo {
 };
 
 namespace Color {
-    const char* RED   = "\033[31m";
-    const char* GREEN = "\033[32m";
-    const char* YELLOW= "\033[33m";
-    const char* RESET = "\033[0m";
-};
+const char* RED = "\033[31m";
+const char* GREEN = "\033[32m";
+const char* YELLOW = "\033[33m";
+const char* RESET = "\033[0m";
+};  // namespace Color
 
 int main(int argc, char* argv[]) {
-    auto lua_config = ConfigLoader::load("init.lua"); // load the lua config file
+    auto lua_config = ConfigLoader::load("init.lua");  // load the lua config file
     cfg.verbose = lua_config.verbose;
     cfg.debug = lua_config.debug;
     cfg.clean = lua_config.clean;
@@ -47,32 +49,27 @@ int main(int argc, char* argv[]) {
 
     // Flag map
     std::unordered_map<std::string, FlagInfo> flag_map = {
-        {"--obj",     {&cfg.obj_only, "Compile to object file only."}},
-        {"--asm",     {&cfg.asm_only, "Stop after assembly generation."}},
+        {"--obj", {&cfg.obj_only, "Compile to object file only."}},
+        {"--asm", {&cfg.asm_only, "Stop after assembly generation."}},
         {"--disable-preprocessor", {&cfg.no_preproc, "Skip the pre-processing stage."}},
-        {"--verbose", {&cfg.verbose,  "Enable detailed logging."}},
-        {"--debug",   {&cfg.debug,    "Include debug symbols."}},
+        {"--verbose", {&cfg.verbose, "Enable detailed logging."}},
+        {"--debug", {&cfg.debug, "Include debug symbols."}},
         {"--version", {&cfg.show_version, "Show Nytrogen version."}},
-        {"--clear",   {&cfg.clean,    "Clean the output directory."}},
-        {"--show-tui",     {&cfg.tui, "Show a debugging tui."}}, // Very early beta
-        {"--help",    {&cfg.help,    "Show this menu."}}
-    };
+        {"--clear", {&cfg.clean, "Clean the output directory."}},
+        {"--show-tui", {&cfg.tui, "Show a debugging tui."}},  // Very early beta
+        {"--help", {&cfg.help, "Show this menu."}}};
 
     std::unordered_map<std::string, std::string> flag_aliases = {
-        {"-c", "--obj"},
-        {"-S", "--asm"},
-        {"-v", "--version"},
-        {"-dp", "--disable-preprocessor"},
-        {"-tui", "--show-tui"},
-        {"-h", "--help"}
-    };
+        {"-c", "--obj"},        {"-S", "--asm"},
+        {"-v", "--version"},    {"-dp", "--disable-preprocessor"},
+        {"-tui", "--show-tui"}, {"-h", "--help"}};
 
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
 
-        if (flag_aliases.count(arg)) arg = flag_aliases[arg];
+        if (flag_aliases.count(arg) != 0u) arg = flag_aliases[arg];
 
-        if (flag_map.count(arg)) {
+        if (flag_map.count(arg) != 0u) {
             *flag_map[arg].value = true;
 
             if (cfg.show_version) {
@@ -80,13 +77,14 @@ int main(int argc, char* argv[]) {
                 return 0;
             }
             if (cfg.help) {
-                std::cout << Color::YELLOW << "Nytrogen Toolchain v" << NYTRO_VERSION << Color::RESET << "\n";
+                std::cout << Color::YELLOW << "Nytrogen Toolchain v" << NYTRO_VERSION
+                          << Color::RESET << "\n";
                 std::cout << "Usage: nytrogen [options] [files...]\n\n";
                 std::cout << "Options:\n";
 
                 for (auto const& [flag, info] : flag_map) {
                     // Find if this flag has an alias
-                    std::string alias = "    "; // default padding if no alias
+                    std::string alias = "    ";  // default padding if no alias
                     for (auto const& [shorthand, primary] : flag_aliases) {
                         if (primary == flag) {
                             alias = shorthand + ",";
@@ -95,9 +93,8 @@ int main(int argc, char* argv[]) {
                     }
 
                     // Print columns: Shorthand (padded 4) | Flag (padded 20) | Description
-                    std::printf("  %s%-4s %-22s%s %s\n", 
-                    Color::GREEN, alias.c_str(), flag.c_str(), Color::RESET, 
-                    info.description.c_str());
+                    std::printf("  %s%-4s %-22s%s %s\n", Color::GREEN, alias.c_str(), flag.c_str(),
+                                Color::RESET, info.description.c_str());
                 }
                 std::cout << "\nExample:\n  nytrogen -c main.ny\n";
                 return 0;
@@ -111,13 +108,13 @@ int main(int argc, char* argv[]) {
 
     std::vector<std::string> files_to_compile;
     if (!cli_sources.empty()) {
-        files_to_compile = cli_sources; // cli priority
+        files_to_compile = cli_sources;  // cli priority
     } else {
-        files_to_compile = lua_config.sources; // fallback to the sources in the lua config
+        files_to_compile = lua_config.sources;  // fallback to the sources in the lua config
     }
 
     if (cfg.verbose) extra_flags += " -verbose";
-    if (cfg.debug)   extra_flags += " -debug";
+    if (cfg.debug) extra_flags += " -debug";
     if (files_to_compile.empty()) {
         std::cerr << "Error: No input files found in init.lua or CLI." << std::endl;
         return 1;
@@ -147,7 +144,7 @@ int main(int argc, char* argv[]) {
 
     if (!lua_config.preprocessor_bin.empty() && lua_config.preprocessor_bin != "nytro-pre") {
         pre_bin = lua_config.preprocessor_bin;
-    } // use the preprocessor defined in the lua config
+    }  // use the preprocessor defined in the lua config
 
     // Setup Output Directory (Current Working Directory/out)
     fs::path out_dir = fs::current_path() / "out";
@@ -155,14 +152,15 @@ int main(int argc, char* argv[]) {
         if (ConfigLoader::is_safe_path(lua_config.output_dir)) {
             out_dir = lua_config.output_dir;
         } else {
-            std::cerr << Color::RED << "FATAL: Unsafe output_dir detected in Lua config: " << lua_config.output_dir << Color::RESET << "\n";
+            std::cerr << Color::RED << "FATAL: Unsafe output_dir detected in Lua config: "
+                      << lua_config.output_dir << Color::RESET << "\n";
             std::cerr << "Paths must be relative and cannot contain '..'\n";
             return 1;
         }
     }
     if (cfg.clean) {
-	if (cfg.verbose) std::cout << "--- Cleaning out/ directory ---" << std::endl;
-	fs::remove_all(out_dir);
+        if (cfg.verbose) std::cout << "--- Cleaning out/ directory ---" << std::endl;
+        fs::remove_all(out_dir);
     }
     fs::create_directories(out_dir);
 
@@ -174,28 +172,31 @@ int main(int argc, char* argv[]) {
         bool is_entry = (current_input == files_to_compile[0]);
 
         std::string current_base = fs::path(current_input).stem().string();
-        std::string current_pre   = (out_dir / (current_base + ".pre.nyt")).string();
-        std::string current_asm   = (out_dir / (current_base + ".asm")).string();
-        std::string current_obj   = (out_dir / (current_base + ".o")).string();
+        std::string current_pre = (out_dir / (current_base + ".pre.nyt")).string();
+        std::string current_asm = (out_dir / (current_base + ".asm")).string();
+        std::string current_obj = (out_dir / (current_base + ".o")).string();
 
         // Preprocessor
         if (!cfg.no_preproc) {
             if (cfg.verbose) std::cout << "--- Running Nytrogen Preprocessor ---" << std::endl;
-            std::string pre_cmd = "\"" + pre_bin.string() + "\" \"" + current_input + "\" > \"" + current_pre + "\"";
-        if (cfg.verbose) std::cout << "Running: " << pre_cmd << std::endl;
+            std::string pre_cmd =
+                "\"" + pre_bin.string() + "\" \"" + current_input + "\" > \"" + current_pre + "\"";
+            if (cfg.verbose) std::cout << "Running: " << pre_cmd << std::endl;
             if (std::system(pre_cmd.c_str()) != 0) return 1;
         }
 
         // Compiler
         if (cfg.verbose) std::cout << "--- Running Nytrogen Compiler ---" << std::endl;
         std::string entry_flag = is_entry ? " -entry" : "";
-        std::string comp_cmd = "\"" + compiler_bin.string() + "\" \"" + current_pre + "\" \"" + current_asm + "\" " + extra_flags + entry_flag;
+        std::string comp_cmd = "\"" + compiler_bin.string() + "\" \"" + current_pre + "\" \"" +
+                               current_asm + "\" " + extra_flags + entry_flag;
         if (cfg.verbose) std::cout << "Running: " << comp_cmd << std::endl;
         if (std::system(comp_cmd.c_str()) != 0) return 1;
         if (cfg.asm_only) return 0;
 
         // NASM (Assembler)
-        if (cfg.verbose) std::cout << "\n--- Assembling " << current_base << ".asm ---" << std::endl;
+        if (cfg.verbose)
+            std::cout << "\n--- Assembling " << current_base << ".asm ---" << std::endl;
         std::string nasm_cmd = "nasm -f elf64 \"" + current_asm + "\" -o \"" + current_obj + "\"";
         if (cfg.verbose) std::cout << "Running: " << nasm_cmd << std::endl;
         if (std::system(nasm_cmd.c_str()) != 0) return 1;
@@ -213,29 +214,31 @@ int main(int argc, char* argv[]) {
     std::string all_objs = "";
     std::string lib_flags = "";
     for (const auto& lib : lua_config.extra_libs) {
-	lib_flags += "-l" + lib + " ";
+        lib_flags += "-l" + lib + " ";
     }
     for (const auto& obj_path : object_files) {
-	all_objs += "\"" + obj_path + "\" ";
+        all_objs += "\"" + obj_path + "\" ";
     }
-    std::string link_cmd = lua_config.linker_bin + " -o \"" + final_exe + "\" " + all_objs + lib_flags + " -lc --dynamic-linker /lib64/ld-linux-x86-64.so.2";
-    //std::string link_cmd = "gcc -no-pie -o \"" + final_exe + "\" " + all_objs + lib_flags;
+    std::string link_cmd = lua_config.linker_bin + " -o \"" + final_exe + "\" " + all_objs +
+                           lib_flags + " -lc --dynamic-linker /lib64/ld-linux-x86-64.so.2";
+    // std::string link_cmd = "gcc -no-pie -o \"" + final_exe + "\" " + all_objs + lib_flags;
     if (cfg.verbose) std::cout << "Running: " << link_cmd << std::endl;
     if (std::system(link_cmd.c_str()) != 0) {
-        std::cerr << Color::RED << "Linker Error: Failed to create executable." << Color::RESET << std::endl;
+        std::cerr << Color::RED << "Linker Error: Failed to create executable." << Color::RESET
+                  << std::endl;
         return 1;
     }
 
     // Execution
     if (cfg.verbose) std::cout << "\n--- Running output program ---" << std::endl;
     std::string run_cmd = "./" + fs::relative(final_exe, fs::current_path()).string();
-    if (cfg.tui) run_cmd += " > output.txt 2>&1"; 
+    if (cfg.tui) run_cmd += " > output.txt 2>&1";
     int status = std::system(run_cmd.c_str());
     if (WIFEXITED(status)) {
         std::cout << "\nExit Code: " << WEXITSTATUS(status) << std::endl;
     }
 
-    if (cfg.tui) system("./build/bin/nytro-tui"); // gonna make it check paths later
+    if (cfg.tui) system("./build/bin/nytro-tui");  // gonna make it check paths later
 
     return 0;
 }

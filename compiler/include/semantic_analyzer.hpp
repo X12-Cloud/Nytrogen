@@ -1,28 +1,29 @@
 #ifndef SEMANTIC_ANALYZER_HPP
 #define SEMANTIC_ANALYZER_HPP
 
-#include "utils.hpp"
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
-#include <map>
+
 #include "ast.hpp"
 #include "symbol_table.hpp"
+#include "utils.hpp"
 
 class SemanticAnalyzer {
-public:
+   public:
     SemanticAnalyzer(std::unique_ptr<ProgramNode>& ast, SymbolTable& symTable)
         : program_ast(ast), symbolTable(symTable) {}
 
     void analyze();
     SymbolTable& getSymbolTable() { return symbolTable; }
-    int getTypeSize(const TypeNode* type); // Helper to get size of a type
+    int getTypeSize(const TypeNode* type);  // Helper to get size of a type
     bool areTypesCompatible(const TypeNode* type1, const TypeNode* type2);
 
     void setIsEntryPoint(bool entry) { is_entry_point = entry; }
     bool debug_mode = false;
 
-private:
+   private:
     bool is_entry_point = false;
     std::unique_ptr<ProgramNode>& program_ast;
     SymbolTable& symbolTable;
@@ -65,4 +66,4 @@ private:
     std::unique_ptr<TypeNode> visitDoubleLiteralExpression(DoubleLiteralExpressionNode* node);
 };
 
-#endif // SEMANTIC_ANALYZER_HPP
+#endif  // SEMANTIC_ANALYZER_HPP

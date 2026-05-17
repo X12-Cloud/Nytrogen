@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
+
 #include "sol/sol.hpp"
 
 struct NytroConfig {
@@ -18,7 +19,7 @@ struct NytroConfig {
 };
 
 class ConfigLoader {
-public:
+   public:
     static NytroConfig load(const std::string& filename);
     static bool is_safe_path(const std::string& path);
 };

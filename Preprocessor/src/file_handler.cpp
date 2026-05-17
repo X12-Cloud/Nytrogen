@@ -1,7 +1,9 @@
 #include "file_handler.hpp"
+
 #include <iostream>
 
-fs::path FileHandler::resolvePath(const std::string& target_path, const fs::path& current_file, bool is_stdlib) {
+fs::path FileHandler::resolvePath(const std::string& target_path, const fs::path& current_file,
+                                  bool is_stdlib) {
     if (is_stdlib) {
         return fs::absolute(fs::path("/usr/include/nytrogen") / target_path);
     }
@@ -16,7 +18,7 @@ bool FileHandler::enterFile(const fs::path& absolute_path) {
                 std::cerr << "  -> Included from: " << trace << "\n";
             }
             std::cerr << "  -> Culprit file: " << absolute_path << "\n";
-            return false; // Stop the compiler before it crashes the stack
+            return false;  // Stop the compiler before it crashes the stack
         }
     }
     m_include_stack.push_back(absolute_path);
