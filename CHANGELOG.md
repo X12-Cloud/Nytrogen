@@ -4,6 +4,9 @@
 ### Added:
 - Namespace support.
 
+### Reworked:
+- Remade the preprocessor into a moer modular and abstract archeticure.
+
 ## 0.131
 ### Added:
 - Switch statements (Only syntax and semantic analysis for now tho).
@@ -20,7 +23,7 @@
 
 ### Reworked:
 - Remade `BinaryOperationExpressionNode` in `code_generator.cpp` to be more efficient.
--  Made `VariableAssignmentExpressssionNode` in `code_generator.cpp` much more efficient.
+- Made `VariableAssignmentExpressssionNode` in `code_generator.cpp` much more efficient.
 - Optimized the .data section generation (floats, doubles, strings as of now)and made it get generated at the very bottom instead of a separate section for each variable.
 
 ### Added:

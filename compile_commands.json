@@ -1,7 +1,25 @@
 [
 {
   "directory": "/home/mohamed/dev/Nytrogen/Preprocessor",
-  "command": "/usr/sbin/c++ -DNYTRO_VERSION=\\\"0.131-beta\\\"  -std=gnu++17 -o CMakeFiles/nytro-pre.dir/src/main.cpp.o -c /home/mohamed/dev/Nytrogen/Preprocessor/src/main.cpp",
+  "command": "/usr/sbin/c++ -DNYTRO_VERSION=\\\"0.131-beta\\\" -I/home/mohamed/dev/Nytrogen/Preprocessor/include -I/home/mohamed/dev/Nytrogen/Preprocessor/src -std=gnu++17 -o CMakeFiles/nytro-pre.dir/src/file_handler.cpp.o -c /home/mohamed/dev/Nytrogen/Preprocessor/src/file_handler.cpp",
+  "file": "/home/mohamed/dev/Nytrogen/Preprocessor/src/file_handler.cpp",
+  "output": "Preprocessor/CMakeFiles/nytro-pre.dir/src/file_handler.cpp.o"
+},
+{
+  "directory": "/home/mohamed/dev/Nytrogen/Preprocessor",
+  "command": "/usr/sbin/c++ -DNYTRO_VERSION=\\\"0.131-beta\\\" -I/home/mohamed/dev/Nytrogen/Preprocessor/include -I/home/mohamed/dev/Nytrogen/Preprocessor/src -std=gnu++17 -o CMakeFiles/nytro-pre.dir/src/file_parser.cpp.o -c /home/mohamed/dev/Nytrogen/Preprocessor/src/file_parser.cpp",
+  "file": "/home/mohamed/dev/Nytrogen/Preprocessor/src/file_parser.cpp",
+  "output": "Preprocessor/CMakeFiles/nytro-pre.dir/src/file_parser.cpp.o"
+},
+{
+  "directory": "/home/mohamed/dev/Nytrogen/Preprocessor",
+  "command": "/usr/sbin/c++ -DNYTRO_VERSION=\\\"0.131-beta\\\" -I/home/mohamed/dev/Nytrogen/Preprocessor/include -I/home/mohamed/dev/Nytrogen/Preprocessor/src -std=gnu++17 -o CMakeFiles/nytro-pre.dir/src/macro_handler.cpp.o -c /home/mohamed/dev/Nytrogen/Preprocessor/src/macro_handler.cpp",
+  "file": "/home/mohamed/dev/Nytrogen/Preprocessor/src/macro_handler.cpp",
+  "output": "Preprocessor/CMakeFiles/nytro-pre.dir/src/macro_handler.cpp.o"
+},
+{
+  "directory": "/home/mohamed/dev/Nytrogen/Preprocessor",
+  "command": "/usr/sbin/c++ -DNYTRO_VERSION=\\\"0.131-beta\\\" -I/home/mohamed/dev/Nytrogen/Preprocessor/include -I/home/mohamed/dev/Nytrogen/Preprocessor/src -std=gnu++17 -o CMakeFiles/nytro-pre.dir/src/main.cpp.o -c /home/mohamed/dev/Nytrogen/Preprocessor/src/main.cpp",
   "file": "/home/mohamed/dev/Nytrogen/Preprocessor/src/main.cpp",
   "output": "Preprocessor/CMakeFiles/nytro-pre.dir/src/main.cpp.o"
 },

@@ -7,6 +7,12 @@
 #include <fstream>
 #include <vector>
 
+#define ANSI_RESET  "\033[0m"
+#define ANSI_RED    "\033[1;31m"
+#define ANSI_YELLOW "\033[1;33m"
+#define ANSI_CYAN   "\033[1;36m"
+#define ANSI_WHITE  "\033[1;37m"
+
 namespace Utils {
     static std::string cleanString(std::string s) {
         s.erase(std::remove_if(s.begin(), s.end(), [](unsigned char c) {
@@ -30,6 +36,9 @@ namespace Utils {
             }
         }
         return "Unknown Distribution";
+    }
+    void report_error(const std::string& msg, int line) {
+        std::cerr << ANSI_RED << "Nytrogen Error: " << ANSI_WHITE << msg << ANSI_YELLOW << " (Line " << line << ")" << ANSI_RESET << "\n";
     }
 };
 

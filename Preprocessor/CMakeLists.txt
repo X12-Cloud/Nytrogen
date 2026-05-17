@@ -3,6 +3,11 @@ project(NytrogenPreprocessor)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(nytro-pre src/main.cpp)
+# Source files
+file(GLOB SOURCES "src/*.cpp")
 
+# Include headers
+include_directories(include)
+include_directories(src)
 
+add_executable(nytro-pre ${SOURCES})

@@ -1,7 +1,0 @@
-// include <fio/fio.nyt>
-include "local_include.nyt"
-
-int main() {
-    print LOCAL_CONSTANT;
-    return 0;
-}

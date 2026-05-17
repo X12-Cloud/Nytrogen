@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Version tree
 set(NYTRO_VERSION_MAJOR 0)

@@ -130,6 +130,78 @@ nytro-pre/fast:
 	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/build
 .PHONY : nytro-pre/fast
 
+src/file_handler.o: src/file_handler.cpp.o
+.PHONY : src/file_handler.o
+
+# target to build an object file
+src/file_handler.cpp.o:
+	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/src/file_handler.cpp.o
+.PHONY : src/file_handler.cpp.o
+
+src/file_handler.i: src/file_handler.cpp.i
+.PHONY : src/file_handler.i
+
+# target to preprocess a source file
+src/file_handler.cpp.i:
+	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/src/file_handler.cpp.i
+.PHONY : src/file_handler.cpp.i
+
+src/file_handler.s: src/file_handler.cpp.s
+.PHONY : src/file_handler.s
+
+# target to generate assembly for a file
+src/file_handler.cpp.s:
+	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/src/file_handler.cpp.s
+.PHONY : src/file_handler.cpp.s
+
+src/file_parser.o: src/file_parser.cpp.o
+.PHONY : src/file_parser.o
+
+# target to build an object file
+src/file_parser.cpp.o:
+	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/src/file_parser.cpp.o
+.PHONY : src/file_parser.cpp.o
+
+src/file_parser.i: src/file_parser.cpp.i
+.PHONY : src/file_parser.i
+
+# target to preprocess a source file
+src/file_parser.cpp.i:
+	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/src/file_parser.cpp.i
+.PHONY : src/file_parser.cpp.i
+
+src/file_parser.s: src/file_parser.cpp.s
+.PHONY : src/file_parser.s
+
+# target to generate assembly for a file
+src/file_parser.cpp.s:
+	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/src/file_parser.cpp.s
+.PHONY : src/file_parser.cpp.s
+
+src/macro_handler.o: src/macro_handler.cpp.o
+.PHONY : src/macro_handler.o
+
+# target to build an object file
+src/macro_handler.cpp.o:
+	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/src/macro_handler.cpp.o
+.PHONY : src/macro_handler.cpp.o
+
+src/macro_handler.i: src/macro_handler.cpp.i
+.PHONY : src/macro_handler.i
+
+# target to preprocess a source file
+src/macro_handler.cpp.i:
+	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/src/macro_handler.cpp.i
+.PHONY : src/macro_handler.cpp.i
+
+src/macro_handler.s: src/macro_handler.cpp.s
+.PHONY : src/macro_handler.s
+
+# target to generate assembly for a file
+src/macro_handler.cpp.s:
+	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/src/macro_handler.cpp.s
+.PHONY : src/macro_handler.cpp.s
+
 src/main.o: src/main.cpp.o
 .PHONY : src/main.o
 
@@ -163,6 +235,15 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... nytro-pre"
+	@echo "... src/file_handler.o"
+	@echo "... src/file_handler.i"
+	@echo "... src/file_handler.s"
+	@echo "... src/file_parser.o"
+	@echo "... src/file_parser.i"
+	@echo "... src/file_parser.s"
+	@echo "... src/macro_handler.o"
+	@echo "... src/macro_handler.i"
+	@echo "... src/macro_handler.s"
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"

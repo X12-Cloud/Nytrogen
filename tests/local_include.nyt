@@ -1,7 +1,16 @@
-// local_include.nyt
+#ifndef TEST_GUARDS_NYT
+#define TEST_GUARDS_NYT
+
+const int REPEAT_CHECK = 100;
+
+#ifndef INNER_GUARD_TEST
+#define INNER_GUARD_TEST
+const int INNER_CHECK = 200;
+#endif
+
 const int LOCAL_CONSTANT = 42;
 int get_local_constant() {
-    //const int LOCAL_CONSTANT = 42;
     return LOCAL_CONSTANT;
 }
-// NO MAIN FUNTION DEFINED this will be included <-----
+
+#endif
