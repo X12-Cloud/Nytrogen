@@ -47,7 +47,6 @@ if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   include("/home/mohamed/dev/Nytrogen/Preprocessor/cmake_install.cmake")
   include("/home/mohamed/dev/Nytrogen/compiler/cmake_install.cmake")
   include("/home/mohamed/dev/Nytrogen/driver/cmake_install.cmake")
-  include("/home/mohamed/dev/Nytrogen/tui/cmake_install.cmake")
 
 endif()
 

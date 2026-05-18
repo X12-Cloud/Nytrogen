@@ -155,19 +155,6 @@ nytro/fast:
 	$(MAKE) $(MAKESILENT) -f driver/CMakeFiles/nytro.dir/build.make driver/CMakeFiles/nytro.dir/build
 .PHONY : nytro/fast
 
-#=============================================================================
-# Target rules for targets named nytro-tui
-
-# Build rule for target.
-nytro-tui: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 nytro-tui
-.PHONY : nytro-tui
-
-# fast build rule for target.
-nytro-tui/fast:
-	$(MAKE) $(MAKESILENT) -f tui/CMakeFiles/nytro-tui.dir/build.make tui/CMakeFiles/nytro-tui.dir/build
-.PHONY : nytro-tui/fast
-
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -179,7 +166,6 @@ help:
 	@echo "... nytro"
 	@echo "... nytro-c"
 	@echo "... nytro-pre"
-	@echo "... nytro-tui"
 .PHONY : help
 
 

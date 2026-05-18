@@ -211,6 +211,7 @@ int main(int argc, char* argv[]) {
 
     // LD (Linker)
     if (cfg.verbose) std::cout << "\n--- Linking ---" << std::endl;
+
     std::string all_objs = "";
     std::string lib_flags = "";
     for (const auto& lib : lua_config.extra_libs) {
@@ -219,10 +220,21 @@ int main(int argc, char* argv[]) {
     for (const auto& obj_path : object_files) {
         all_objs += "\"" + obj_path + "\" ";
     }
-    std::string link_cmd = lua_config.linker_bin + " -o \"" + final_exe + "\" " + all_objs +
+
+    std::string compiler_linker = lua_config.linker_bin;
+    if (compiler_linker.empty()) {
+        compiler_linker = "ld";
+    }
+
+    std::string link_cmd;
+    if (!lua_config.linker_cmd.empty()) {
+        link_cmd = lua_config.linker_cmd;
+    } else {
+        link_cmd = lua_config.linker_bin + " -o \"" + final_exe + "\" " + all_objs +
                            lib_flags + " -lc --dynamic-linker /lib64/ld-linux-x86-64.so.2";
-    if (!lua_config.linker_cmd.empty()) { link_cmd = lua_config.linker_cmd; }
-    // std::string link_cmd = "gcc -no-pie -o \"" + final_exe + "\" " + all_objs + lib_flags;
+        // link_cmd = "gcc -no-pie -o \"" + final_exe + "\" " + all_objs + lib_flags;
+    }
+
     if (cfg.verbose) std::cout << "Running: " << link_cmd << std::endl;
     if (std::system(link_cmd.c_str()) != 0) {
         std::cerr << Color::RED << "Linker Error: Failed to create executable." << Color::RESET

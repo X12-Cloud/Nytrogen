@@ -20,13 +20,12 @@ NytroConfig ConfigLoader::load(const std::string& filename) {
                     conf.verbose = settings["verbose"].get_or(false);
                     conf.debug = settings["debug"].get_or(false);
                     conf.clean = settings["clean"].get_or(false);
-                    conf.use_tui = settings["tui"].get_or(false);
                     conf.output_dir = settings["output_dir"].get_or(std::string("./out"));
                     conf.preprocessor_bin =
                         settings["preprocessor"].get_or(std::string("nytro-pre"));
                     conf.linker_bin = settings["linker"].get_or(std::string("ld"));
                     conf.assembler_bin = settings["assembler"].get_or(std::string("nasm"));
-                    conf.linker_cmd = settings["linker_cmd"].get_or(std::string("echo \"No linker command found\""));
+                    conf.linker_cmd = settings["linker_cmd"].get_or(std::string(""));
                     sol::optional<sol::table> sources_table = project["sources"];  // sources
                     if (sources_table) conf.sources = sources_table->as<std::vector<std::string>>();
                     sol::optional<sol::table> extra_libs =
