@@ -488,6 +488,25 @@ std::unique_ptr<ASTNode> Parser::parseUnaryExpression() {
         return std::make_unique<UnaryOpExpressionNode>(op_token.type, std::move(operand),
                                                        op_token.line, op_token.column);
     }
+    if (peek().type == Token::LPAREN) {
+        Token::Type target_type_token = peek(1).type;
+        if (target_type_token == Token::KEYWORD_INT || 
+            target_type_token == Token::KEYWORD_CHAR) {
+
+            consume();
+            consume();
+
+            bool is_pointer = false;
+            if (peek().type == Token::STAR) {
+                consume();
+                is_pointer = true;
+            }
+            expect(Token::RPAREN, "Expected ')' closing the type cast.");
+            auto operand = parseExpression(); 
+
+            return std::make_unique<UnaryOpExpressionNode>(target_type_token, std::move(operand), peek().line, peek().column);
+        }
+    }
     return parseFactor();
 }
 

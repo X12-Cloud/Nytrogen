@@ -2,15 +2,15 @@ namespace std {
 namespace sys {
 
 int sys_read(int fd, char* data, int count) {
-     return std::sys::syscall3(0, fd, data, count);
+     return std::sys::syscall3(0, fd, (int)data, count);
 }
 
 int sys_write(int fd, char* data, int count) {
-     return std::sys::syscall3(1, fd, data, count);
+     return std::sys::syscall3(1, fd, (int)data, count);
 }
 
 int sys_open(string path, int flags, int mode) {
-     return std::sys::syscall3(2, path, flags, mode);
+     return std::sys::syscall3(2, (int)path, flags, mode);
 }
 
 int sys_close(int fd) {

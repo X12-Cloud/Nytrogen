@@ -11,7 +11,6 @@ struct NytroConfig {
     std::string linker_bin = "ld";
     std::string assembler_bin = "nasm";
     std::string linker_cmd;
-    bool use_tui = false;
     bool verbose = false;
     bool debug = false;
     bool clean = false;

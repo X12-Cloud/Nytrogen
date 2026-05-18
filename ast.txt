@@ -45,7 +45,7 @@
                FUNC_CALL: syscall3
                  INT_LITERAL: (0)
                  VAR_REF: (fd)
-                 VAR_REF: (data)
+                 ASTNode
                  VAR_REF: (count)
        FUNCTION_DEF: sys_write
          RETURN_STMT:
@@ -54,7 +54,7 @@
                FUNC_CALL: syscall3
                  INT_LITERAL: (1)
                  VAR_REF: (fd)
-                 VAR_REF: (data)
+                 ASTNode
                  VAR_REF: (count)
        FUNCTION_DEF: sys_open
          RETURN_STMT:
@@ -62,7 +62,7 @@
              SCOPE_RESOLUTION: sys::
                FUNC_CALL: syscall3
                  INT_LITERAL: (2)
-                 VAR_REF: (path)
+                 ASTNode
                  VAR_REF: (flags)
                  VAR_REF: (mode)
        FUNCTION_DEF: sys_close
@@ -78,7 +78,7 @@
      VAR_DECL
        STR_LITERAL: (./out/nytro_generated_file.txt)
      VAR_DECL
-       STR_LITERAL: (Nytrogen standard library works beautifully!\n)
+       STR_LITERAL: (Nytrogen standard library works beautifully!)
      PRINT_STMT
        STR_LITERAL: (\n[Step 1] Creating a file via std::sys::sys_open...\n)
      VAR_DECL
@@ -93,13 +93,13 @@
          VAR_REF: (fd)
          INT_LITERAL: (0)
        PRINT_STMT
-         STR_LITERAL: (FAIL: Could not open file for writing.\n)
+         STR_LITERAL: (FAIL: Could not open file for writing.)
        RETURN_STMT:
          INT_LITERAL: (1)
      PRINT_STMT
        STR_LITERAL: (SUCCESS: File descriptor allocated.\n)
      PRINT_STMT
-       STR_LITERAL: (\n[Step 2] Writing data via std::sys::sys_write...\n)
+       STR_LITERAL: (\n[Step 2] Writing data via std::sys::sys_write...)
      VAR_DECL
        SCOPE_RESOLUTION: std::
          SCOPE_RESOLUTION: sys::
@@ -110,13 +110,13 @@
      PRINT_STMT
        STR_LITERAL: (Bytes written to disk.\n)
      PRINT_STMT
-       STR_LITERAL: (\n[Step 3] Flushing buffers via std::sys::sys_close...\n)
+       STR_LITERAL: (\n[Step 3] Flushing buffers via std::sys::sys_close...)
      SCOPE_RESOLUTION: std::
        SCOPE_RESOLUTION: sys::
          FUNC_CALL: sys_close
            VAR_REF: (fd)
      PRINT_STMT
-       STR_LITERAL: (\n[Step 4] Reading data back to verify integrity...\n)
+       STR_LITERAL: (\n[Step 4] Reading data back to verify integrity...)
      VAR_DECL
        SCOPE_RESOLUTION: std::
          SCOPE_RESOLUTION: sys::
@@ -141,7 +141,7 @@
            VAR_REF: (buffer)
            INT_LITERAL: (45)
      PRINT_STMT
-       STR_LITERAL: (Content recovered from file:\n)
+       STR_LITERAL: (Content recovered from file:)
      PRINT_STMT
        VAR_REF: (buffer)
      PRINT_STMT
@@ -151,6 +151,6 @@
          FUNC_CALL: sys_close
            VAR_REF: (read_fd)
      PRINT_STMT
-       STR_LITERAL: (--- Test Complete: STATUS PASS ---\n)
+       STR_LITERAL: (--- Test Complete: STATUS PASS ---)
      RETURN_STMT:
        INT_LITERAL: (0)

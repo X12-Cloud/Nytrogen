@@ -775,6 +775,11 @@ void CodeGenerator::visit(MemberAccessNode* node) {
 }
 
 void CodeGenerator::visit(UnaryOpExpressionNode* node) {
+    if (node->op_type == Token::KEYWORD_INT || node->op_type == Token::KEYWORD_CHAR) {
+        visit(node->operand.get());
+        // should sucessfully get the address on its own
+        return;
+    }
     visit(node->operand.get());
     if (node->op_type == Token::ADDRESSOF) {
         const auto* ref_node = static_cast<const VariableReferenceNode*>(node->operand.get());
@@ -877,7 +882,7 @@ void CodeGenerator::visit(DoubleLiteralExpressionNode* node) {
 }
 
 void CodeGenerator::visit(StringLiteralExpressionNode* node) {
-    std::string formatted_val = "\"" + node->value + "\", 0";
+    std::string formatted_val = "\"" + unescapeString(node->value) + "\", 0";
     if (constants_map.find(formatted_val) == constants_map.end()) {
         std::string label = "_str_" + std::to_string(string_label_counter++);
         constants_map[formatted_val] = label;

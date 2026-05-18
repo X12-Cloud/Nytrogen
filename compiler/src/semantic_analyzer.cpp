@@ -400,19 +400,32 @@ void SemanticAnalyzer::visit(VariableReferenceNode* node) {
 
 void SemanticAnalyzer::visit(NamespaceDefinition* node) {
     namespace_stack.push_back(node->name);
-    symbolTable.enterScope();
 
-    Scope* namespace_scope = symbolTable.current_scope;
-    Symbol ns_symbol(Symbol::SymbolType::NAMESPACE_DEFINITION, node->name, namespace_scope);
-    if (namespace_scope->parent != nullptr) {
-        namespace_scope->parent->addSymbol(std::move(ns_symbol));
+    Symbol* existing_ns = symbolTable.current_scope->lookup(node->name);
+
+    if (existing_ns != nullptr && existing_ns->type == Symbol::SymbolType::NAMESPACE_DEFINITION) {
+        Scope* backup_scope = symbolTable.current_scope;
+        symbolTable.current_scope = existing_ns->internal_scope;
+
+        for (auto& member : node->members) {
+            this->visit(member.node.get());
+        }
+        symbolTable.current_scope = backup_scope;
+    } else {
+        symbolTable.enterScope();
+
+        Scope* namespace_scope = symbolTable.current_scope;
+        Symbol ns_symbol(Symbol::SymbolType::NAMESPACE_DEFINITION, node->name, namespace_scope);
+        if (namespace_scope->parent != nullptr) {
+            namespace_scope->parent->addSymbol(std::move(ns_symbol));
+        }
+
+        for (auto& member : node->members) {
+            this->visit(member.node.get());
+        }
+        symbolTable.exitScope();
     }
 
-    for (auto& member : node->members) {
-        this->visit(member.node.get());
-    }
-
-    symbolTable.exitScope();
     namespace_stack.pop_back();
 }
 
@@ -786,6 +799,14 @@ void SemanticAnalyzer::visit(StructDefinitionNode* node) {
 void SemanticAnalyzer::visit(UnaryOpExpressionNode* node) {
     std::unique_ptr<TypeNode> operand_type = visitExpression(node->operand.get());
 
+    if (node->op_type == Token::KEYWORD_INT) {
+        node->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_INT);
+        return;
+    }
+    if (node->op_type == Token::KEYWORD_CHAR) {
+        node->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_CHAR);
+        return;
+    }
     if (node->op_type == Token::ADDRESSOF) {
         if (node->operand->node_type != ASTNode::NodeType::VARIABLE_REFERENCE) {
             Utils::report_error("Semantic Error",
