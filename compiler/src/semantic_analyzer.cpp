@@ -424,6 +424,11 @@ void SemanticAnalyzer::visit(ScopeResolutionNode* node) {
     }
 
     Scope* old_scope = symbolTable.current_scope;
+
+    bool is_top_level_namespace = (this->original_context == nullptr);
+    if (is_top_level_namespace) {
+        this->original_context = old_scope;
+    }
     symbolTable.current_scope = ns_symbol->internal_scope;
 
     try {
@@ -455,6 +460,9 @@ void SemanticAnalyzer::visit(ScopeResolutionNode* node) {
         throw;
     }
 
+    if (is_top_level_namespace) {
+        this->original_context = nullptr;
+    }
     symbolTable.current_scope = old_scope;
 }
 
@@ -667,9 +675,6 @@ void SemanticAnalyzer::visit(FunctionCallNode* node) {
 
     // Check number of arguments
     if (node->arguments.size() != func_symbol->parameterTypes.size()) {
-        /* throw std::runtime_error("Semantic Error: Function '" + node->function_name + "' expects
-           " + std::to_string(func_symbol->parameterTypes.size()) + " arguments, but " +
-                                 std::to_string(node->arguments.size()) + " were provided."); */
         Utils::report_error("Semantic Error",
                             "Function '" + node->function_name + "' expects " +
                                 std::to_string(func_symbol->parameterTypes.size()) +
@@ -679,17 +684,22 @@ void SemanticAnalyzer::visit(FunctionCallNode* node) {
     }
 
     // Check argument types
+    Scope* namespace_scope = symbolTable.current_scope;
+    if (this->original_context != nullptr) {
+        symbolTable.current_scope = this->original_context;
+    }
+
     for (size_t i = 0; i < node->arguments.size(); ++i) {
         std::unique_ptr<TypeNode> arg_type = visitExpression(node->arguments[i].get());
         node->arguments[i]->resolved_type = arg_type->clone();
         if (!areTypesCompatible(arg_type.get(), func_symbol->parameterTypes[i].get())) {
-            //                         " of function '" + node->function_name + "'.");
             Utils::report_error("Semantic Error",
                                 "Type mismatch in argument " + std::to_string(i + 1) +
                                     " of function '" + node->function_name + "'.",
                                 node->line);
         }
     }
+    symbolTable.current_scope = namespace_scope;
     if (func_symbol->dataType) {
         node->resolved_type = func_symbol->dataType->clone();
     } else {

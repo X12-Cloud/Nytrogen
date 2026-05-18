@@ -30,6 +30,7 @@ class SemanticAnalyzer {
     std::string typeToString(const TypeNode* type);
     TypeNode* currentFunctionReturnType = nullptr;
     std::vector<std::string> namespace_stack;
+    Scope* original_context = nullptr;
 
     // Visitor methods for AST nodes
     void visit(ASTNode* node);

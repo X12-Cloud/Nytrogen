@@ -4,9 +4,33 @@
 #include <sstream>
 #include <stdexcept>
 #include <type_traits>
+#include <unordered_set>
 
 CodeGenerator::CodeGenerator(std::unique_ptr<ProgramNode>& ast, SymbolTable& symTable)
     : program_ast(ast), symbolTable(symTable), string_label_counter(0) {}
+
+std::string unescapeString(const std::string& input) {
+    std::string result;
+    for (size_t i = 0; i < input.size(); ++i) {
+        if (input[i] == '\\' && i + 1 < input.size()) {
+            switch (input[i + 1]) {
+                case 'n': result += "\", 10, \""; break;
+                case 't': result += "\", 9, \""; break;
+                case 'r': result += "\", 13, \""; break;
+                case '"': result += "\", 34, \""; break;
+                case '\\': result += "\", 92, \""; break;
+                default:
+                    result += input[i];
+                    result += input[i + 1];
+                    break;
+            }
+            i++;
+        } else {
+            result += input[i];
+        }
+    }
+    return result;
+}
 
 void CodeGenerator::generate(const std::string& output_filename, bool is_entry_point) {
     out.open(output_filename);
@@ -48,8 +72,12 @@ void CodeGenerator::generate(const std::string& output_filename, bool is_entry_p
 
     // print the .data section
     out << "\nsection .data" << std::endl;
+    std::unordered_set<std::string> emitted_data_labels;
     for (const auto& c : constants) {
-        out << "    " << c.label << " " << c.type << " " << c.value << std::endl;
+        if (emitted_data_labels.find(c.label) == emitted_data_labels.end()) {
+            out << "    " << c.label << " " << c.type << " " << c.value << std::endl;
+            emitted_data_labels.insert(c.label);
+        }
     }
 
     out.close();
@@ -259,6 +287,7 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
     auto prim = static_cast<PrimitiveTypeNode*>(node->type.get());
     bool is_float = (prim != nullptr) && (prim->primitive_type == Token::KEYWORD_FLOAT);
     bool is_double = (prim != nullptr) && (prim->primitive_type == Token::KEYWORD_DOUBLE);
+    bool is_string = (prim != nullptr) && (prim->primitive_type == Token::KEYWORD_STRING);
     int size = getTypeSize(node->type.get());
     std::string asm_label;
     for (auto& decl : node->declarations) {
@@ -276,16 +305,23 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
 
             if (decl.initial_value) {
                 if (decl.initial_value->is_constant()) {
-                    init_val = decl.initial_value->get_value();
+                    if (is_string) {
+                        std::string str_data_label = "_str_var_data_" + std::to_string(string_label_counter++);
+                        constants.push_back({str_data_label, "db", "\"" + unescapeString(decl.initial_value->get_value()) + "\", 0"});
+                        init_val = str_data_label;
+                    } else {
+                        init_val = decl.initial_value->get_value();
+                    }
                 } else {
                     has_non_const_init = true;
                 }
             }
 
-            std::string nasm_type = (size == 4)   ? "dd"
-                                    : (size == 8) ? "dq"
-                                    : (size == 1) ? "db"
-                                                  : "dw";
+            std::string nasm_type = (size == 4)                 ? "dd"
+                                    : ( is_string || size == 8) ? "dq"
+                                    : (size == 1)               ? "db"
+                                                                : "dw";
+
             constants.push_back({final_name, nasm_type, init_val});
 
             if (has_non_const_init) {
@@ -557,10 +593,23 @@ void CodeGenerator::visit(PrintStatementNode* node) {
 
 void CodeGenerator::visit(ReturnStatementNode* node) {
     if (node->expression) {
-        visit(node->expression.get());
+        auto* var_ref = dynamic_cast<VariableReferenceNode*>(node->expression.get());
+        if (var_ref && var_ref->resolved_symbol && var_ref->resolved_symbol->offset < 0) {
+            int size = getTypeSize(var_ref->resolved_type.get());
+            int offset = var_ref->resolved_symbol->offset;
+
+            if (size == 1) {
+                out << "    movsx rax, byte [rbp + " << offset << "]" << std::endl;
+            } else if (size == 4) {
+                out << "    movsx rax, dword [rbp + " << offset << "]" << std::endl;
+            } else {
+                out << "    mov rax, [rbp + " << offset << "]" << std::endl;
+            }
+        } else {
+            visit(node->expression.get());
+        }
         if (!node->resolved_type) {
-            throw std::runtime_error(
-                "CodeGen Error: Return statement has an expression but no resolved type.");
+            throw std::runtime_error("CodeGen Error: Return statement has an expression but no resolved type.");
         }
     }
     out << "    jmp " << current_function_name << "_epilogue" << std::endl;

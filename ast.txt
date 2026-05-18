@@ -1,95 +1,156 @@
  PROGRAM_ROOT
-   ENUM: Status
-   VAR_DECL
-     FLOAT_LITERAL: (3.141590)
-   FUNCTION_DEF: calculate_score
-     IF_STATEMENT
-       BINARY_OP: 
-         VAR_REF: (a)
-         VAR_REF: (b)
-       RETURN_STMT:
-         BINARY_OP: 
-           BINARY_OP: 
-             VAR_REF: (a)
-             INT_LITERAL: (2)
-           BINARY_OP: 
-             VAR_REF: (b)
-             INT_LITERAL: (2)
-     RETURN_STMT:
-       BINARY_OP: 
-         VAR_REF: (a)
-         VAR_REF: (b)
+   NAMESPACE_DEF: std
+     NAMESPACE_DEF: sys
+       FUNCTION_DEF: syscall0
+         VAR_DECL
+         ASTNode
+         RETURN_STMT:
+           VAR_REF: (ret)
+       FUNCTION_DEF: syscall1
+         VAR_DECL
+         ASTNode
+         RETURN_STMT:
+           VAR_REF: (ret)
+       FUNCTION_DEF: syscall2
+         VAR_DECL
+         ASTNode
+         RETURN_STMT:
+           VAR_REF: (ret)
+       FUNCTION_DEF: syscall3
+         VAR_DECL
+         ASTNode
+         RETURN_STMT:
+           VAR_REF: (ret)
+       FUNCTION_DEF: syscall4
+         VAR_DECL
+         ASTNode
+         RETURN_STMT:
+           VAR_REF: (ret)
+       FUNCTION_DEF: syscall5
+         VAR_DECL
+         ASTNode
+         RETURN_STMT:
+           VAR_REF: (ret)
+       FUNCTION_DEF: syscall6
+         VAR_DECL
+         ASTNode
+         RETURN_STMT:
+           VAR_REF: (ret)
+   NAMESPACE_DEF: std
+     NAMESPACE_DEF: sys
+       FUNCTION_DEF: sys_read
+         RETURN_STMT:
+           SCOPE_RESOLUTION: std::
+             SCOPE_RESOLUTION: sys::
+               FUNC_CALL: syscall3
+                 INT_LITERAL: (0)
+                 VAR_REF: (fd)
+                 VAR_REF: (data)
+                 VAR_REF: (count)
+       FUNCTION_DEF: sys_write
+         RETURN_STMT:
+           SCOPE_RESOLUTION: std::
+             SCOPE_RESOLUTION: sys::
+               FUNC_CALL: syscall3
+                 INT_LITERAL: (1)
+                 VAR_REF: (fd)
+                 VAR_REF: (data)
+                 VAR_REF: (count)
+       FUNCTION_DEF: sys_open
+         RETURN_STMT:
+           SCOPE_RESOLUTION: std::
+             SCOPE_RESOLUTION: sys::
+               FUNC_CALL: syscall3
+                 INT_LITERAL: (2)
+                 VAR_REF: (path)
+                 VAR_REF: (flags)
+                 VAR_REF: (mode)
+       FUNCTION_DEF: sys_close
+         RETURN_STMT:
+           SCOPE_RESOLUTION: std::
+             SCOPE_RESOLUTION: sys::
+               FUNC_CALL: syscall1
+                 INT_LITERAL: (3)
+                 VAR_REF: (fd)
    FUNCTION_DEF: main
      PRINT_STMT
-       STR_LITERAL: (Hello)
+       STR_LITERAL: (--- Starting Nytrogen Syscall and Namespace Test ---\n)
      VAR_DECL
+       STR_LITERAL: (./out/nytro_generated_file.txt)
      VAR_DECL
-     ASTNode
-     ASTNode
-     ASTNode
-     ASTNode
-     ASTNode
-     ASTNode
+       STR_LITERAL: (Nytrogen standard library works beautifully!\n)
      PRINT_STMT
-       STR_LITERAL: (nested index access (300):)
-     PRINT_STMT
-       ARRAY_ACCESS
-         VAR_REF: (data)
-         ARRAY_ACCESS
-           VAR_REF: (map)
-           INT_LITERAL: (0)
-     ASTNode
-     PRINT_STMT
-       STR_LITERAL: (nested assignment result (999):)
-     PRINT_STMT
-       ARRAY_ACCESS
-         VAR_REF: (data)
-         INT_LITERAL: (0)
+       STR_LITERAL: (\n[Step 1] Creating a file via std::sys::sys_open...\n)
      VAR_DECL
-     ASTNode
-     ASTNode
-     VAR_DECL
-       VAR_REF: (ON)
-     VAR_DECL
-       INT_LITERAL: (0)
-     VAR_DECL
-       INT_LITERAL: (0)
-     ASTNode
-     PRINT_STMT
-       STR_LITERAL: (processing index...)
-     VAR_DECL
-       FLOAT_LITERAL: (5.000000)
-     VAR_DECL
-       BINARY_OP: 
-         VAR_REF: (radius)
-         VAR_REF: (radius)
-     VAR_DECL
-       BINARY_OP: 
-         VAR_REF: (PI)
-         VAR_REF: (radiusp2)
-     PRINT_STMT
-       STR_LITERAL: (circle area:)
-       VAR_REF: (area)
-     VAR_DECL
-       FUNC_CALL: calculate_score
-         VAR_REF: (total)
-         MEMBER_ACCESS: y
-     PRINT_STMT
-       STR_LITERAL: (final score:)
-     PRINT_STMT
-       VAR_REF: (final_result)
+       SCOPE_RESOLUTION: std::
+         SCOPE_RESOLUTION: sys::
+           FUNC_CALL: sys_open
+             STR_LITERAL: (./out/nytro_generated_file.txt)
+             INT_LITERAL: (65)
+             INT_LITERAL: (420)
      IF_STATEMENT
        BINARY_OP: 
-         VAR_REF: (current_status)
-         VAR_REF: (ON)
-       IF_STATEMENT
-         BINARY_OP: 
-           VAR_REF: (final_result)
-           INT_LITERAL: (1000)
-         PRINT_STMT
-           STR_LITERAL: (status: pass)
-         PRINT_STMT
-           STR_LITERAL: (status: fail)
+         VAR_REF: (fd)
+         INT_LITERAL: (0)
+       PRINT_STMT
+         STR_LITERAL: (FAIL: Could not open file for writing.\n)
+       RETURN_STMT:
+         INT_LITERAL: (1)
+     PRINT_STMT
+       STR_LITERAL: (SUCCESS: File descriptor allocated.\n)
+     PRINT_STMT
+       STR_LITERAL: (\n[Step 2] Writing data via std::sys::sys_write...\n)
+     VAR_DECL
+       SCOPE_RESOLUTION: std::
+         SCOPE_RESOLUTION: sys::
+           FUNC_CALL: sys_write
+             VAR_REF: (fd)
+             VAR_REF: (secret_message)
+             INT_LITERAL: (45)
+     PRINT_STMT
+       STR_LITERAL: (Bytes written to disk.\n)
+     PRINT_STMT
+       STR_LITERAL: (\n[Step 3] Flushing buffers via std::sys::sys_close...\n)
+     SCOPE_RESOLUTION: std::
+       SCOPE_RESOLUTION: sys::
+         FUNC_CALL: sys_close
+           VAR_REF: (fd)
+     PRINT_STMT
+       STR_LITERAL: (\n[Step 4] Reading data back to verify integrity...\n)
+     VAR_DECL
+       SCOPE_RESOLUTION: std::
+         SCOPE_RESOLUTION: sys::
+           FUNC_CALL: sys_open
+             STR_LITERAL: (./out/nytro_generated_file.txt)
+             INT_LITERAL: (0)
+             INT_LITERAL: (0)
+     IF_STATEMENT
+       BINARY_OP: 
+         VAR_REF: (read_fd)
+         INT_LITERAL: (0)
+       PRINT_STMT
+         STR_LITERAL: (FAIL: Could not open file for reading.\n)
+       RETURN_STMT:
+         INT_LITERAL: (1)
+     VAR_DECL
+       STR_LITERAL: (__________________________________________________)
+     SCOPE_RESOLUTION: std::
+       SCOPE_RESOLUTION: sys::
+         FUNC_CALL: sys_read
+           VAR_REF: (read_fd)
+           VAR_REF: (buffer)
+           INT_LITERAL: (45)
+     PRINT_STMT
+       STR_LITERAL: (Content recovered from file:\n)
+     PRINT_STMT
+       VAR_REF: (buffer)
+     PRINT_STMT
+       STR_LITERAL: (\n)
+     SCOPE_RESOLUTION: std::
+       SCOPE_RESOLUTION: sys::
+         FUNC_CALL: sys_close
+           VAR_REF: (read_fd)
+     PRINT_STMT
+       STR_LITERAL: (--- Test Complete: STATUS PASS ---\n)
      RETURN_STMT:
        INT_LITERAL: (0)
-   STRUCT_DEF: Point { x y }

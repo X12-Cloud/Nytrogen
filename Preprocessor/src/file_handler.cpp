@@ -5,7 +5,11 @@
 fs::path FileHandler::resolvePath(const std::string& target_path, const fs::path& current_file,
                                   bool is_stdlib) {
     if (is_stdlib) {
-        return fs::absolute(fs::path("/usr/include/nytrogen") / target_path);
+        fs::path local_std = fs::current_path() / "std/stdny" / target_path;
+        if (fs::exists(local_std)) {
+            return fs::absolute(local_std);
+        }
+        return fs::absolute(fs::path("/usr/include/stdny") / target_path);
     }
     return fs::absolute(current_file.parent_path() / target_path);
 }

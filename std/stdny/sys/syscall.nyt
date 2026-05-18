@@ -1,3 +1,6 @@
+namespace std {
+namespace sys {
+
 int syscall0(int syscall_number) {
     int ret;
     asm {
@@ -75,7 +78,6 @@ int syscall5(int syscall_number, int arg1, int arg2, int arg3, int arg4, int arg
 
 int syscall6(int syscall_number, int arg1, int arg2, int arg3, int arg4, int arg5, int arg6) {
     int ret;
-    // arg6 is on the stack at [rbp + 16]
     asm {
         "mov rax, rdi"
         "mov rdi, rsi"
@@ -89,3 +91,6 @@ int syscall6(int syscall_number, int arg1, int arg2, int arg3, int arg4, int arg
     }
     return ret;
 }
+
+} // sys
+} // std

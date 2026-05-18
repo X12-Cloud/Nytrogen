@@ -3,6 +3,7 @@ out/
 bin/
 releases/
 media/
+temp
 
 *.o
 *.d

@@ -1,0 +1,21 @@
+namespace std {
+namespace sys {
+
+int sys_read(int fd, char* data, int count) {
+     return std::sys::syscall3(0, fd, data, count);
+}
+
+int sys_write(int fd, char* data, int count) {
+     return std::sys::syscall3(1, fd, data, count);
+}
+
+int sys_open(string path, int flags, int mode) {
+     return std::sys::syscall3(2, path, flags, mode);
+}
+
+int sys_close(int fd) {
+     return std::sys::syscall1(3, fd);
+}
+
+} // sys
+} // std

@@ -2,10 +2,12 @@ int add(int a, int b) {
     return a + b;
 }
 
+// Test function call with parameters
 int main() {
-    // Test function call with parameters
+    int x = 5;
+    int y = 10;
     int result;
-    result = add(5, 10);
+    result = add(x, y);
     print(result);
     return 0;
 }
