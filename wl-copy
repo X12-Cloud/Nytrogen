@@ -3,7 +3,6 @@
 ## 0.1315 (Current)
 ### Added:
 - Namespace support.
-- Casting types (e.g. string x = "hi"; print((int)x);).
 
 ### Reworked:
 - Remade the preprocessor into a more modular and abstract archeticure.
