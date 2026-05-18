@@ -26,6 +26,7 @@ NytroConfig ConfigLoader::load(const std::string& filename) {
                         settings["preprocessor"].get_or(std::string("nytro-pre"));
                     conf.linker_bin = settings["linker"].get_or(std::string("ld"));
                     conf.assembler_bin = settings["assembler"].get_or(std::string("nasm"));
+                    conf.linker_cmd = settings["linker_cmd"].get_or(std::string("echo \"No linker command found\""));
                     sol::optional<sol::table> sources_table = project["sources"];  // sources
                     if (sources_table) conf.sources = sources_table->as<std::vector<std::string>>();
                     sol::optional<sol::table> extra_libs =
@@ -47,10 +48,12 @@ bool ConfigLoader::is_safe_path(const std::string& path) {
     // more agressive so commented for now but maybe uncomment later if it gets destructive
     // if (!is_alphanum(path[0])) return false;
 
-    if (path[0] == '/' || path.find("..") != std::string::npos)
+    if (path[0] == '/' || path.find("..") != std::string::npos) {
         return false;  // block slashes in the beginning and going back using ".."
-    if (path.size() > 1 && path[1] == ':')
+    }
+    if (path.size() > 1 && path[1] == ':') {
         return false;  // block this too cuz if i ever get on windows
+    }
 
     return true;
 }

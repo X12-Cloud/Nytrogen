@@ -56,13 +56,12 @@ int main(int argc, char* argv[]) {
         {"--debug", {&cfg.debug, "Include debug symbols."}},
         {"--version", {&cfg.show_version, "Show Nytrogen version."}},
         {"--clear", {&cfg.clean, "Clean the output directory."}},
-        {"--show-tui", {&cfg.tui, "Show a debugging tui."}},  // Very early beta
         {"--help", {&cfg.help, "Show this menu."}}};
 
     std::unordered_map<std::string, std::string> flag_aliases = {
         {"-c", "--obj"},        {"-S", "--asm"},
         {"-v", "--version"},    {"-dp", "--disable-preprocessor"},
-        {"-tui", "--show-tui"}, {"-h", "--help"}};
+        {"-h", "--help"}};
 
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
@@ -195,8 +194,9 @@ int main(int argc, char* argv[]) {
         if (cfg.asm_only) return 0;
 
         // NASM (Assembler)
-        if (cfg.verbose)
+        if (cfg.verbose) {
             std::cout << "\n--- Assembling " << current_base << ".asm ---" << std::endl;
+        }
         std::string nasm_cmd = "nasm -f elf64 \"" + current_asm + "\" -o \"" + current_obj + "\"";
         if (cfg.verbose) std::cout << "Running: " << nasm_cmd << std::endl;
         if (std::system(nasm_cmd.c_str()) != 0) return 1;
@@ -221,6 +221,7 @@ int main(int argc, char* argv[]) {
     }
     std::string link_cmd = lua_config.linker_bin + " -o \"" + final_exe + "\" " + all_objs +
                            lib_flags + " -lc --dynamic-linker /lib64/ld-linux-x86-64.so.2";
+    if (!lua_config.linker_cmd.empty()) { link_cmd = lua_config.linker_cmd; }
     // std::string link_cmd = "gcc -no-pie -o \"" + final_exe + "\" " + all_objs + lib_flags;
     if (cfg.verbose) std::cout << "Running: " << link_cmd << std::endl;
     if (std::system(link_cmd.c_str()) != 0) {
@@ -237,8 +238,6 @@ int main(int argc, char* argv[]) {
     if (WIFEXITED(status)) {
         std::cout << "\nExit Code: " << WEXITSTATUS(status) << std::endl;
     }
-
-    if (cfg.tui) system("./build/bin/nytro-tui");  // gonna make it check paths later
 
     return 0;
 }

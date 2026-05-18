@@ -8,6 +8,7 @@
 - Remade the preprocessor into a more modular and abstract archeticure.
 - Colorised and Beautified error reporting in semantic analyser and parser.
 - Used clang-tidy to fix warnings, clang-format to beatify the compiler, driver and preprocessor.
+- Removed `nytro-tui` from here and kept it as its own separate project ([repo](https://github.com/X12-Cloud/nytro-tui)).
 
 ## 0.131
 ### Added:

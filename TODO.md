@@ -5,3 +5,7 @@
 
 ## Implement codegen for switch statements
 - Currently only lexical, syntatic and semantic analysis is implemented.
+
+## Optimise the compiler core
+## Remake the driver
+- Make it moremodular and abstract.
