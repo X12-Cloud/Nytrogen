@@ -1,11 +1,8 @@
 # Nytrogen TODO
 
-## Make a rregister allocator type thing
-- Continue optemizing the compiler to always use registers when it can instead of using the stack for most stuff.
-
-## Implement codegen for switch statements
-- Currently only lexical, syntatic and semantic analysis is implemented.
-
-## Optimise the compiler core
-## Remake the driver
-- Make it moremodular and abstract.
+## 0.132
+- **Make a Register Allocator:** Continue optimising the compiler to always use registers when it can instead of using the stack for most stuff.
+**Implement Codegen for Switch Statements:** Currently only lexical, syntatic and semantic analysis is implemented.
+- **Optimise the Compiler Core and Remake the Driver:** Make it more modular and abstract.
+- **New Types:** Long as 64 bit integers, signed/unsigned qualifiers.
+- **Fix and Stablise Casting:** Stablise type casting to not truncate stuff and be more sturdy.

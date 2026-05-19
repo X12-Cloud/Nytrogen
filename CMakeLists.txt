@@ -25,3 +25,9 @@ add_compile_definitions(NYTRO_VERSION="${NYTRO_FULL_VERSION}")
 add_subdirectory(Preprocessor)
 add_subdirectory(compiler)
 add_subdirectory(driver)
+
+# Arch install stuff
+install(TARGETS nytro-c DESTDIR bin)
+install(TARGETS nytro-pre DESTDIR bin)
+install(TARGETS nytro DESTDIR bin) # driver
+install(DIRECTORY std/stdny/ DESTINATION share/nytrogen/stdlib)

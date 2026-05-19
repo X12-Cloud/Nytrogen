@@ -1,13 +1,14 @@
 int main() {
     const double pi = 3.14159265358979;
 
-    int l = 2;
     float x;
     x = 0.9f;
-    float z = 1.1f;
+    float y = 1.1f;
 
-    print x + z;
-    print l + 2;
-    print pi;
+    int z = (int)y;
+
+    print x + y;
+    print z;
+    print "PI = ", pi;
     return 0;
 }

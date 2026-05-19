@@ -777,10 +777,18 @@ void CodeGenerator::visit(MemberAccessNode* node) {
 void CodeGenerator::visit(UnaryOpExpressionNode* node) {
     if (node->op_type == Token::KEYWORD_INT || node->op_type == Token::KEYWORD_CHAR) {
         visit(node->operand.get());
-        // should sucessfully get the address on its own
+        if (isFloatingPoint(node->operand->resolved_type)) {
+            int size = getTypeSize(node->operand->resolved_type.get());
+            if (size == 8) {
+                emit("cvtsd2si", "rax", "xmm0");
+            } else {
+                emit("cvtss2si", "rax", "xmm0");
+            }
+        }
+        // should sucessfully get the address on its own if its truncation/extension
         return;
     }
-    visit(node->operand.get());
+
     if (node->op_type == Token::ADDRESSOF) {
         const auto* ref_node = static_cast<const VariableReferenceNode*>(node->operand.get());
         Symbol* var_symbol = ref_node->resolved_symbol;
@@ -791,10 +799,14 @@ void CodeGenerator::visit(UnaryOpExpressionNode* node) {
         }
         int offset = var_symbol->offset;
         out << "    lea rax, [rbp + " << std::to_string(offset) << "]" << std::endl;
-    } else if (node->op_type == Token::STAR) {
+        return;
+    }
+
+    visit(node->operand.get());
+    if (node->op_type == Token::STAR) {
         out << "    mov rax, [rax]" << std::endl;
     } else if (node->op_type == Token::BANG) {
-        visit(node->operand.get());
+        //visit(node->operand.get());
         out << "    test rax, rax" << std::endl;
         out << "    setz al" << std::endl;
         out << "    movzx rax, al" << std::endl;

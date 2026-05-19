@@ -12,3 +12,5 @@ include_directories(src)
 
 add_executable(nytro-c ${SOURCES})
 
+# for pacman/aur
+install(TARGETS nytro-c DESTINATION bin)

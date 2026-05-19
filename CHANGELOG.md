@@ -1,6 +1,9 @@
 # Nytrogen Compiler
 
-## 0.1315 (Current)
+## 0.132 (Current)
+### Added:
+
+## 0.1315
 ### Added:
 - Namespace support.
 - Casting types (e.g. string x = "hi"; print((int)x);).

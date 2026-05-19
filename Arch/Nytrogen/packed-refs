@@ -1,0 +1,22 @@
+# pack-refs with: peeled fully-peeled sorted 
+ea19c40814b108cb425e62f645f9e376fa0a4704 refs/heads/archive/beta
+b2bb02ed4a0ff5dfce2aa552caef32d24e22753b refs/heads/archive/oop-namespaces-messy
+dc304707304fc4e792881f331e73ed3fd53b33c6 refs/heads/archive/tests
+677c949ef06f5bf2d8f508aff3837bd3cc613657 refs/heads/feat/floats
+84e503460b0e54a1e492e50cecd839fde0a93c32 refs/heads/feat/namespaces
+eb5335427cb99d7cc5e881fec32b0c070501a6b2 refs/heads/feat/wrapper
+7c0e2e85b2b307c9a3d600910cde8105f326d01e refs/heads/fix/float-math-refactor
+d767ab0c33d80d91a0d26d0dd841d5660b6a3af2 refs/heads/fix/member-struct_errors
+96d18a7c587ba107e8b89cce0848284a397a0fde refs/heads/fix/scope_handling
+ec64f36447b879cd9cb8464cbee2944ce28b122a refs/heads/main
+65b5d87cf56bce17f7993fcbfa20d0c11b5db01c refs/tags/v0.1
+8f5b5cf763401b789f149ff98294d6c63b600772 refs/tags/v0.110
+^e26fa2d1b0ea8ee41a2cb07afc213bbad66639ed
+c2abbf94ed6fc03cc0ec0f7ad6829e597326a4ce refs/tags/v0.111
+aa93ba88efc0c7c2490d3390bb716b75e1acbcaa refs/tags/v0.120
+^1cf340a3e02f290a675f9af3a889116fa132f8bc
+7937cbe75ffa737ac14582dcf1c0aa53b2575397 refs/tags/v0.121
+^0804b420ad45be9f5a9462af06301224549320da
+a81dd7b49d279ebc08cd37adb9a90361d0b74e69 refs/tags/v0.131-beta
+1b242cbcf69341b0a1c8da101054a851e6a53cca refs/tags/v0.1315
+^ec64f36447b879cd9cb8464cbee2944ce28b122a

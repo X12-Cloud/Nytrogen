@@ -18,3 +18,6 @@ target_include_directories(nytro PRIVATE
 )
 
 target_link_libraries(nytro ${LUA_LIBRARIES})
+
+# For pacman/aur
+install(TARGETS nytro DESTINATION bin)

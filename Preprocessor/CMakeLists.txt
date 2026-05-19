@@ -11,3 +11,6 @@ include_directories(include)
 include_directories(src)
 
 add_executable(nytro-pre ${SOURCES})
+
+# for pacman/aur
+install(TARGETS nytro-pre DESTINATION bin)
