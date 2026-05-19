@@ -27,7 +27,7 @@ add_subdirectory(compiler)
 add_subdirectory(driver)
 
 # Arch install stuff
-install(TARGETS nytro-c DESTDIR bin)
-install(TARGETS nytro-pre DESTDIR bin)
-install(TARGETS nytro DESTDIR bin) # driver
+install(TARGETS nytro-c DESTINATION bin)
+install(TARGETS nytro-pre DESTINATION bin)
+install(TARGETS nytro DESTINATION bin) # driver
 install(DIRECTORY std/stdny/ DESTINATION share/nytrogen/stdlib)
