@@ -1,6 +1,6 @@
 # Maintainer: x12 <x12@archlinux>
 pkgname=nytrogen-git
-pkgver=0.1.r157.g18bd62e
+pkgver=0.1.r158.gb39826a
 pkgrel=1
 pkgdesc="A lightweight systems programming language and compiler built from scratch"
 arch=('x86_64')

@@ -14,3 +14,10 @@ CMakeCache.txt
 **/build
 **/out
 
+# Ignore all AUR stuff except PKGBUILD and .SRCINFO
+Arch/Nytrogen/
+Arch/src/
+Arch/pkg/
+
+Arch/*.pkg.tar.zst
+Arch/*.pkg.tar.zst.sig
