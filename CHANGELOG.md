@@ -2,6 +2,7 @@
 
 ## 0.132 (Current)
 ### Added:
+- More nodes to be castable to eachother.
 
 ## 0.1315
 ### Added:

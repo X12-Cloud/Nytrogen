@@ -1,5 +1,38 @@
 BasedOnStyle: Google
+
+# Indentation rules
 IndentWidth: 4
 TabWidth: 4
 UseTab: Never
+
+# Code layout structure
 ColumnLimit: 100
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortBlocksOnASingleLine: Never
+AllowShortCaseLabelsOnASingleLine: Never
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: Never
+
+# Alignment preferences
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments: None
+AlignConsecutiveDeclarations: None
+AlignOperands: Align
+AlignTrailingComments: true
+
+# Pointer and reference binding
+PointerAlignment: Left
+
+# Space placements
+SpaceAfterCStyleCast: false
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeParens: ControlStatements
+SpaceInEmptyParentheses: false
+SpacesInCStyleCastParentheses: false
+SpacesInContainerLiterals: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+SpaceInEmptyBlockBraces: false
+
+# Namespace styling
+FixNamespaceComments: true

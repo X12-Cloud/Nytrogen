@@ -75,7 +75,7 @@ struct ASTNode {
 
     virtual bool is_constant() const { return false; }
 
-    void dump_to_stream(std::ostream& out, int indent) {  // TODO: make it output to .json
+    void dump_to_stream(std::ostream& out, int indent) {  // TODO: make it output to .json and Graphvis
         std::string space(indent * 2, ' ');
         out << space << " " << this->type_name();
 
