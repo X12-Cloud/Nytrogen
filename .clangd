@@ -1,3 +1,4 @@
 CompileFlags:
+  CompilationDatabase: "build"
   Add: [-Wall, -Wno-unknown-attributes]
   Compiler: g++
