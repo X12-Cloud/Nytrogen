@@ -10,6 +10,7 @@
 
 #include "ast.hpp"
 #include "symbol_table.hpp"
+#include "register_allocator.hpp"
 #include "utils.hpp"
 
 struct GlobalConstant {
@@ -26,6 +27,8 @@ class CodeGenerator {
     bool debug_mode = false;
 
    private:
+    RegisterAllocator allocator;
+
     std::vector<GlobalConstant> constants;
     std::map<std::string, std::string> constants_map;
     int string_label_counter;
@@ -70,6 +73,7 @@ class CodeGenerator {
     int getTypeSize(const TypeNode* type);
 
     // Instruction set
+    std::string reg_to_str(RegisterAllocator::RegID reg, const TypeNode* type);
     void emit(const std::string& instr);
     void emit(const std::string& instr, const std::string reg);
     void emit(const std::string& instr, const std::string& dest, const std::string& src);

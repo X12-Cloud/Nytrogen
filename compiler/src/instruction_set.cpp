@@ -3,6 +3,11 @@
 
 #include "code_generator.hpp"
 
+std::string CodeGenerator::reg_to_str(RegisterAllocator::RegID reg, const TypeNode* type) {
+    int size = getTypeSize(type);
+    return allocator.get_name(reg, size);
+}
+
 void CodeGenerator::emit(const std::string& instr) { out << "    " << instr << std::endl; }
 
 void CodeGenerator::emit(const std::string& instr, const std::string reg) {

@@ -5,15 +5,6 @@
 #include <unordered_map>
 #include <string>
 
-enum RegID {
-    R10,
-    R11,
-    RBX,
-    RCX,
-    RDI,
-    RSI
-};
-
 struct RegStrings {
     std::string byte1;
     std::string byte4;
@@ -22,6 +13,15 @@ struct RegStrings {
 
 class RegisterAllocator {
 public:
+    enum RegID {
+        R10,
+        R11,
+        RBX,
+        RCX,
+        RDI,
+        RSI
+    };
+
     RegisterAllocator();
 
     RegID allocate();

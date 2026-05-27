@@ -24,7 +24,7 @@ std::string RegisterAllocator::get_name(RegID reg, int byte_size) {
     }
 }
 
-RegID RegisterAllocator::allocate() {
+RegisterAllocator::RegID RegisterAllocator::allocate() {
     if (register_pool.empty()) { Utils::report_error("Register Allocator", "Register pool is empty."); }
 
     RegID allocated_register = register_pool.back();
