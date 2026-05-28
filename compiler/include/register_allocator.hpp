@@ -19,11 +19,13 @@ public:
         RBX,
         RCX,
         RDI,
-        RSI
+        RSI,
+        NONE
     };
 
     RegisterAllocator();
 
+    bool is_empty() const;
     RegID allocate();
     void free_reg(RegID reg);
 

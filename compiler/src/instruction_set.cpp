@@ -5,6 +5,9 @@
 
 std::string CodeGenerator::reg_to_str(RegisterAllocator::RegID reg, const TypeNode* type) {
     int size = getTypeSize(type);
+    if (reg == RegisterAllocator::RegID::NONE) {
+        return (size == 1) ? "al" : (size == 4) ? "eax" : "rax";
+    }
     return allocator.get_name(reg, size);
 }
 
@@ -23,30 +26,27 @@ void CodeGenerator::emit_adv(const std::shared_ptr<TypeNode>& type, const std::s
                              int offset, const std::string& src_val) {
     int size = getTypeSize(type.get());
     bool is_fp = isFloatingPoint(type);
-    std::string size_prefix = (size == 1) ? "byte" : (size == 4) ? "dword" : "qword";
+    
+    // Determine size prefix for NASM
+    std::string size_prefix;
+    if (size == 1) size_prefix = "byte";
+    else if (size == 4) size_prefix = "dword";
+    else size_prefix = "qword"; // Default for 8-byte/pointers
 
     if (is_fp) {
         std::string instr = (size == 4) ? "vmovss" : "vmovsd";
-        out << "    " << instr << " [" << base_reg << " + " << offset << "], " << src_val
-            << std::endl;
+        // Force the size prefix here too for safety
+        out << "    " << instr << " " << size_prefix << " [" << base_reg << " + " << offset << "], " << src_val << std::endl;
     } else {
         std::string final_src = src_val;
-
-        if (src_val == "rbx") {
-            if (size == 1) {
-                final_src = "bl";
-            } else if (size == 4) {
-                final_src = "ebx";
-            }
-        } else if (src_val == "rax") {
-            if (size == 1) {
-                final_src = "al";
-            } else if (size == 4) {
-                final_src = "eax";
-            }
+        // Handle register sizing for the source
+        if (src_val == "rbx" || src_val == "rax") {
+            if (size == 1) final_src = (src_val == "rbx") ? "bl" : "al";
+            else if (size == 4) final_src = (src_val == "rbx") ? "ebx" : "eax";
+            else final_src = src_val; // Keep rbx/rax for 8-byte
         }
 
-        out << "    mov " << size_prefix << " [" << base_reg << " + " << offset << "], "
+        out << "    mov " << size_prefix << " [" << base_reg << " + " << offset << "], " 
             << final_src << std::endl;
     }
 }
@@ -83,6 +83,11 @@ void CodeGenerator::emit_adv(const std::unique_ptr<TypeNode>& type, const std::s
         out << "    mov " << size_prefix << " [" << base_reg << " + " << offset << "], "
             << final_src << std::endl;
     }
+}
+
+void CodeGenerator::emit_mov_global(const std::string& reg, const std::string& label, int size) {
+    std::string prefix = (size == 1) ? "byte" : (size == 4) ? "dword" : "qword";
+    emit("mov", reg, prefix + " [rel " + label + "]");
 }
 
 void CodeGenerator::call_external(const std::string& func_name) {
@@ -155,20 +160,16 @@ void CodeGenerator::load_adv(const std::shared_ptr<TypeNode>& type, const std::s
     bool is_fp = isFloatingPoint(type);
     int size = getTypeSize(type.get());
     std::string off_str = std::to_string(offset);
+    std::string size_prefix = (size == 1) ? "byte" : (size == 4) ? "dword" : "qword";
 
     if (is_fp) {
-        if (size == 4) {
-            emit("vmovss", dest_reg, "[" + base_reg + " + " + off_str + "]");
-        } else {
-            emit("vmovsd", dest_reg, "[" + base_reg + "+" + off_str + "]");
-        }
+        std::string instr = (size == 4) ? "vmovss" : "vmovsd";
+        emit(instr, dest_reg, size_prefix + " [" + base_reg + " + " + off_str + "]");
     } else {
-        if (size == 1) {
-            emit("movsx", dest_reg, "byte [" + base_reg + " + " + off_str + "]");
-        } else if (size == 4) {
-            emit("movsx", dest_reg, "dword [" + base_reg + " + " + off_str + "]");
+        if (size == 1 || size == 4) {
+            emit("movsx", dest_reg, size_prefix + " [" + base_reg + " + " + off_str + "]");
         } else {
-            emit("mov", dest_reg, "[" + base_reg + " + " + off_str + "]");
+            emit("mov", dest_reg, "qword [" + base_reg + " + " + off_str + "]");
         }
     }
 }
@@ -176,24 +177,19 @@ void CodeGenerator::load_adv(const std::shared_ptr<TypeNode>& type, const std::s
 void CodeGenerator::load_adv(const std::unique_ptr<TypeNode>& type, const std::string& dest_reg,
                              const std::string& base_reg, int offset) {
     auto prim = dynamic_cast<PrimitiveTypeNode*>(type.get());
-    bool is_double = (prim != nullptr) && (prim->primitive_type == Token::KEYWORD_DOUBLE);
-    bool is_float = (prim != nullptr) && (prim->primitive_type == Token::KEYWORD_FLOAT);
+    bool is_fp = (prim != nullptr) && (prim->primitive_type == Token::KEYWORD_FLOAT || prim->primitive_type == Token::KEYWORD_DOUBLE);
     int size = getTypeSize(type.get());
     std::string off_str = std::to_string(offset);
+    std::string size_prefix = (size == 1) ? "byte" : (size == 4) ? "dword" : "qword";
 
-    if (is_float || is_double) {
-        if (size == 4) {
-            emit("vmovss", dest_reg, "[" + base_reg + " + " + off_str + "]");
-        } else {
-            emit("vmovsd", dest_reg, "[" + base_reg + "+" + off_str + "]");
-        }
+    if (is_fp) {
+        std::string instr = (size == 4) ? "vmovss" : "vmovsd";
+        emit(instr, dest_reg, size_prefix + " [" + base_reg + " + " + off_str + "]");
     } else {
-        if (size == 1) {
-            emit("movsx", dest_reg, "byte [" + base_reg + " + " + off_str + "]");
-        } else if (size == 4) {
-            emit("movsx", dest_reg, "dword [" + base_reg + " + " + off_str + "]");
+        if (size == 1 || size == 4) {
+            emit("movsx", dest_reg, size_prefix + " [" + base_reg + " + " + off_str + "]");
         } else {
-            emit("mov", dest_reg, "[" + base_reg + " + " + off_str + "]");
+            emit("mov", dest_reg, "qword [" + base_reg + " + " + off_str + "]");
         }
     }
 }

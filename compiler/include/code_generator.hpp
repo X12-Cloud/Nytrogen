@@ -40,13 +40,14 @@ class CodeGenerator {
     SymbolTable& symbolTable;
     std::ofstream out;
 
+    RegisterAllocator::RegID evaluate_expression(ASTNode* node);
     void visit(ASTNode* node);
     void visit(ProgramNode* node);
     void visit(FunctionDefinitionNode* node);
     void visit(VariableDeclarationNode* node);
     void visit(VariableAssignmentNode* node);
-    void visit(VariableReferenceNode* node);
-    void visit(BinaryOperationExpressionNode* node);
+    RegisterAllocator::RegID visit(VariableReferenceNode* node);
+    RegisterAllocator::RegID visit(BinaryOperationExpressionNode* node);
     void visit(PrintStatementNode* node);
     void visit(ReturnStatementNode* node);
     void visit(IfStatementNode* node);
@@ -58,15 +59,15 @@ class CodeGenerator {
     void visit(UnaryOpExpressionNode* node);
     void visit(ArrayAccessNode* node);
     void visit(StructDefinitionNode* node);
-    void visit(IntegerLiteralExpressionNode* node);
+    RegisterAllocator::RegID visit(IntegerLiteralExpressionNode* node);
     void visit(StringLiteralExpressionNode* node);
     void visit(BooleanLiteralExpressionNode* node);
     void visit(CharacterLiteralExpressionNode* node);
+    void visit(FloatLiteralExpressionNode* node);
+    void visit(DoubleLiteralExpressionNode* node);
     void visit(AsmStatementNode* node);
     void visit(ConstantDeclarationNode* node);
     void visit(EnumStatementNode* node);
-    void visit(DoubleLiteralExpressionNode* node);
-    void visit(FloatLiteralExpressionNode* node);
     void visit(NamespaceDefinition* node);
     void visit(ScopeResolutionNode* node);
 
@@ -81,6 +82,8 @@ class CodeGenerator {
                   const std::string& src_val);
     void emit_adv(const std::unique_ptr<TypeNode>& type, const std::string& base_reg, int offset,
                   const std::string& src_val);
+
+    void emit_mov_global(const std::string& reg, const std::string& label, int size);
     void emit_binary_op(const std::string& op_instr, char type);
     void call_external(const std::string& func_name);
     void emit_print(const std::shared_ptr<TypeNode>& type);

@@ -317,12 +317,20 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
                 }
             }
 
-            std::string nasm_type = (size == 4)                 ? "dd"
-                                    : ( is_string || size == 8) ? "dq"
-                                    : (size == 1)               ? "db"
-                                                                : "dw";
+            std::string nasm_type;
+            std::string final_init_val = init_val;
 
-            constants.push_back({final_name, nasm_type, init_val});
+            if (node->type && node->type->category == TypeNode::TypeCategory::ARRAY) {
+                nasm_type = "times " + std::to_string(size);
+                final_init_val = "db 0";
+            } else {
+                nasm_type = (size == 4)                 ? "dd"
+                            : ( is_string || size == 8) ? "dq"
+                            : (size == 1)               ? "db"
+                                                        : "dw";
+            }
+
+            constants.push_back({final_name, nasm_type, final_init_val});
 
             if (has_non_const_init) {
                 visit(decl.initial_value.get());
@@ -346,9 +354,9 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
 void CodeGenerator::visit(VariableAssignmentNode* node) {
     auto type = node->left->resolved_type;
     bool is_fp = isFloatingPoint(type);
-    auto literal = dynamic_cast<LiteralExpressionNode*>(node->right.get());
 
     visit(node->right.get());
+
     auto* var_ref = dynamic_cast<VariableReferenceNode*>(node->left.get());
     if ((var_ref != nullptr) && !var_ref->resolved_symbol->mangled_name.empty()) {
         std::string label = var_ref->resolved_symbol->mangled_name;
@@ -356,54 +364,78 @@ void CodeGenerator::visit(VariableAssignmentNode* node) {
             std::string instr = (getTypeSize(type.get()) == 4) ? "vmovss" : "vmovsd";
             out << "    " << instr << " [rel " << label << "], xmm0" << std::endl;
         } else {
-            int size = getTypeSize(node->left->resolved_type.get());
-            if (size == 4) {
-                emit("mov", "dword [rel " + label + "]", "eax");
-            } else if (size == 1) {
-                emit("mov", "byte [rel " + label + "]", "al");
-            } else {
-                emit("mov", "[rel " + label + "]", "rax");
-            }
+            int size = getTypeSize(type.get());
+            if (size == 4) emit("mov", "dword [rel " + label + "]", "eax");
+            else if (size == 1) emit("mov", "byte [rel " + label + "]", "al");
+            else emit("mov", "qword [rel " + label + "]", "rax");
         }
     } else {
-        if (is_fp) {
-            is_lvalue = true;
-            visit(node->left.get());
-            is_lvalue = false;
-            emit_adv(type, "rax", 0, "xmm0");
-        } else {
+        RegisterAllocator::RegID tempReg = allocator.allocate();
+        bool use_stack = (tempReg == RegisterAllocator::RegID::NONE);
+        std::string tempRegName;
+
+        if (use_stack) {
+            // FALLBACK: Spill RHS to stack because we are out of registers
             emit("push", "rax");
             current_stack_depth += 8;
-            is_lvalue = true;
-            visit(node->left.get());
-            is_lvalue = false;
+        } else {
+            // NORMAL: Keep RHS in a temporary register
+            tempRegName = allocator.get_name(tempReg, 8);
+            emit("mov", tempRegName, "rax");
+        }
+
+        is_lvalue = true;
+        visit(node->left.get()); 
+        is_lvalue = false;
+
+        int size = getTypeSize(type.get());
+        std::string prefix = (size == 1) ? "byte" : (size == 4) ? "dword" : "qword";
+        std::string regToUse = (use_stack) ? allocator.get_name(RegisterAllocator::RBX, size)
+                                           : allocator.get_name(tempReg, size);
+
+        if (use_stack) {
             emit("pop", "rbx");
             current_stack_depth -= 8;
-            emit_adv(type, "rax", 0, "rbx");
+            std::string regToUse = allocator.get_name(RegisterAllocator::RBX, size);
+            std::cout << "DEBUG: Assigning size " << size << " using register " << regToUse << std::endl;
+            emit("mov", prefix + " [rax]", regToUse);
+        } else {
+            emit("mov", prefix + " [rax]", regToUse);
+            allocator.free_reg(tempReg);
         }
     }
 }
 
-void CodeGenerator::visit(VariableReferenceNode* node) {
-    Symbol* symbol = node->resolved_symbol;
-    int offset = symbol->offset;
+RegisterAllocator::RegID CodeGenerator::visit(VariableReferenceNode* node) {
+    Symbol* sym = node->resolved_symbol;
+    if (sym == nullptr) {
+        throw std::runtime_error("Code Generation Error: Undefined variable " + node->name);
+    }
 
-    if (node->resolved_symbol == nullptr) {
+    Symbol* symbol = node->resolved_symbol;
+    if (symbol == nullptr) {
         throw std::runtime_error("CodeGen Error: Symbol not resolved for " + node->name);
     }
-    if (!node->resolved_symbol->dataType) {
-        throw std::runtime_error("CodeGen Error: Variable '" + node->name +
-                                 "' has NO TYPE in symbol table!");
+    if (!symbol->dataType) {
+        throw std::runtime_error("CodeGen Error: Variable '" + node->name + "' has NO TYPE in symbol table!");
     }
 
-    if (symbol == nullptr) {
-        throw std::runtime_error("CodeGen Error: Reference to '" + node->name + "' not resolved.");
-    }
+    int offset = symbol->offset;
 
     if (symbol->type == Symbol::SymbolType::CONSTANT) {
-        visit(symbol->value.get());
-        return;
+        RegisterAllocator::RegID reg = allocator.allocate();
+        std::string reg_name = reg_to_str(reg, node->resolved_type.get());
+
+        if (auto lit_node = dynamic_cast<IntegerLiteralExpressionNode*>(symbol->value.get())) {
+            emit("mov", reg_name, std::to_string(lit_node->value));
+        } else {
+            throw std::runtime_error("CodeGen Error: Constant type currently unhandled for direct evaluation");
+        }
+
+        return reg;
     }
+    RegisterAllocator::RegID reg = allocator.allocate();
+    std::string reg_name = reg_to_str(reg, node->resolved_type.get());
 
     auto prim = dynamic_cast<PrimitiveTypeNode*>(node->resolved_type.get());
     bool is_double = (prim != nullptr) && (prim->primitive_type == Token::KEYWORD_DOUBLE);
@@ -413,56 +445,62 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
     if (is_global) {
         std::string asm_label = symbol->mangled_name;
         int size = getTypeSize(node->resolved_type.get());
-
-        if (is_lvalue) {
-            out << "    lea rax, [rel " << asm_label << "]" << std::endl;
+        if (node->resolved_type && node->resolved_type->category == TypeNode::TypeCategory::ARRAY) {
+            std::string qword_reg_name = (reg == RegisterAllocator::RegID::NONE) ? "rax" : allocator.get_name(reg, 8);
+            out << "    lea " << qword_reg_name << ", [rel " << asm_label << "]" << std::endl;
         } else {
-            if (is_float || is_double) {
-                std::string instr = is_float ? "vmovss" : "vmovsd";
-                out << "    " << instr << " xmm0, [rel " << asm_label << "]" << std::endl;
+            if (is_lvalue) {
+                std::string qword_reg_name = (reg == RegisterAllocator::RegID::NONE) ? "rax" : allocator.get_name(reg, 8);
+                out << "    lea " << qword_reg_name << ", [rel " << asm_label << "]" << std::endl;
             } else {
-                if (size == 1) {
-                    out << "    movsx rax, byte [rel " << asm_label << "]" << std::endl;
-                } else if (size == 4) {
-                    out << "    movsx rax, dword [rel " << asm_label << "]" << std::endl;
+                if (is_float || is_double) {
+                    std::string instr = is_float ? "vmovss" : "vmovsd";
+                    out << "    " << instr << " xmm0, [rel " << asm_label << "]" << std::endl;
                 } else {
-                    out << "    mov rax, [rel " << asm_label << "]" << std::endl;
+                    if (size == 1) {
+                        out << "    movsx " << reg_name << ", byte [rel " << asm_label << "]" << std::endl;
+                    } else if (size == 4) {
+                        out << "    movsx " << reg_name << ", dword [rel " << asm_label << "]" << std::endl;
+                    } else {
+                        emit_mov_global(reg_name, asm_label, size);
+                    }
                 }
             }
         }
-        return;
+        return reg;
     }
-    offset = symbol->offset;
     if (is_lvalue) {
-        emit("lea", "rax", "[rbp + " + std::to_string(offset) + "]");
+        std::string qword_reg_name = allocator.get_name(reg, 8);
+        emit("lea", qword_reg_name, "[rbp + " + std::to_string(offset) + "]");
     } else {
-        load_adv(node->resolved_type, (is_float || is_double) ? "xmm0" : "rax", "rbp", offset);
+        load_adv(node->resolved_type, (is_float || is_double) ? "xmm0" : reg_name, "rbp", offset);
     }
+
+    return reg;
 }
 
-void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
+
+RegisterAllocator::RegID CodeGenerator::visit(BinaryOperationExpressionNode* node) {
     bool is_float = false;
     bool is_double = false;
 
-    if (node->resolved_type->category == TypeNode::TypeCategory::PRIMITIVE) {
-        auto prim = std::static_pointer_cast<PrimitiveTypeNode>(node->resolved_type);
+    // Intercept operand types instead of result types to handle comparisons (e.g., radius > 5.0)
+    if (node->left && node->left->resolved_type && 
+        node->left->resolved_type->category == TypeNode::TypeCategory::PRIMITIVE) {
+
+        auto prim = std::static_pointer_cast<PrimitiveTypeNode>(node->left->resolved_type);
         is_float = (prim->primitive_type == Token::KEYWORD_FLOAT ||
                     prim->primitive_type == Token::FLOAT_LITERAL);
         is_double = (prim->primitive_type == Token::KEYWORD_DOUBLE ||
                      prim->primitive_type == Token::DOUBLE_LITERAL);
     }
-    if (debug_mode) {
-        if (node->resolved_type->category == TypeNode::TypeCategory::PRIMITIVE) {
-            auto prim = std::static_pointer_cast<PrimitiveTypeNode>(node->resolved_type);
-            std::cout << "Debug: Primitive Type ID found: " << prim->primitive_type << std::endl;
-            std::cout << "Debug: Expected FLOAT_LITERAL: " << Token::FLOAT_LITERAL << std::endl;
-            std::cout << "Debug: Expected KEYWORD_FLOAT: " << Token::KEYWORD_FLOAT << std::endl;
-        }
-    }
 
-    // Left
-    visit(node->left.get());
     if (is_float || is_double) {
+        RegisterAllocator::RegID left_leak = evaluate_expression(node->left.get());
+        if (left_leak != RegisterAllocator::RegID::NONE) {
+            allocator.free_reg(left_leak);
+        }
+
         out << "    sub rsp, 8" << std::endl;
         current_stack_depth += 8;
         if (is_double) {
@@ -470,108 +508,206 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
         } else {
             out << "    vmovss dword [rsp], xmm0" << std::endl;
         }
-    } else {
-        out << "    push rax" << std::endl;
-        current_stack_depth += 8;
-    }
 
-    // Right
-    visit(node->right.get());
+        RegisterAllocator::RegID right_leak = evaluate_expression(node->right.get());
+        if (right_leak != RegisterAllocator::RegID::NONE) {
+            allocator.free_reg(right_leak);
+        }
 
-    if (is_float || is_double) {
         if (is_double) {
             out << "    vmovsd xmm1, qword [rsp]" << std::endl;
         } else {
             out << "    vmovss xmm1, dword [rsp]" << std::endl;
         }
-        out << "    add rsp, 8" << std::endl;  // Left is in xmm1, Right is in xmm0
+        out << "    add rsp, 8" << std::endl;
         current_stack_depth -= 8;
-    } else {
-        out << "    pop rbx" << std::endl;
-        current_stack_depth -= 8;
-        out << "    mov rcx, rbx" << std::endl;  // Left is in rbx, Right is in rax
+
+        char type = is_float ? 'f' : 'l';
+        switch (node->op_type) {
+            case Token::PLUS:  emit_binary_op("add", type); break;
+            case Token::MINUS: emit_binary_op("sub", type); break;
+            case Token::STAR:  emit_binary_op("imul", type); break;
+            case Token::SLASH: emit_binary_op("idiv", type); break;
+            // Handle floating-point comparisons
+            case Token::GREATER:
+                if (is_double) emit("vcomisd", "xmm1", "xmm0");
+                else emit("vcomiss", "xmm1", "xmm0");
+                emit("seta", "al");
+                emit("movzx", "eax", "al");
+                break;
+            case Token::LESS:
+                if (is_double) emit("vcomisd", "xmm0", "xmm1");
+                else emit("vcomiss", "xmm0", "xmm1");
+                emit("seta", "al");
+                emit("movzx", "eax", "al");
+                break;
+            default: 
+                throw std::runtime_error("Unsupported or unhandled floating point binary operator.");
+        }
+
+        return RegisterAllocator::RegID::NONE;
     }
 
-    char type = 'd';
-    if (is_float) {
-        type = 'f';
-    } else if (is_double) {
-        type = 'l';
+    if (allocator.is_empty()) {
+        RegisterAllocator::RegID left_reg = evaluate_expression(node->left.get());
+        std::string lhs = (left_reg == RegisterAllocator::RegID::NONE) ? "rax" : reg_to_str(left_reg, node->resolved_type.get());
+        if (left_reg != RegisterAllocator::RegID::NONE) {
+            out << "    mov rax, " << lhs << std::endl;
+            allocator.free_reg(left_reg);
+        }
+        out << "    push rax" << std::endl; 
+        current_stack_depth += 8;
+
+        RegisterAllocator::RegID right_reg = evaluate_expression(node->right.get());
+        std::string rhs = (right_reg == RegisterAllocator::RegID::NONE) ? "rax" : reg_to_str(right_reg, node->resolved_type.get());
+
+        out << "    mov r11, " << rhs << std::endl;
+        if (right_reg != RegisterAllocator::RegID::NONE) {
+            allocator.free_reg(right_reg);
+        }
+
+        out << "    pop rax" << std::endl;
+        current_stack_depth -= 8;
+
+        std::string target_rax = (getTypeSize(node->resolved_type.get()) == 4) ? "eax" : "rax";
+        std::string target_r11 = (getTypeSize(node->resolved_type.get()) == 4) ? "r11d" : "r11";
+
+        switch (node->op_type) {
+            case Token::PLUS:  out << "    add " << target_rax << ", " << target_r11 << std::endl; break;
+            case Token::MINUS: out << "    sub " << target_rax << ", " << target_r11 << std::endl; break;
+            case Token::STAR:  out << "    imul " << target_rax << ", " << target_r11 << std::endl; break;
+            case Token::SLASH: {
+                std::string rdx_name = (getTypeSize(node->resolved_type.get()) == 4) ? "edx" : "rdx";
+                if (getTypeSize(node->resolved_type.get()) == 4) out << "    cdq" << std::endl;
+                else out << "    cqo" << std::endl;
+                out << "    idiv " << target_r11 << std::endl;
+                break;
+            }
+            case Token::EQUAL_EQUAL:
+                out << "    cmp " << target_rax << ", " << target_r11 << std::endl;
+                out << "    sete al\n    movzx " << target_rax << ", al" << std::endl;
+                break;
+            case Token::BANG_EQUAL:
+                out << "    cmp " << target_rax << ", " << target_r11 << std::endl;
+                out << "    setne al\n    movzx " << target_rax << ", al" << std::endl;
+                break;
+            case Token::LESS:
+                out << "    cmp " << target_rax << ", " << target_r11 << std::endl;
+                out << "    setl al\n    movzx " << target_rax << ", al" << std::endl;
+                break;
+            case Token::GREATER:
+                out << "    cmp " << target_rax << ", " << target_r11 << std::endl;
+                out << "    setg al\n    movzx " << target_rax << ", al" << std::endl;
+                break;
+            default: throw std::runtime_error("Unknown stack-allocated binary operator.");
+        }
+
+        return RegisterAllocator::RegID::NONE;
     }
+
+    // STANDARD HARDWARE REGISTER ALLOCATION PATH
+    RegisterAllocator::RegID left_reg = evaluate_expression(node->left.get());
+    RegisterAllocator::RegID right_reg = evaluate_expression(node->right.get());
+
+    std::string lhs = (left_reg == RegisterAllocator::RegID::NONE) ? "rax" : reg_to_str(left_reg, node->resolved_type.get());
+    std::string rhs = (right_reg == RegisterAllocator::RegID::NONE) ? "rax" : reg_to_str(right_reg, node->resolved_type.get());
+
     switch (node->op_type) {
         case Token::PLUS:
-            emit_binary_op("add", type);
+            emit("add", lhs, rhs);
             break;
         case Token::MINUS:
-            emit_binary_op("sub", type);
+            emit("sub", lhs, rhs);
             break;
         case Token::STAR:
-            emit_binary_op("imul", type);
+            emit("imul", lhs, rhs);
             break;
-        case Token::SLASH:
-            emit_binary_op("idiv", type);
+        case Token::SLASH: {
+            std::string rax_name = (getTypeSize(node->resolved_type.get()) == 4) ? "eax" : "rax";
+            std::string rdx_name = (getTypeSize(node->resolved_type.get()) == 4) ? "edx" : "rdx";
+            
+            emit("mov", rax_name, lhs);
+            if (getTypeSize(node->resolved_type.get()) == 4) emit("cdq");
+            else emit("cqo");
+            
+            emit("idiv", rhs);
+            emit("mov", lhs, rax_name);
             break;
+        }
         case Token::EQUAL_EQUAL:
             if (node->left->resolved_type &&
                 node->left->resolved_type->category == TypeNode::TypeCategory::PRIMITIVE &&
-                static_cast<PrimitiveTypeNode*>(node->left->resolved_type.get())->primitive_type ==
-                    Token::KEYWORD_STRING) {
-                // String comparison
-                out << "    mov rdi, rcx" << std::endl;
-                out << "    mov rsi, rax" << std::endl;
-                out << "    call strcmp" << std::endl;
-                out << "    test rax, rax" << std::endl;
-                out << "    sete al" << std::endl;
-                out << "    movzx rax, al" << std::endl;
+                static_cast<PrimitiveTypeNode*>(node->left->resolved_type.get())->primitive_type == Token::KEYWORD_STRING) {
+                emit("mov", "rdi", lhs);
+                emit("mov", "rsi", rhs);
+                emit("call", "strcmp");
+                emit("test", "rax", "rax");
+                emit("sete", "al");
+                emit("movzx", lhs, "al");
             } else {
-                // Integer/pointer comparison
-                out << "    cmp rcx, rax" << std::endl;
-                out << "    sete al" << std::endl;
-                out << "    movzx rax, al" << std::endl;
+                emit("cmp", lhs, rhs);
+                emit("sete", "al");
+                emit("movzx", lhs, "al");
             }
             break;
         case Token::BANG_EQUAL:
             if (node->left->resolved_type &&
                 node->left->resolved_type->category == TypeNode::TypeCategory::PRIMITIVE &&
-                static_cast<PrimitiveTypeNode*>(node->left->resolved_type.get())->primitive_type ==
-                    Token::KEYWORD_STRING) {
-                // String comparison
-                out << "    mov rdi, rcx" << std::endl;
-                out << "    mov rsi, rax" << std::endl;
-                out << "    call strcmp" << std::endl;
-                out << "    test rax, rax" << std::endl;
-                out << "    setne al" << std::endl;
-                out << "    movzx rax, al" << std::endl;
+                static_cast<PrimitiveTypeNode*>(node->left->resolved_type.get())->primitive_type == Token::KEYWORD_STRING) {
+                emit("mov", "rdi", lhs);
+                emit("mov", "rsi", rhs);
+                emit("call", "strcmp");
+                emit("test", "rax", "rax");
+                emit("setne", "al");
+                emit("movzx", lhs, "al");
             } else {
-                // Integer/pointer comparison
-                out << "    cmp rcx, rax" << std::endl;
-                out << "    setne al" << std::endl;
-                out << "    movzx rax, al" << std::endl;
+                emit("cmp", lhs, rhs);
+                emit("setne", "al");
+                emit("movzx", lhs, "al");
             }
             break;
         case Token::LESS:
-            out << "    cmp rcx, rax" << std::endl;
-            out << "    setl al" << std::endl;
-            out << "    movzx rax, al" << std::endl;
+            emit("cmp", lhs, rhs);
+            emit("setl", "al");
+            emit("movzx", lhs, "al");
             break;
         case Token::GREATER:
-            out << "    cmp rcx, rax" << std::endl;
-            out << "    setg al" << std::endl;
-            out << "    movzx rax, al" << std::endl;
+            emit("cmp", lhs, rhs);
+            emit("setg", "al");
+            emit("movzx", lhs, "al");
             break;
         case Token::LESS_EQUAL:
-            out << "    cmp rcx, rax" << std::endl;
-            out << "    setle al" << std::endl;
-            out << "    movzx rax, al" << std::endl;
+            emit("cmp", lhs, rhs);
+            emit("setle", "al");
+            emit("movzx", lhs, "al");
             break;
         case Token::GREATER_EQUAL:
-            out << "    cmp rcx, rax" << std::endl;
-            out << "    setge al" << std::endl;
-            out << "    movzx rax, al" << std::endl;
+            emit("cmp", lhs, rhs);
+            emit("setge", "al");
+            emit("movzx", lhs, "al");
             break;
         default:
             throw std::runtime_error("Unknown binary operator.");
     }
+
+    if (right_reg != RegisterAllocator::RegID::NONE) allocator.free_reg(right_reg);
+
+    return (left_reg == RegisterAllocator::RegID::NONE) ? RegisterAllocator::RegID::NONE : left_reg;
+}
+
+RegisterAllocator::RegID CodeGenerator::evaluate_expression(ASTNode* node) {
+    if (node == nullptr) return RegisterAllocator::RegID::NONE;
+    if (auto integer_node = dynamic_cast<IntegerLiteralExpressionNode*>(node)) {
+        return visit(integer_node);
+    }
+    if (auto var_ref_node = dynamic_cast<VariableReferenceNode*>(node)) {
+        return visit(var_ref_node);
+    }
+    if (auto bin_op_node = dynamic_cast<BinaryOperationExpressionNode*>(node)) {
+        return visit(bin_op_node);
+    }
+    visit(node); 
+    return RegisterAllocator::RegID::NONE;
 }
 
 void CodeGenerator::visit(PrintStatementNode* node) {
@@ -815,37 +951,34 @@ void CodeGenerator::visit(UnaryOpExpressionNode* node) {
 
 void CodeGenerator::visit(ArrayAccessNode* node) {
     bool was_lvalue = is_lvalue;
+
     is_lvalue = false;
     visit(node->index_expr.get());
-    out << "    mov rbx, rax" << std::endl;
-    is_lvalue = was_lvalue;
+
+    out << "    mov r11, rax" << std::endl;
 
     int element_size = 8;
     if (node->array_expr && node->array_expr->resolved_type) {
         if (node->array_expr->resolved_type->category == TypeNode::TypeCategory::ARRAY) {
             auto arr_type = static_cast<ArrayTypeNode*>(node->array_expr->resolved_type.get());
             element_size = getTypeSize(arr_type->base_type.get());
+        } else if (node->array_expr->resolved_type->category == TypeNode::TypeCategory::POINTER) {
+            auto ptr_type = static_cast<PointerTypeNode*>(node->array_expr->resolved_type.get());
+            element_size = getTypeSize(ptr_type->base_type.get());
         }
     }
 
-    if (node->array_expr->node_type == ASTNode::NodeType::VARIABLE_REFERENCE) {
-        auto var_ref = static_cast<VariableReferenceNode*>(node->array_expr.get());
-        Symbol* symbol = var_ref->resolved_symbol;
+    out << "    imul r11, " << element_size << std::endl;
 
-        if (symbol != nullptr) {
-            out << "    lea rax, [rbp + " << symbol->offset << "]" << std::endl;
-        } else {
-            throw std::runtime_error("CodeGen Error: Symbol not found.");
-        }
-    } else {
-        visit(node->array_expr.get());
-    }
+    is_lvalue = was_lvalue;
+    visit(node->array_expr.get());
 
-    out << "    imul rbx, " << element_size << std::endl;
-    out << "    add rax, rbx" << std::endl;
+    out << "    add rax, r11" << std::endl;
 
     if (!was_lvalue) {
-        if (element_size == 4) {
+        if (element_size == 1) {
+            out << "    movsx rax, byte [rax]" << std::endl;
+        } else if (element_size == 4) {
             out << "    movsx rax, dword [rax]" << std::endl;
         } else {
             out << "    mov rax, [rax]" << std::endl;
@@ -857,12 +990,11 @@ void CodeGenerator::visit(StructDefinitionNode* node) {
     // No code generation needed for struct definitions
 }
 
-void CodeGenerator::visit(IntegerLiteralExpressionNode* node) {
-    out << "    mov rax, " << node->value << std::endl;
-
-    if (!node->resolved_type) {
-        node->resolved_type = std::make_shared<PrimitiveTypeNode>(Token::KEYWORD_INT);
-    }
+RegisterAllocator::RegID CodeGenerator::visit(IntegerLiteralExpressionNode* node) {
+    RegisterAllocator::RegID reg = allocator.allocate();
+    std::string reg_name = reg_to_str(reg, node->resolved_type.get());
+    emit("mov", reg_name, std::to_string(node->value));
+    return reg;
 }
 
 void CodeGenerator::visit(FloatLiteralExpressionNode* node) {
