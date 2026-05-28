@@ -336,7 +336,7 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
         } else {
             if (decl.initial_value) {
                 visit(decl.initial_value.get());
-                emit_adv(node->type, "rbp", symbol->offset,
+                emit_adv(node->type.get(), "rbp", symbol->offset,
                          (is_float || is_double) ? "xmm0" : "rax");
             }
         }
@@ -345,7 +345,7 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
 
 void CodeGenerator::visit(VariableAssignmentNode* node) {
     auto type = node->left->resolved_type;
-    bool is_fp = isFloatingPoint(type);
+    bool is_fp = isFloatingPoint(type.get());
     auto literal = dynamic_cast<LiteralExpressionNode*>(node->right.get());
 
     visit(node->right.get());
@@ -370,7 +370,7 @@ void CodeGenerator::visit(VariableAssignmentNode* node) {
             is_lvalue = true;
             visit(node->left.get());
             is_lvalue = false;
-            emit_adv(type, "rax", 0, "xmm0");
+            emit_adv(type.get(), "rax", 0, "xmm0");
         } else {
             emit("push", "rax");
             current_stack_depth += 8;
@@ -379,7 +379,7 @@ void CodeGenerator::visit(VariableAssignmentNode* node) {
             is_lvalue = false;
             emit("pop", "rbx");
             current_stack_depth -= 8;
-            emit_adv(type, "rax", 0, "rbx");
+            emit_adv(type.get(), "rax", 0, "rbx");
         }
     }
 }
@@ -436,7 +436,7 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
     if (is_lvalue) {
         emit("lea", "rax", "[rbp + " + std::to_string(offset) + "]");
     } else {
-        load_adv(node->resolved_type, (is_float || is_double) ? "xmm0" : "rax", "rbp", offset);
+        load_adv(node->resolved_type.get(), (is_float || is_double) ? "xmm0" : "rax", "rbp", offset);
     }
 }
 
@@ -777,7 +777,7 @@ void CodeGenerator::visit(MemberAccessNode* node) {
 void CodeGenerator::visit(UnaryOpExpressionNode* node) {
     if (node->op_type == Token::KEYWORD_INT || node->op_type == Token::KEYWORD_CHAR) {
         visit(node->operand.get());
-        if (isFloatingPoint(node->operand->resolved_type)) {
+        if (isFloatingPoint(node->operand->resolved_type.get())) {
             int size = getTypeSize(node->operand->resolved_type.get());
             if (size == 8) {
                 emit("cvtsd2si", "rax", "xmm0");

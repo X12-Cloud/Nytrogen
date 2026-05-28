@@ -57,10 +57,10 @@ RM = /usr/sbin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/mohamed/dev/Nytrogen
+CMAKE_SOURCE_DIR = /home/x12/dev/Nytrogen
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/mohamed/dev/Nytrogen
+CMAKE_BINARY_DIR = /home/x12/dev/Nytrogen
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -85,16 +85,61 @@ rebuild_cache:
 rebuild_cache/fast: rebuild_cache
 .PHONY : rebuild_cache/fast
 
+# Special rule for the target list_install_components
+list_install_components:
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Available install components are: \"Unspecified\""
+.PHONY : list_install_components
+
+# Special rule for the target list_install_components
+list_install_components/fast: list_install_components
+.PHONY : list_install_components/fast
+
+# Special rule for the target install
+install: preinstall
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Install the project..."
+	/usr/sbin/cmake -P cmake_install.cmake
+.PHONY : install
+
+# Special rule for the target install
+install/fast: preinstall/fast
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Install the project..."
+	/usr/sbin/cmake -P cmake_install.cmake
+.PHONY : install/fast
+
+# Special rule for the target install/local
+install/local: preinstall
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Installing only the local directory..."
+	/usr/sbin/cmake -DCMAKE_INSTALL_LOCAL_ONLY=1 -P cmake_install.cmake
+.PHONY : install/local
+
+# Special rule for the target install/local
+install/local/fast: preinstall/fast
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Installing only the local directory..."
+	/usr/sbin/cmake -DCMAKE_INSTALL_LOCAL_ONLY=1 -P cmake_install.cmake
+.PHONY : install/local/fast
+
+# Special rule for the target install/strip
+install/strip: preinstall
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Installing the project stripped..."
+	/usr/sbin/cmake -DCMAKE_INSTALL_DO_STRIP=1 -P cmake_install.cmake
+.PHONY : install/strip
+
+# Special rule for the target install/strip
+install/strip/fast: preinstall/fast
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Installing the project stripped..."
+	/usr/sbin/cmake -DCMAKE_INSTALL_DO_STRIP=1 -P cmake_install.cmake
+.PHONY : install/strip/fast
+
 # The main all target
 all: cmake_check_build_system
-	cd /home/mohamed/dev/Nytrogen && $(CMAKE_COMMAND) -E cmake_progress_start /home/mohamed/dev/Nytrogen/CMakeFiles /home/mohamed/dev/Nytrogen/Preprocessor//CMakeFiles/progress.marks
-	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 Preprocessor/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/mohamed/dev/Nytrogen/CMakeFiles 0
+	cd /home/x12/dev/Nytrogen && $(CMAKE_COMMAND) -E cmake_progress_start /home/x12/dev/Nytrogen/CMakeFiles /home/x12/dev/Nytrogen/Preprocessor//CMakeFiles/progress.marks
+	cd /home/x12/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 Preprocessor/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/x12/dev/Nytrogen/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
 clean:
-	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 Preprocessor/clean
+	cd /home/x12/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 Preprocessor/clean
 .PHONY : clean
 
 # The main clean target
@@ -103,22 +148,22 @@ clean/fast: clean
 
 # Prepare targets for installation.
 preinstall: all
-	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 Preprocessor/preinstall
+	cd /home/x12/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 Preprocessor/preinstall
 .PHONY : preinstall
 
 # Prepare targets for installation.
 preinstall/fast:
-	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 Preprocessor/preinstall
+	cd /home/x12/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 Preprocessor/preinstall
 .PHONY : preinstall/fast
 
 # clear depends
 depend:
-	cd /home/mohamed/dev/Nytrogen && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
+	cd /home/x12/dev/Nytrogen && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
 .PHONY : depend
 
 # Convenience name for target.
 Preprocessor/CMakeFiles/nytro-pre.dir/rule:
-	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 Preprocessor/CMakeFiles/nytro-pre.dir/rule
+	cd /home/x12/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 Preprocessor/CMakeFiles/nytro-pre.dir/rule
 .PHONY : Preprocessor/CMakeFiles/nytro-pre.dir/rule
 
 # Convenience name for target.
@@ -127,7 +172,7 @@ nytro-pre: Preprocessor/CMakeFiles/nytro-pre.dir/rule
 
 # fast build rule for target.
 nytro-pre/fast:
-	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/build
+	cd /home/x12/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/build
 .PHONY : nytro-pre/fast
 
 src/file_handler.o: src/file_handler.cpp.o
@@ -135,7 +180,7 @@ src/file_handler.o: src/file_handler.cpp.o
 
 # target to build an object file
 src/file_handler.cpp.o:
-	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/src/file_handler.cpp.o
+	cd /home/x12/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/src/file_handler.cpp.o
 .PHONY : src/file_handler.cpp.o
 
 src/file_handler.i: src/file_handler.cpp.i
@@ -143,7 +188,7 @@ src/file_handler.i: src/file_handler.cpp.i
 
 # target to preprocess a source file
 src/file_handler.cpp.i:
-	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/src/file_handler.cpp.i
+	cd /home/x12/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/src/file_handler.cpp.i
 .PHONY : src/file_handler.cpp.i
 
 src/file_handler.s: src/file_handler.cpp.s
@@ -151,7 +196,7 @@ src/file_handler.s: src/file_handler.cpp.s
 
 # target to generate assembly for a file
 src/file_handler.cpp.s:
-	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/src/file_handler.cpp.s
+	cd /home/x12/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/src/file_handler.cpp.s
 .PHONY : src/file_handler.cpp.s
 
 src/file_parser.o: src/file_parser.cpp.o
@@ -159,7 +204,7 @@ src/file_parser.o: src/file_parser.cpp.o
 
 # target to build an object file
 src/file_parser.cpp.o:
-	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/src/file_parser.cpp.o
+	cd /home/x12/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/src/file_parser.cpp.o
 .PHONY : src/file_parser.cpp.o
 
 src/file_parser.i: src/file_parser.cpp.i
@@ -167,7 +212,7 @@ src/file_parser.i: src/file_parser.cpp.i
 
 # target to preprocess a source file
 src/file_parser.cpp.i:
-	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/src/file_parser.cpp.i
+	cd /home/x12/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/src/file_parser.cpp.i
 .PHONY : src/file_parser.cpp.i
 
 src/file_parser.s: src/file_parser.cpp.s
@@ -175,7 +220,7 @@ src/file_parser.s: src/file_parser.cpp.s
 
 # target to generate assembly for a file
 src/file_parser.cpp.s:
-	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/src/file_parser.cpp.s
+	cd /home/x12/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/src/file_parser.cpp.s
 .PHONY : src/file_parser.cpp.s
 
 src/macro_handler.o: src/macro_handler.cpp.o
@@ -183,7 +228,7 @@ src/macro_handler.o: src/macro_handler.cpp.o
 
 # target to build an object file
 src/macro_handler.cpp.o:
-	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/src/macro_handler.cpp.o
+	cd /home/x12/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/src/macro_handler.cpp.o
 .PHONY : src/macro_handler.cpp.o
 
 src/macro_handler.i: src/macro_handler.cpp.i
@@ -191,7 +236,7 @@ src/macro_handler.i: src/macro_handler.cpp.i
 
 # target to preprocess a source file
 src/macro_handler.cpp.i:
-	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/src/macro_handler.cpp.i
+	cd /home/x12/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/src/macro_handler.cpp.i
 .PHONY : src/macro_handler.cpp.i
 
 src/macro_handler.s: src/macro_handler.cpp.s
@@ -199,7 +244,7 @@ src/macro_handler.s: src/macro_handler.cpp.s
 
 # target to generate assembly for a file
 src/macro_handler.cpp.s:
-	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/src/macro_handler.cpp.s
+	cd /home/x12/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/src/macro_handler.cpp.s
 .PHONY : src/macro_handler.cpp.s
 
 src/main.o: src/main.cpp.o
@@ -207,7 +252,7 @@ src/main.o: src/main.cpp.o
 
 # target to build an object file
 src/main.cpp.o:
-	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/src/main.cpp.o
+	cd /home/x12/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/src/main.cpp.o
 .PHONY : src/main.cpp.o
 
 src/main.i: src/main.cpp.i
@@ -215,7 +260,7 @@ src/main.i: src/main.cpp.i
 
 # target to preprocess a source file
 src/main.cpp.i:
-	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/src/main.cpp.i
+	cd /home/x12/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/src/main.cpp.i
 .PHONY : src/main.cpp.i
 
 src/main.s: src/main.cpp.s
@@ -223,7 +268,7 @@ src/main.s: src/main.cpp.s
 
 # target to generate assembly for a file
 src/main.cpp.s:
-	cd /home/mohamed/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/src/main.cpp.s
+	cd /home/x12/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f Preprocessor/CMakeFiles/nytro-pre.dir/build.make Preprocessor/CMakeFiles/nytro-pre.dir/src/main.cpp.s
 .PHONY : src/main.cpp.s
 
 # Help Target
@@ -233,6 +278,10 @@ help:
 	@echo "... clean"
 	@echo "... depend"
 	@echo "... edit_cache"
+	@echo "... install"
+	@echo "... install/local"
+	@echo "... install/strip"
+	@echo "... list_install_components"
 	@echo "... rebuild_cache"
 	@echo "... nytro-pre"
 	@echo "... src/file_handler.o"
@@ -258,6 +307,6 @@ help:
 # No rule that depends on this can have commands that come from listfiles
 # because they might be regenerated.
 cmake_check_build_system:
-	cd /home/mohamed/dev/Nytrogen && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
+	cd /home/x12/dev/Nytrogen && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
 .PHONY : cmake_check_build_system
 

@@ -23,7 +23,7 @@ class CodeGenerator {
    public:
     CodeGenerator(std::unique_ptr<ProgramNode>& ast, SymbolTable& symTable);
     void generate(const std::string& output_filename, bool is_entry_point);
-    bool isFloatingPoint(const std::shared_ptr<TypeNode>& type);
+    bool isFloatingPoint(const TypeNode* type);
     bool debug_mode = false;
 
    private:
@@ -74,20 +74,17 @@ class CodeGenerator {
 
     // Instruction set
     std::string reg_to_str(RegisterAllocator::RegID reg, const TypeNode* type);
+    std::string get_size_prefix(int size);
     void emit(const std::string& instr);
     void emit(const std::string& instr, const std::string reg);
     void emit(const std::string& instr, const std::string& dest, const std::string& src);
-    void emit_adv(const std::shared_ptr<TypeNode>& type, const std::string& base_reg, int offset,
-                  const std::string& src_val);
-    void emit_adv(const std::unique_ptr<TypeNode>& type, const std::string& base_reg, int offset,
+    void emit_adv(const TypeNode* type, const std::string& base_reg, int offset,
                   const std::string& src_val);
     void emit_binary_op(const std::string& op_instr, char type);
     void call_external(const std::string& func_name);
     void emit_print(const std::shared_ptr<TypeNode>& type);
-    void load_adv(const std::shared_ptr<TypeNode>& type, const std::string& dest_reg,
+    void load_adv(const TypeNode* type, const std::string& dest_reg,
                   const std::string base_reg, int offset);
-    void load_adv(const std::unique_ptr<TypeNode>& type, const std::string& dest_reg,
-                  const std::string& base_reg, int offset);
 };
 
 #endif  // CODE_GENERATOR_HPP

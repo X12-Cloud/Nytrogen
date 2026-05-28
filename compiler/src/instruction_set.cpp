@@ -8,6 +8,14 @@ std::string CodeGenerator::reg_to_str(RegisterAllocator::RegID reg, const TypeNo
     return allocator.get_name(reg, size);
 }
 
+std::string CodeGenerator::get_size_prefix(int size) {
+    switch(size) {
+        case 1: return "byte";
+        case 4: return "dword";
+        default: return "qword";
+    }
+}
+
 void CodeGenerator::emit(const std::string& instr) { out << "    " << instr << std::endl; }
 
 void CodeGenerator::emit(const std::string& instr, const std::string reg) {
@@ -19,47 +27,13 @@ void CodeGenerator::emit(const std::string& instr, const std::string& dest,
     out << "    " << instr << " " << dest << ", " << src << std::endl;
 }
 
-void CodeGenerator::emit_adv(const std::shared_ptr<TypeNode>& type, const std::string& base_reg,
+void CodeGenerator::emit_adv(const TypeNode* type, const std::string& base_reg,
                              int offset, const std::string& src_val) {
-    int size = getTypeSize(type.get());
-    bool is_fp = isFloatingPoint(type);
-    std::string size_prefix = (size == 1) ? "byte" : (size == 4) ? "dword" : "qword";
+    int size = getTypeSize(type);
+    bool is_fp = isFloatingPoint(const_cast<TypeNode*>(type));
+    std::string size_prefix = get_size_prefix(size);
 
     if (is_fp) {
-        std::string instr = (size == 4) ? "vmovss" : "vmovsd";
-        out << "    " << instr << " [" << base_reg << " + " << offset << "], " << src_val
-            << std::endl;
-    } else {
-        std::string final_src = src_val;
-
-        if (src_val == "rbx") {
-            if (size == 1) {
-                final_src = "bl";
-            } else if (size == 4) {
-                final_src = "ebx";
-            }
-        } else if (src_val == "rax") {
-            if (size == 1) {
-                final_src = "al";
-            } else if (size == 4) {
-                final_src = "eax";
-            }
-        }
-
-        out << "    mov " << size_prefix << " [" << base_reg << " + " << offset << "], "
-            << final_src << std::endl;
-    }
-}
-
-void CodeGenerator::emit_adv(const std::unique_ptr<TypeNode>& type, const std::string& base_reg,
-                             int offset, const std::string& src_val) {
-    int size = getTypeSize(type.get());
-    auto prim = dynamic_cast<PrimitiveTypeNode*>(type.get());
-    bool is_double = (prim != nullptr) && (prim->primitive_type == Token::KEYWORD_DOUBLE);
-    bool is_float = (prim != nullptr) && (prim->primitive_type == Token::KEYWORD_FLOAT);
-    std::string size_prefix = (size == 1) ? "byte" : (size == 4) ? "dword" : "qword";
-
-    if (is_float || is_double) {
         std::string instr = (size == 4) ? "vmovss" : "vmovsd";
         out << "    " << instr << " [" << base_reg << " + " << offset << "], " << src_val
             << std::endl;
@@ -103,7 +77,7 @@ void CodeGenerator::emit_print(const std::shared_ptr<TypeNode>& type) {
     auto prim = dynamic_cast<PrimitiveTypeNode*>(type.get());
     int size = getTypeSize(type.get());
 
-    if (isFloatingPoint(type)) {
+    if (isFloatingPoint(type.get())) {
         if (size == 4) {
             emit("cvtss2sd", "xmm0", "xmm0");
         }
@@ -150,10 +124,10 @@ void CodeGenerator::emit_binary_op(const std::string& op_instr, char type) {
     }
 }
 
-void CodeGenerator::load_adv(const std::shared_ptr<TypeNode>& type, const std::string& dest_reg,
+void CodeGenerator::load_adv(const TypeNode* type, const std::string& dest_reg,
                              const std::string base_reg, int offset) {
     bool is_fp = isFloatingPoint(type);
-    int size = getTypeSize(type.get());
+    int size = getTypeSize(type);
     std::string off_str = std::to_string(offset);
 
     if (is_fp) {
@@ -173,36 +147,11 @@ void CodeGenerator::load_adv(const std::shared_ptr<TypeNode>& type, const std::s
     }
 }
 
-void CodeGenerator::load_adv(const std::unique_ptr<TypeNode>& type, const std::string& dest_reg,
-                             const std::string& base_reg, int offset) {
-    auto prim = dynamic_cast<PrimitiveTypeNode*>(type.get());
-    bool is_double = (prim != nullptr) && (prim->primitive_type == Token::KEYWORD_DOUBLE);
-    bool is_float = (prim != nullptr) && (prim->primitive_type == Token::KEYWORD_FLOAT);
-    int size = getTypeSize(type.get());
-    std::string off_str = std::to_string(offset);
-
-    if (is_float || is_double) {
-        if (size == 4) {
-            emit("vmovss", dest_reg, "[" + base_reg + " + " + off_str + "]");
-        } else {
-            emit("vmovsd", dest_reg, "[" + base_reg + "+" + off_str + "]");
-        }
-    } else {
-        if (size == 1) {
-            emit("movsx", dest_reg, "byte [" + base_reg + " + " + off_str + "]");
-        } else if (size == 4) {
-            emit("movsx", dest_reg, "dword [" + base_reg + " + " + off_str + "]");
-        } else {
-            emit("mov", dest_reg, "[" + base_reg + " + " + off_str + "]");
-        }
-    }
-}
-
-bool CodeGenerator::isFloatingPoint(const std::shared_ptr<TypeNode>& type) {
-    if (!type) {
+bool CodeGenerator::isFloatingPoint(const TypeNode* type) {
+    if (type == nullptr) {
         return false;
     }
-    auto prim = dynamic_cast<PrimitiveTypeNode*>(type.get());
+    auto prim = dynamic_cast<const PrimitiveTypeNode*>(type);
     return (prim != nullptr) && (prim->primitive_type == Token::KEYWORD_FLOAT ||
                                  prim->primitive_type == Token::KEYWORD_DOUBLE);
 }
