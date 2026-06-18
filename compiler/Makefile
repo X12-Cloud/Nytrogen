@@ -199,29 +199,77 @@ src/code_generator.cpp.s:
 	cd /home/x12/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f compiler/CMakeFiles/nytro-c.dir/build.make compiler/CMakeFiles/nytro-c.dir/src/code_generator.cpp.s
 .PHONY : src/code_generator.cpp.s
 
-src/instruction_set.o: src/instruction_set.cpp.o
-.PHONY : src/instruction_set.o
+src/instruction_set/advanced.o: src/instruction_set/advanced.cpp.o
+.PHONY : src/instruction_set/advanced.o
 
 # target to build an object file
-src/instruction_set.cpp.o:
-	cd /home/x12/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f compiler/CMakeFiles/nytro-c.dir/build.make compiler/CMakeFiles/nytro-c.dir/src/instruction_set.cpp.o
-.PHONY : src/instruction_set.cpp.o
+src/instruction_set/advanced.cpp.o:
+	cd /home/x12/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f compiler/CMakeFiles/nytro-c.dir/build.make compiler/CMakeFiles/nytro-c.dir/src/instruction_set/advanced.cpp.o
+.PHONY : src/instruction_set/advanced.cpp.o
 
-src/instruction_set.i: src/instruction_set.cpp.i
-.PHONY : src/instruction_set.i
+src/instruction_set/advanced.i: src/instruction_set/advanced.cpp.i
+.PHONY : src/instruction_set/advanced.i
 
 # target to preprocess a source file
-src/instruction_set.cpp.i:
-	cd /home/x12/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f compiler/CMakeFiles/nytro-c.dir/build.make compiler/CMakeFiles/nytro-c.dir/src/instruction_set.cpp.i
-.PHONY : src/instruction_set.cpp.i
+src/instruction_set/advanced.cpp.i:
+	cd /home/x12/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f compiler/CMakeFiles/nytro-c.dir/build.make compiler/CMakeFiles/nytro-c.dir/src/instruction_set/advanced.cpp.i
+.PHONY : src/instruction_set/advanced.cpp.i
 
-src/instruction_set.s: src/instruction_set.cpp.s
-.PHONY : src/instruction_set.s
+src/instruction_set/advanced.s: src/instruction_set/advanced.cpp.s
+.PHONY : src/instruction_set/advanced.s
 
 # target to generate assembly for a file
-src/instruction_set.cpp.s:
-	cd /home/x12/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f compiler/CMakeFiles/nytro-c.dir/build.make compiler/CMakeFiles/nytro-c.dir/src/instruction_set.cpp.s
-.PHONY : src/instruction_set.cpp.s
+src/instruction_set/advanced.cpp.s:
+	cd /home/x12/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f compiler/CMakeFiles/nytro-c.dir/build.make compiler/CMakeFiles/nytro-c.dir/src/instruction_set/advanced.cpp.s
+.PHONY : src/instruction_set/advanced.cpp.s
+
+src/instruction_set/basic.o: src/instruction_set/basic.cpp.o
+.PHONY : src/instruction_set/basic.o
+
+# target to build an object file
+src/instruction_set/basic.cpp.o:
+	cd /home/x12/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f compiler/CMakeFiles/nytro-c.dir/build.make compiler/CMakeFiles/nytro-c.dir/src/instruction_set/basic.cpp.o
+.PHONY : src/instruction_set/basic.cpp.o
+
+src/instruction_set/basic.i: src/instruction_set/basic.cpp.i
+.PHONY : src/instruction_set/basic.i
+
+# target to preprocess a source file
+src/instruction_set/basic.cpp.i:
+	cd /home/x12/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f compiler/CMakeFiles/nytro-c.dir/build.make compiler/CMakeFiles/nytro-c.dir/src/instruction_set/basic.cpp.i
+.PHONY : src/instruction_set/basic.cpp.i
+
+src/instruction_set/basic.s: src/instruction_set/basic.cpp.s
+.PHONY : src/instruction_set/basic.s
+
+# target to generate assembly for a file
+src/instruction_set/basic.cpp.s:
+	cd /home/x12/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f compiler/CMakeFiles/nytro-c.dir/build.make compiler/CMakeFiles/nytro-c.dir/src/instruction_set/basic.cpp.s
+.PHONY : src/instruction_set/basic.cpp.s
+
+src/instruction_set/logical.o: src/instruction_set/logical.cpp.o
+.PHONY : src/instruction_set/logical.o
+
+# target to build an object file
+src/instruction_set/logical.cpp.o:
+	cd /home/x12/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f compiler/CMakeFiles/nytro-c.dir/build.make compiler/CMakeFiles/nytro-c.dir/src/instruction_set/logical.cpp.o
+.PHONY : src/instruction_set/logical.cpp.o
+
+src/instruction_set/logical.i: src/instruction_set/logical.cpp.i
+.PHONY : src/instruction_set/logical.i
+
+# target to preprocess a source file
+src/instruction_set/logical.cpp.i:
+	cd /home/x12/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f compiler/CMakeFiles/nytro-c.dir/build.make compiler/CMakeFiles/nytro-c.dir/src/instruction_set/logical.cpp.i
+.PHONY : src/instruction_set/logical.cpp.i
+
+src/instruction_set/logical.s: src/instruction_set/logical.cpp.s
+.PHONY : src/instruction_set/logical.s
+
+# target to generate assembly for a file
+src/instruction_set/logical.cpp.s:
+	cd /home/x12/dev/Nytrogen && $(MAKE) $(MAKESILENT) -f compiler/CMakeFiles/nytro-c.dir/build.make compiler/CMakeFiles/nytro-c.dir/src/instruction_set/logical.cpp.s
+.PHONY : src/instruction_set/logical.cpp.s
 
 src/lexer.o: src/lexer.cpp.o
 .PHONY : src/lexer.o
@@ -359,9 +407,15 @@ help:
 	@echo "... src/code_generator.o"
 	@echo "... src/code_generator.i"
 	@echo "... src/code_generator.s"
-	@echo "... src/instruction_set.o"
-	@echo "... src/instruction_set.i"
-	@echo "... src/instruction_set.s"
+	@echo "... src/instruction_set/advanced.o"
+	@echo "... src/instruction_set/advanced.i"
+	@echo "... src/instruction_set/advanced.s"
+	@echo "... src/instruction_set/basic.o"
+	@echo "... src/instruction_set/basic.i"
+	@echo "... src/instruction_set/basic.s"
+	@echo "... src/instruction_set/logical.o"
+	@echo "... src/instruction_set/logical.i"
+	@echo "... src/instruction_set/logical.s"
 	@echo "... src/lexer.o"
 	@echo "... src/lexer.i"
 	@echo "... src/lexer.s"

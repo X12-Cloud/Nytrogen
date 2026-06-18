@@ -1,5 +1,4 @@
 #include "code_generator.hpp"
-#include "instruction_set.hpp"
 
 #include <iomanip>
 #include <sstream>
@@ -8,11 +7,7 @@
 #include <unordered_set>
 
 CodeGenerator::CodeGenerator(std::unique_ptr<ProgramNode>& ast, SymbolTable& symTable)
-    : program_ast(ast),
-      symbolTable(symTable),
-      string_label_counter(0),
-      emitter(out)
-{}
+    : program_ast(ast), symbolTable(symTable), string_label_counter(0) {}
 
 std::string unescapeString(const std::string& input) {
     std::string result;
@@ -200,11 +195,11 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
     }
 
     out << node->mangled_name << ":" << std::endl;
-    emitter.emit("push", "rbp");
+    emit("push", "rbp");
     current_stack_depth += 8;
-    emitter.emit("mov", "rbp", "rsp");
+    emit("mov", "rbp", "rsp");
 
-    emitter.emit("and", "rsp", "-16");
+    emit("and", "rsp", "-16");
     current_stack_depth = 0;
 
     std::stringstream body_buffer;
@@ -228,7 +223,7 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
 
     int aligned_space = (local_var_space + 15) & ~15;
     if (aligned_space > 0) {
-        emitter.emit("sub", "rsp", std::to_string(aligned_space));
+        emit("sub", "rsp", std::to_string(aligned_space));
         current_stack_depth += aligned_space;
     }
 
@@ -244,8 +239,8 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
 
     out << current_function_name << "_epilogue:" << std::endl;
 
-    emitter.emit("leave");
-    emitter.emit("ret");
+    emit("leave");
+    emit("ret");
 
     current_function_name = "";
 }
@@ -341,7 +336,7 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
         } else {
             if (decl.initial_value) {
                 visit(decl.initial_value.get());
-                emitter.emit_adv(size, node->type.get(), "rbp", symbol->offset,
+                emit_adv(node->type.get(), "rbp", symbol->offset,
                          (is_float || is_double) ? "xmm0" : "rax");
             }
         }
@@ -363,29 +358,28 @@ void CodeGenerator::visit(VariableAssignmentNode* node) {
         } else {
             int size = getTypeSize(node->left->resolved_type.get());
             if (size == 4) {
-                emitter.emit("mov", "dword [rel " + label + "]", "eax");
+                emit("mov", "dword [rel " + label + "]", "eax");
             } else if (size == 1) {
-                emitter.emit("mov", "byte [rel " + label + "]", "al");
+                emit("mov", "byte [rel " + label + "]", "al");
             } else {
-                emitter.emit("mov", "[rel " + label + "]", "rax");
+                emit("mov", "[rel " + label + "]", "rax");
             }
         }
     } else {
-        int size = getTypeSize(node->left->resolved_type.get());
         if (is_fp) {
             is_lvalue = true;
             visit(node->left.get());
             is_lvalue = false;
-            emitter.emit_adv(size, type.get(), "rax", 0, "xmm0");
+            emit_adv(type.get(), "rax", 0, "xmm0");
         } else {
-            emitter.emit("push", "rax");
+            emit("push", "rax");
             current_stack_depth += 8;
             is_lvalue = true;
             visit(node->left.get());
             is_lvalue = false;
-            emitter.emit("pop", "rbx");
+            emit("pop", "rbx");
             current_stack_depth -= 8;
-            emitter.emit_adv(size, type.get(), "rax", 0, "rbx");
+            emit_adv(type.get(), "rax", 0, "rbx");
         }
     }
 }
@@ -415,10 +409,11 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
     bool is_double = (prim != nullptr) && (prim->primitive_type == Token::KEYWORD_DOUBLE);
     bool is_float = (prim != nullptr) && (prim->primitive_type == Token::KEYWORD_FLOAT);
     bool is_global = !symbol->mangled_name.empty() && symbol->mangled_name != symbol->name;
-    int size = getTypeSize(node->resolved_type.get());
 
     if (is_global) {
         std::string asm_label = symbol->mangled_name;
+        int size = getTypeSize(node->resolved_type.get());
+
         if (is_lvalue) {
             out << "    lea rax, [rel " << asm_label << "]" << std::endl;
         } else {
@@ -439,9 +434,9 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
     }
     offset = symbol->offset;
     if (is_lvalue) {
-        emitter.emit("lea", "rax", "[rbp + " + std::to_string(offset) + "]");
+        emit("lea", "rax", "[rbp + " + std::to_string(offset) + "]");
     } else {
-        emitter.load_adv(size, node->resolved_type.get(), (is_float || is_double) ? "xmm0" : "rax", "rbp", offset);
+        load_adv(node->resolved_type.get(), (is_float || is_double) ? "xmm0" : "rax", "rbp", offset);
     }
 }
 
@@ -505,16 +500,16 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
     }
     switch (node->op_type) {
         case Token::PLUS:
-            emitter.emit_binary_op("add", type);
+            emit_binary_op("add", type);
             break;
         case Token::MINUS:
-            emitter.emit_binary_op("sub", type);
+            emit_binary_op("sub", type);
             break;
         case Token::STAR:
-            emitter.emit_binary_op("imul", type);
+            emit_binary_op("imul", type);
             break;
         case Token::SLASH:
-            emitter.emit_binary_op("idiv", type);
+            emit_binary_op("idiv", type);
             break;
         case Token::EQUAL_EQUAL:
             if (node->left->resolved_type &&
@@ -584,7 +579,6 @@ void CodeGenerator::visit(PrintStatementNode* node) {
         visit(expr.get());
 
         auto expr_type = expr->resolved_type;
-        int size = getTypeSize(expr_type.get());
         if (!expr_type) {
             // Fallback if semantic analysis missed a type
             out << "    mov rsi, rax" << std::endl;
@@ -593,7 +587,7 @@ void CodeGenerator::visit(PrintStatementNode* node) {
             out << "    call printf" << std::endl;
             continue;
         }
-        emitter.emit_print(size, expr_type);
+        emit_print(expr_type);
     }
 }
 
@@ -786,9 +780,9 @@ void CodeGenerator::visit(UnaryOpExpressionNode* node) {
         if (isFloatingPoint(node->operand->resolved_type.get())) {
             int size = getTypeSize(node->operand->resolved_type.get());
             if (size == 8) {
-                emitter.emit("cvtsd2si", "rax", "xmm0");
+                emit("cvtsd2si", "rax", "xmm0");
             } else {
-                emitter.emit("cvtss2si", "rax", "xmm0");
+                emit("cvtss2si", "rax", "xmm0");
             }
         }
         // should sucessfully get the address on its own if its truncation/extension
@@ -991,13 +985,4 @@ int CodeGenerator::getTypeSize(const TypeNode* type) {
             throw std::runtime_error(
                 "Code Generation Error: Unknown type category for size calculation.");
     }
-}
-
-bool CodeGenerator::isFloatingPoint(const TypeNode* type) {
-    if (type == nullptr) {
-        return false;
-    }
-    auto prim = dynamic_cast<const PrimitiveTypeNode*>(type);
-    return (prim != nullptr) && (prim->primitive_type == Token::KEYWORD_FLOAT ||
-                                 prim->primitive_type == Token::KEYWORD_DOUBLE);
 }

@@ -4,7 +4,7 @@ project(NytrogenCompiler)
 set(CMAKE_CXX_STANDARD 17)
 
 # Source files
-file(GLOB SOURCES "src/*.cpp")
+file(GLOB_RECURSE SOURCES "src/*.cpp")
 
 # Include headers
 include_directories(include)
