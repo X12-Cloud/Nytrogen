@@ -1,5 +1,6 @@
 #include <sstream>
 #include <stdexcept>
+#include <cmath>
 
 #include "instruction_set.hpp"
 
@@ -22,9 +23,27 @@ void InstructionSet::emit(const std::string& instr, const std::string& dest,
     out << "    " << instr << " " << dest << ", " << src << std::endl;
 }
 
+void InstructionSet::global(const std::string& name) { emit("global", name); }
+void InstructionSet::section(const std::string& section_name) { out << "\nsection " << section_name << std::endl; }
+void InstructionSet::extern_sym(const std::string& name) { emit("extern", name); }
+void InstructionSet::label(const std::string& label) { out << label << ":" << std::endl; }
+void InstructionSet::label_local(const std::string& name) { out << name << ":" << std::endl; }
+void InstructionSet::mov_indirect(const std::string& base, int offset, const std::string& src) { out << "    mov [rbp + " << offset << "], " << src << std::endl; }
+void InstructionSet::write_raw(const std::string& data) { out << data; }
+void InstructionSet::emit_mem_rel(const std::string& instr, const std::string& label, const std::string& reg) { out << "    " << instr << " [rel " << label << "], " << reg << std::endl; }
+void InstructionSet::syscall(int code) {
+    emit("mov", "rax", std::to_string(code));
+    emit("syscall");
+}
+
 void InstructionSet::push(const std::string& reg) {
     out << "    " << "push" << " " << reg << std::endl;
     current_stack_depth += 8;
+}
+
+void InstructionSet::pop(const std::string& reg) {
+    out << "    " << "pop" << " " << reg << std::endl;
+    current_stack_depth -= 8;
 }
 
 void InstructionSet::call_external(const std::string& func_name) {
@@ -39,6 +58,20 @@ void InstructionSet::call_external(const std::string& func_name) {
     if (misaligned) {
         emit("add", "rsp", "8");
     }
+}
+
+void InstructionSet::emit_lea_stack(int offset) {
+    std::string operand = std::string("[rbp ") + (offset >= 0 ? "+ " : "- ") + std::to_string(std::abs(offset)) + "]";
+    emit("lea", "rax", operand);
+}
+void InstructionSet::emit_load_constant(const std::string& instr, const std::string& label) {
+    emit(instr, "xmm0", "[rel " + label + "]");
+}
+void InstructionSet::emit_dereference() {
+    emit("mov", "rax", "[rax]");
+}
+void InstructionSet::emit_data_entry(const std::string& label, const std::string& type, const std::string& value) {
+    out << "    " << label << " " << type << " " << value << std::endl;
 }
 
 bool InstructionSet::isAFloatingPoint(const TypeNode* type) {

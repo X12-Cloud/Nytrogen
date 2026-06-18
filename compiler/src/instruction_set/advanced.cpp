@@ -56,6 +56,16 @@ void InstructionSet::load_adv(int size, const TypeNode* type, const std::string&
     }
 }
 
+void InstructionSet::load_from_address(int size, const std::string& reg) {
+    if (size == 4) {
+        emit("movsx", "rax", "dword [" + reg + "]");
+    } else if (size == 1) {
+        emit("movsx", "rax", "byte [" + reg + "]");
+    } else {
+        emit("mov", "rax", "[" + reg + "]");
+    }
+}
+
 void InstructionSet::emit_print(int size, const std::shared_ptr<TypeNode>& type) {
     auto prim = dynamic_cast<PrimitiveTypeNode*>(type.get());
 
@@ -78,5 +88,12 @@ void InstructionSet::emit_print(int size, const std::shared_ptr<TypeNode>& type)
         emit("lea", "rdi", "[rel _print_int_format]");
         emit("xor", "rax", "rax");
     }
+    call_external("printf");
+}
+
+void InstructionSet::emit_print_int(const std::string& reg) {
+    emit("mov", "rsi", reg);
+    emit("lea", "rdi", "[rel _print_int_format]");
+    emit("xor", "rax", "rax");
     call_external("printf");
 }

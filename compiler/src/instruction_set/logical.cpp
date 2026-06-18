@@ -27,3 +27,17 @@ void InstructionSet::emit_binary_op(const std::string& op_instr, char type) {
         }
     }
 }
+
+void InstructionSet::emit_cmp(const std::string& op, bool is_string_compare) {
+    if (is_string_compare) {
+        emit("mov", "rdi", "rcx");
+        emit("mov", "rsi", "rax");
+        call_external("strcmp");
+        emit("test", "rax", "rax");
+    } else {
+        emit("cmp", "rcx", "rax");
+    }
+
+    emit(op, "al");
+    emit("movzx", "rax", "al");
+}

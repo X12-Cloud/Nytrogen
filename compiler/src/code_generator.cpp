@@ -49,38 +49,39 @@ void CodeGenerator::generate(const std::string& output_filename, bool is_entry_p
     constants.push_back({"_print_char_format", "db", "\"%c\", 10, 0"});
     constants.push_back({"_print_float_format", "db", "\"%f\", 10, 0"});
 
-    out << "section .text" << std::endl;
-    out << "extern printf" << std::endl;
-    out << "extern strcmp" << std::endl;
+
+    emitter.section(".text");
+    emitter.extern_sym("printf");
+    emitter.extern_sym("strcmp");
+
     if (is_entry_point) {
-        out << "global _start" << std::endl;
+        emitter.global("_start");
     }
 
     for (const auto& func : program_ast->functions) {
         if (!func->body_statements.empty()) {
-            out << "global " << func->name << std::endl;
+            emitter.global(func->name);
         } else {
-            out << "extern " << func->name << std::endl;
+            emitter.extern_sym(func->name);
         }
     }
 
     // entry point
     if (is_entry_point) {
-        out << "_start:" << std::endl;
-        out << "  call main" << std::endl;
-        out << "  mov rdi, rax" << std::endl;
-        out << "  mov rax, 60" << std::endl;
-        out << "  syscall" << std::endl;
+        emitter.label("_start");
+        emitter.emit("call", "main");
+        emitter.emit("mov", "rdi", "rax");
+        emitter.syscall(60);
     }
 
     visit(program_ast.get());
 
     // print the .data section
-    out << "\nsection .data" << std::endl;
+    emitter.section(".data");
     std::unordered_set<std::string> emitted_data_labels;
     for (const auto& c : constants) {
         if (emitted_data_labels.find(c.label) == emitted_data_labels.end()) {
-            out << "    " << c.label << " " << c.type << " " << c.value << std::endl;
+            emitter.emit_data_entry(c.label, c.type, c.value);
             emitted_data_labels.insert(c.label);
         }
     }
@@ -195,11 +196,11 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
     current_function_name = node->mangled_name;
     current_stack_depth = 0;
     if (node->is_extern) {
-        out << "extern " << node->mangled_name << std::endl;
+        emitter.extern_sym(node->mangled_name);
         return;  // No further code generation for extern functions
     }
 
-    out << node->mangled_name << ":" << std::endl;
+    emitter.label_local(node->mangled_name);
     emitter.emit("push", "rbp");
     current_stack_depth += 8;
     emitter.emit("mov", "rbp", "rsp");
@@ -237,12 +238,11 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
     int register_args_size = 0;
     for (int i = 0; i < node->parameters.size() && i < arg_registers.size(); ++i) {
         int offset = (i + 1) * -8;
-        out << "    mov [rbp + " << offset << "], " << arg_registers[i] << std::endl;
+        emitter.mov_indirect("rbp", offset, arg_registers[i]);
     }
 
-    out << body_buffer.str();
-
-    out << current_function_name << "_epilogue:" << std::endl;
+    emitter.write_raw(body_buffer.str());
+    emitter.label_local(current_function_name + "_epilogue");
 
     emitter.emit("leave");
     emitter.emit("ret");
@@ -333,9 +333,9 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
                 visit(decl.initial_value.get());
                 if (is_float || is_double) {
                     std::string instr = is_float ? "vmovss" : "vmovsd";
-                    out << "    " << instr << " [rel " << final_name << "], xmm0" << std::endl;
+                    emitter.emit_mem_rel(instr, final_name, "xmm0");
                 } else {
-                    out << "    mov [rel " << final_name << "], rax" << std::endl;
+                    emitter.emit_mem_rel("mov", final_name, "rax");
                 }
             }
         } else {
@@ -359,7 +359,7 @@ void CodeGenerator::visit(VariableAssignmentNode* node) {
         std::string label = var_ref->resolved_symbol->mangled_name;
         if (is_fp) {
             std::string instr = (getTypeSize(type.get()) == 4) ? "vmovss" : "vmovsd";
-            out << "    " << instr << " [rel " << label << "], xmm0" << std::endl;
+            emitter.emit_mem_rel(instr, label, "xmm0");
         } else {
             int size = getTypeSize(node->left->resolved_type.get());
             if (size == 4) {
@@ -420,19 +420,14 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
     if (is_global) {
         std::string asm_label = symbol->mangled_name;
         if (is_lvalue) {
-            out << "    lea rax, [rel " << asm_label << "]" << std::endl;
+            emitter.emit("lea", "rax", "[rel " + asm_label + "]");
         } else {
             if (is_float || is_double) {
                 std::string instr = is_float ? "vmovss" : "vmovsd";
-                out << "    " << instr << " xmm0, [rel " << asm_label << "]" << std::endl;
+                emitter.emit(size == 4 ? "vmovss" : "vmovsd", "xmm0", "[rel " + asm_label + "]");
             } else {
-                if (size == 1) {
-                    out << "    movsx rax, byte [rel " << asm_label << "]" << std::endl;
-                } else if (size == 4) {
-                    out << "    movsx rax, dword [rel " << asm_label << "]" << std::endl;
-                } else {
-                    out << "    mov rax, [rel " << asm_label << "]" << std::endl;
-                }
+                std::string instr = (size == 1) ? "movsx rax, byte" : (size == 4) ? "movsx rax, dword" : "mov rax,";
+                emitter.emit(instr, "[rel " + asm_label + "]");
             }
         }
         return;
@@ -468,15 +463,15 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
     // Left
     visit(node->left.get());
     if (is_float || is_double) {
-        out << "    sub rsp, 8" << std::endl;
+        emitter.emit("sub", "rsp", "8");
         current_stack_depth += 8;
         if (is_double) {
-            out << "    vmovsd qword [rsp], xmm0" << std::endl;
+            emitter.emit("vmovsd", "qword [rsp]", "xmm0");
         } else {
-            out << "    vmovss dword [rsp], xmm0" << std::endl;
+            emitter.emit("vmovss", "dword [rsp]", "xmm0");
         }
     } else {
-        out << "    push rax" << std::endl;
+        emitter.emit("push", "rax");
         current_stack_depth += 8;
     }
 
@@ -485,97 +480,43 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
 
     if (is_float || is_double) {
         if (is_double) {
-            out << "    vmovsd xmm1, qword [rsp]" << std::endl;
+            emitter.emit("vmovsd", "xmm1", "qword [rsp]");
         } else {
-            out << "    vmovss xmm1, dword [rsp]" << std::endl;
+            emitter.emit("vmovss", "xmm1", "dword [rsp]");
         }
-        out << "    add rsp, 8" << std::endl;  // Left is in xmm1, Right is in xmm0
+        emitter.emit("add", "rsp", "8");  // Left is in xmm1, Right is in xmm0
         current_stack_depth -= 8;
     } else {
-        out << "    pop rbx" << std::endl;
+        emitter.emit("pop", "rbx");
         current_stack_depth -= 8;
-        out << "    mov rcx, rbx" << std::endl;  // Left is in rbx, Right is in rax
+        emitter.emit("add", "rcx", "rbx");  // Left is in rbx, Right is in rax
     }
 
     char type = 'd';
+    bool is_string = false;
     if (is_float) {
         type = 'f';
     } else if (is_double) {
         type = 'l';
     }
+    if (node->left->resolved_type && 
+        node->left->resolved_type->category == TypeNode::TypeCategory::PRIMITIVE) {
+        auto prim = static_cast<PrimitiveTypeNode*>(node->left->resolved_type.get());
+        is_string = (prim->primitive_type == Token::KEYWORD_STRING);
+    }
+
     switch (node->op_type) {
-        case Token::PLUS:
-            emitter.emit_binary_op("add", type);
-            break;
-        case Token::MINUS:
-            emitter.emit_binary_op("sub", type);
-            break;
-        case Token::STAR:
-            emitter.emit_binary_op("imul", type);
-            break;
-        case Token::SLASH:
-            emitter.emit_binary_op("idiv", type);
-            break;
-        case Token::EQUAL_EQUAL:
-            if (node->left->resolved_type &&
-                node->left->resolved_type->category == TypeNode::TypeCategory::PRIMITIVE &&
-                static_cast<PrimitiveTypeNode*>(node->left->resolved_type.get())->primitive_type ==
-                    Token::KEYWORD_STRING) {
-                // String comparison
-                out << "    mov rdi, rcx" << std::endl;
-                out << "    mov rsi, rax" << std::endl;
-                out << "    call strcmp" << std::endl;
-                out << "    test rax, rax" << std::endl;
-                out << "    sete al" << std::endl;
-                out << "    movzx rax, al" << std::endl;
-            } else {
-                // Integer/pointer comparison
-                out << "    cmp rcx, rax" << std::endl;
-                out << "    sete al" << std::endl;
-                out << "    movzx rax, al" << std::endl;
-            }
-            break;
-        case Token::BANG_EQUAL:
-            if (node->left->resolved_type &&
-                node->left->resolved_type->category == TypeNode::TypeCategory::PRIMITIVE &&
-                static_cast<PrimitiveTypeNode*>(node->left->resolved_type.get())->primitive_type ==
-                    Token::KEYWORD_STRING) {
-                // String comparison
-                out << "    mov rdi, rcx" << std::endl;
-                out << "    mov rsi, rax" << std::endl;
-                out << "    call strcmp" << std::endl;
-                out << "    test rax, rax" << std::endl;
-                out << "    setne al" << std::endl;
-                out << "    movzx rax, al" << std::endl;
-            } else {
-                // Integer/pointer comparison
-                out << "    cmp rcx, rax" << std::endl;
-                out << "    setne al" << std::endl;
-                out << "    movzx rax, al" << std::endl;
-            }
-            break;
-        case Token::LESS:
-            out << "    cmp rcx, rax" << std::endl;
-            out << "    setl al" << std::endl;
-            out << "    movzx rax, al" << std::endl;
-            break;
-        case Token::GREATER:
-            out << "    cmp rcx, rax" << std::endl;
-            out << "    setg al" << std::endl;
-            out << "    movzx rax, al" << std::endl;
-            break;
-        case Token::LESS_EQUAL:
-            out << "    cmp rcx, rax" << std::endl;
-            out << "    setle al" << std::endl;
-            out << "    movzx rax, al" << std::endl;
-            break;
-        case Token::GREATER_EQUAL:
-            out << "    cmp rcx, rax" << std::endl;
-            out << "    setge al" << std::endl;
-            out << "    movzx rax, al" << std::endl;
-            break;
-        default:
-            throw std::runtime_error("Unknown binary operator.");
+        case Token::PLUS:  emitter.emit_binary_op("add", type); break;
+        case Token::MINUS: emitter.emit_binary_op("sub", type); break;
+        case Token::STAR:  emitter.emit_binary_op("imul", type); break;
+        case Token::SLASH: emitter.emit_binary_op("idiv", type); break;
+        case Token::EQUAL_EQUAL:   emitter.emit_cmp("sete", is_string); break;
+        case Token::BANG_EQUAL:    emitter.emit_cmp("setne", is_string); break;
+        case Token::LESS:          emitter.emit_cmp("setl", false); break;
+        case Token::GREATER:       emitter.emit_cmp("setg", false); break;
+        case Token::LESS_EQUAL:    emitter.emit_cmp("setle", false); break;
+        case Token::GREATER_EQUAL: emitter.emit_cmp("setge", false); break;
+        default: throw std::runtime_error("Unknown operator");
     }
 }
 
@@ -587,10 +528,7 @@ void CodeGenerator::visit(PrintStatementNode* node) {
         int size = getTypeSize(expr_type.get());
         if (!expr_type) {
             // Fallback if semantic analysis missed a type
-            out << "    mov rsi, rax" << std::endl;
-            out << "    lea rdi, [rel _print_int_format]" << std::endl;
-            out << "    xor rax, rax" << std::endl;
-            out << "    call printf" << std::endl;
+            emitter.emit_print_int("rax");
             continue;
         }
         emitter.emit_print(size, expr_type);
@@ -600,51 +538,37 @@ void CodeGenerator::visit(PrintStatementNode* node) {
 void CodeGenerator::visit(ReturnStatementNode* node) {
     if (node->expression) {
         auto* var_ref = dynamic_cast<VariableReferenceNode*>(node->expression.get());
+
         if (var_ref && var_ref->resolved_symbol && var_ref->resolved_symbol->offset < 0) {
             int size = getTypeSize(var_ref->resolved_type.get());
-            int offset = var_ref->resolved_symbol->offset;
-
-            if (size == 1) {
-                out << "    movsx rax, byte [rbp + " << offset << "]" << std::endl;
-            } else if (size == 4) {
-                out << "    movsx rax, dword [rbp + " << offset << "]" << std::endl;
-            } else {
-                out << "    mov rax, [rbp + " << offset << "]" << std::endl;
-            }
+            emitter.load_adv(size, var_ref->resolved_type.get(), "rax", "rbp", var_ref->resolved_symbol->offset);
         } else {
             visit(node->expression.get());
         }
-        if (!node->resolved_type) {
-            throw std::runtime_error("CodeGen Error: Return statement has an expression but no resolved type.");
-        }
     }
-    out << "    jmp " << current_function_name << "_epilogue" << std::endl;
+    emitter.emit("jmp", current_function_name + "_epilogue");
 }
 
 void CodeGenerator::visit(IfStatementNode* node) {
     static int if_counter = 0;
-    int label_id = if_counter++;
+    int id = if_counter++;
 
-    std::string true_label = "_if_true_" + std::to_string(label_id);
-    std::string false_label = "_if_false_" + std::to_string(label_id);
-    std::string end_label = "_if_end_" + std::to_string(label_id);
+    std::string false_label = "_if_false_" + std::to_string(id);
+    std::string end_label = "_if_end_" + std::to_string(id);
 
     visit(node->condition.get());
-    out << "    cmp rax, 0" << std::endl;
-    out << "    je " << false_label << std::endl;
+    emitter.emit("cmp", "rax", "0");
+    emitter.emit("je", false_label);
 
-    out << true_label << ":" << std::endl;
-    for (const auto& stmt : node->true_block) {
-        visit(stmt.get());
-    }
-    out << "    jmp " << end_label << std::endl;
+    // True block
+    for (const auto& stmt : node->true_block) visit(stmt.get());
+    emitter.emit("jmp", end_label);
 
-    out << false_label << ":" << std::endl;
-    for (const auto& stmt : node->false_block) {
-        visit(stmt.get());
-    }
+    // False block
+    emitter.label(false_label);
+    for (const auto& stmt : node->false_block) visit(stmt.get());
 
-    out << end_label << ":" << std::endl;
+    emitter.label(end_label);
 }
 
 void CodeGenerator::visit(SwitchStatementNode* node) {  // TODO:
@@ -658,53 +582,54 @@ void CodeGenerator::visit(SwitchStatementNode* node) {  // TODO:
 
 void CodeGenerator::visit(WhileStatementNode* node) {
     static int while_counter = 0;
-    int label_id = while_counter++;
+    int id = while_counter++;
 
-    std::string start_label = "_while_start_" + std::to_string(label_id);
-    std::string end_label = "_while_end_" + std::to_string(label_id);
+    std::string start_label = "_while_start_" + std::to_string(id);
+    std::string end_label = "_while_end_" + std::to_string(id);
 
-    out << start_label << ":" << std::endl;
+    emitter.label(start_label);
     visit(node->condition.get());
-    out << "    cmp rax, 0" << std::endl;
-    out << "    je " << end_label << std::endl;
+    emitter.emit("cmp", "rax", "0");
+    emitter.emit("je", end_label);
 
     for (const auto& stmt : node->body) {
         visit(stmt.get());
     }
 
-    out << "    jmp " << start_label << std::endl;
-    out << end_label << ":" << std::endl;
+    emitter.emit("jmp", start_label);
+    emitter.label(end_label);
 }
 
 void CodeGenerator::visit(ForStatementNode* node) {
     static int for_counter = 0;
-    int label_id = for_counter++;
+    int id = for_counter++;
 
-    std::string loop_start_label = "_for_loop_start_" + std::to_string(label_id);
-    std::string loop_condition_label = "_for_loop_condition_" + std::to_string(label_id);
-    std::string loop_end_label = "_for_loop_end_" + std::to_string(label_id);
+    std::string condition_label = "_for_loop_condition_" + std::to_string(id);
+    std::string start_label = "_for_loop_start_" + std::to_string(id);
+    std::string end_label = "_for_loop_end_" + std::to_string(id);
 
     if (node->initializer) {
         visit(node->initializer.get());
     }
 
-    out << loop_condition_label << ":" << std::endl;
+    emitter.label(condition_label);
     if (node->condition) {
         visit(node->condition.get());
-        out << "    cmp rax, 0" << std::endl;
-        out << "    je " << loop_end_label << std::endl;
+        emitter.emit("cmp", "rax", "0");
+        emitter.emit("je", end_label);
     }
 
-    out << loop_start_label << ":" << std::endl;
+    emitter.label(start_label);
     for (const auto& stmt : node->body) {
         visit(stmt.get());
     }
+
     if (node->increment) {
         visit(node->increment.get());
     }
 
-    out << "    jmp " << loop_condition_label << std::endl;
-    out << loop_end_label << ":" << std::endl;
+    emitter.emit("jmp", condition_label);
+    emitter.label(end_label);
 }
 
 void CodeGenerator::visit(FunctionCallNode* node) {
@@ -718,7 +643,7 @@ void CodeGenerator::visit(FunctionCallNode* node) {
 
     for (int i = arg_count - 1; i >= (int)arg_regs_64.size(); --i) {
         visit(node->arguments[i].get());
-        out << "    push rax" << std::endl;
+        emitter.emit("push", "rax");
         current_stack_depth += 8;
     }
 
@@ -734,19 +659,19 @@ void CodeGenerator::visit(FunctionCallNode* node) {
         }
 
         if (size == 8) {
-            out << "    mov " << arg_regs_64[i] << ", rax" << std::endl;
+            emitter.emit("mov", arg_regs_64[i], "rax");
         } else {
-            out << "    mov " << arg_regs_32[i] << ", eax" << std::endl;
+            emitter.emit("mov", arg_regs_32[i], "eax");
         }
     }
 
     std::string target_label = node->resolved_symbol->mangled_name;
 
-    out << "    call " << target_label << std::endl;
+    emitter.emit("call", target_label);
 
     if (arg_count > arg_regs_64.size()) {
         int cleanup = (arg_count - arg_regs_64.size()) * 8;
-        out << "    add rsp, " << cleanup << std::endl;
+        emitter.emit("add", "rsp", std::to_string(cleanup));
         current_stack_depth -= cleanup;
     }
 }
@@ -755,11 +680,11 @@ void CodeGenerator::visit(MemberAccessNode* node) {
     bool old_lvalue = is_lvalue;
     is_lvalue = true;
     visit(node->struct_expr.get());
-    is_lvalue = old_lvalue;  // Restore state
+    is_lvalue = old_lvalue;
 
     Symbol* member_symbol = node->resolved_symbol;
     if ((member_symbol != nullptr) && member_symbol->offset != 0) {
-        out << "    add rax, " << member_symbol->offset << std::endl;
+        emitter.emit("add", "rax", std::to_string(member_symbol->offset));
     }
 
     if (!node->resolved_type) {
@@ -767,16 +692,9 @@ void CodeGenerator::visit(MemberAccessNode* node) {
                                  "' has no resolved type.");
     }
 
-    int size = getTypeSize(node->resolved_type.get());
-
     if (!is_lvalue) {
-        if (size == 4) {
-            out << "    movsx rax, dword [rax]" << std::endl;
-        } else if (size == 1) {
-            out << "    movsx rax, byte [rax]" << std::endl;
-        } else {
-            out << "    mov rax, [rax]" << std::endl;
-        }
+        int size = getTypeSize(node->resolved_type.get());
+        emitter.load_from_address(size, "rax"); 
     }
 }
 
@@ -785,37 +703,27 @@ void CodeGenerator::visit(UnaryOpExpressionNode* node) {
         visit(node->operand.get());
         if (isFloatingPoint(node->operand->resolved_type.get())) {
             int size = getTypeSize(node->operand->resolved_type.get());
-            if (size == 8) {
-                emitter.emit("cvtsd2si", "rax", "xmm0");
-            } else {
-                emitter.emit("cvtss2si", "rax", "xmm0");
-            }
+            emitter.emit(size == 8 ? "cvtsd2si" : "cvtss2si", "rax", "xmm0");
         }
-        // should sucessfully get the address on its own if its truncation/extension
         return;
     }
 
     if (node->op_type == Token::ADDRESSOF) {
         const auto* ref_node = static_cast<const VariableReferenceNode*>(node->operand.get());
-        Symbol* var_symbol = ref_node->resolved_symbol;
-        if (var_symbol == nullptr) {
-            throw std::runtime_error(
-                "Code generation error: variable '" + ref_node->name +
-                "' used before declaration for address-of (resolved_symbol is null).");
+        if (!ref_node->resolved_symbol) {
+             throw std::runtime_error("CodeGen Error: Symbol not resolved for " + ref_node->name);
         }
-        int offset = var_symbol->offset;
-        out << "    lea rax, [rbp + " << std::to_string(offset) << "]" << std::endl;
+        emitter.emit_lea_stack(ref_node->resolved_symbol->offset);
         return;
     }
 
     visit(node->operand.get());
     if (node->op_type == Token::STAR) {
-        out << "    mov rax, [rax]" << std::endl;
+        emitter.emit_dereference();
     } else if (node->op_type == Token::BANG) {
-        //visit(node->operand.get());
-        out << "    test rax, rax" << std::endl;
-        out << "    setz al" << std::endl;
-        out << "    movzx rax, al" << std::endl;
+        emitter.emit("test", "rax", "rax");
+        emitter.emit("setz", "al");
+        emitter.emit("movzx", "rax", "al");
     }
 }
 
@@ -823,7 +731,7 @@ void CodeGenerator::visit(ArrayAccessNode* node) {
     bool was_lvalue = is_lvalue;
     is_lvalue = false;
     visit(node->index_expr.get());
-    out << "    mov rbx, rax" << std::endl;
+    emitter.emit("mov", "rbx", "rax");
     is_lvalue = was_lvalue;
 
     int element_size = 8;
@@ -836,10 +744,8 @@ void CodeGenerator::visit(ArrayAccessNode* node) {
 
     if (node->array_expr->node_type == ASTNode::NodeType::VARIABLE_REFERENCE) {
         auto var_ref = static_cast<VariableReferenceNode*>(node->array_expr.get());
-        Symbol* symbol = var_ref->resolved_symbol;
-
-        if (symbol != nullptr) {
-            out << "    lea rax, [rbp + " << symbol->offset << "]" << std::endl;
+        if (var_ref->resolved_symbol) {
+            emitter.emit_lea_stack(var_ref->resolved_symbol->offset);
         } else {
             throw std::runtime_error("CodeGen Error: Symbol not found.");
         }
@@ -847,15 +753,12 @@ void CodeGenerator::visit(ArrayAccessNode* node) {
         visit(node->array_expr.get());
     }
 
-    out << "    imul rbx, " << element_size << std::endl;
-    out << "    add rax, rbx" << std::endl;
+    emitter.emit("imul", "rbx", std::to_string(element_size));
+    emitter.emit("add", "rax", "rbx");
 
     if (!was_lvalue) {
-        if (element_size == 4) {
-            out << "    movsx rax, dword [rax]" << std::endl;
-        } else {
-            out << "    mov rax, [rax]" << std::endl;
-        }
+        // Reuse your handy helper!
+        emitter.load_from_address(element_size, "rax");
     }
 }
 
@@ -864,7 +767,7 @@ void CodeGenerator::visit(StructDefinitionNode* node) {
 }
 
 void CodeGenerator::visit(IntegerLiteralExpressionNode* node) {
-    out << "    mov rax, " << node->value << std::endl;
+    emitter.emit("mov", "rax", std::to_string(node->value));
 
     if (!node->resolved_type) {
         node->resolved_type = std::make_shared<PrimitiveTypeNode>(Token::KEYWORD_INT);
@@ -882,7 +785,7 @@ void CodeGenerator::visit(FloatLiteralExpressionNode* node) {
         constants.push_back({label, "dd", val_str});
     }
 
-    out << "    vmovss xmm0, [rel " << constants_map[val_str] << "]" << std::endl;
+    emitter.emit_load_constant("vmovss", constants_map[val_str]);
 }
 
 void CodeGenerator::visit(DoubleLiteralExpressionNode* node) {
@@ -896,7 +799,7 @@ void CodeGenerator::visit(DoubleLiteralExpressionNode* node) {
         constants.push_back({label, "dq", val_str});
     }
 
-    out << "    vmovsd xmm0, " << "qword [rel " << constants_map[val_str] << "]" << std::endl;
+    emitter.emit_load_constant("vmovsd", constants_map[val_str]);
 }
 
 void CodeGenerator::visit(StringLiteralExpressionNode* node) {
@@ -907,17 +810,16 @@ void CodeGenerator::visit(StringLiteralExpressionNode* node) {
         constants.push_back({label, "db", formatted_val});
     }
 
-    std::string label = constants_map[formatted_val];
-    out << "    lea rax, [rel " << label << "]" << std::endl;
+    emitter.emit("lea", "rax", "[rel " + constants_map[formatted_val] + "]");
     node->resolved_type = std::make_shared<PrimitiveTypeNode>(Token::KEYWORD_STRING);
 }
 
 void CodeGenerator::visit(BooleanLiteralExpressionNode* node) {
-    out << "    mov rax, " << (node->value ? 1 : 0) << std::endl;
+    emitter.emit("mov", "rax", std::to_string(node->value ? 1 : 0));
 }
 
 void CodeGenerator::visit(CharacterLiteralExpressionNode* node) {
-    out << "    mov rax, " << static_cast<int>(node->value) << std::endl;
+    emitter.emit("mov", "rax", std::to_string(static_cast<int>(node->value)));
     if (!node->resolved_type) {
         node->resolved_type = std::make_shared<PrimitiveTypeNode>(Token::KEYWORD_BOOL);
     }
@@ -925,7 +827,8 @@ void CodeGenerator::visit(CharacterLiteralExpressionNode* node) {
 
 void CodeGenerator::visit(AsmStatementNode* node) {
     for (const auto& line : node->lines) {
-        out << "    " << line << "\n";
+        //out << "    " << line << "\n";
+        emitter.emit(line);
     }
 }
 
