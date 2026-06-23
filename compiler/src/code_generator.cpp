@@ -48,7 +48,9 @@ void CodeGenerator::generate(const std::string& output_filename, bool is_entry_p
     constants.push_back({"_print_str_format", "db", "\"%s\", 10, 0"});
     constants.push_back({"_print_char_format", "db", "\"%c\", 10, 0"});
     constants.push_back({"_print_float_format", "db", "\"%f\", 10, 0"});
-
+    constants.push_back({"align", "16"});
+    constants.push_back({"_abs_mask", "dq", "0x7FFFFFFFFFFFFFFF"});
+    constants.push_back({"align", "8"});
 
     emitter.section(".text");
     emitter.extern_sym("printf");
@@ -80,6 +82,10 @@ void CodeGenerator::generate(const std::string& output_filename, bool is_entry_p
     emitter.section(".data");
     std::unordered_set<std::string> emitted_data_labels;
     for (const auto& c : constants) {
+        if (c.label == "align") {
+            emitter.emit("align", c.type);
+            continue;
+        }
         if (emitted_data_labels.find(c.label) == emitted_data_labels.end()) {
             emitter.emit_data_entry(c.label, c.type, c.value);
             emitted_data_labels.insert(c.label);
@@ -633,6 +639,22 @@ void CodeGenerator::visit(ForStatementNode* node) {
 }
 
 void CodeGenerator::visit(FunctionCallNode* node) {
+    if (node->function_name == "__builtin_sqrt") {
+        if (!node->arguments.empty()) {
+            visit(node->arguments[0].get());
+            emitter.emit("sqrtsd", "xmm0", "xmm0");
+        }
+        return;
+    } else if (node->function_name == "__builtin_abs") {
+        visit(node->arguments[0].get());
+        emitter.emit("andpd", "xmm0", "[rel _abs_mask]");
+        return;
+    } else if (node->function_name == "__builtin_round") {
+        visit(node->arguments[0].get());
+        emitter.emit("roundsd", "xmm0", "xmm0, 0");
+        return;
+    }
+
     const std::vector<std::string> arg_regs_64 = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
     const std::vector<std::string> arg_regs_32 = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
     int arg_count = node->arguments.size();

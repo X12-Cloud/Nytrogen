@@ -678,6 +678,20 @@ void SemanticAnalyzer::visit(ForStatementNode* node) {
 }
 
 void SemanticAnalyzer::visit(FunctionCallNode* node) {
+    if (node->function_name == "__builtin_sqrt" || node->function_name == "__builtin_abs" || node->function_name == "__builtin_round") {
+        if (node->arguments.size() != 1) {
+            Utils::report_error("Semantic Error", "__builtin_sqrt expects only 1 argument.", node->line);
+        }
+
+        std::unique_ptr<TypeNode> arg_type = visitExpression(node->arguments[0].get());
+        node->arguments[0]->resolved_type = arg_type->clone();
+
+
+        node->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_DOUBLE);
+        node->resolved_symbol = nullptr;
+        return;
+    }
+
     Symbol* func_symbol = symbolTable.lookup(node->function_name);
     if ((func_symbol == nullptr) || func_symbol->type != Symbol::SymbolType::FUNCTION) {
         Utils::report_error("Semantic Error",
@@ -825,6 +839,12 @@ void SemanticAnalyzer::visit(UnaryOpExpressionNode* node) {
         node->resolved_type = static_cast<PointerTypeNode*>(operand_type.get())->base_type->clone();
     } else if (node->op_type == Token::BANG) {
         node->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::INTEGER_LITERAL);
+    } else if (node->op_type == Token::MINUS) {
+        if (operand_type) {
+            node->resolved_type = operand_type->clone();
+        } else {
+            Utils::report_error("Semantic Error", "Invalid operand type for negation.", node->line);
+        }
     } else {
         Utils::report_error("Semantic Error", "Unknown unary operator.", node->line);
     }
@@ -1009,6 +1029,12 @@ std::unique_ptr<TypeNode> SemanticAnalyzer::visitExpression(ASTNode* expr) {
         case ASTNode::NodeType::FUNCTION_CALL: {
             auto* func_node = static_cast<FunctionCallNode*>(expr);
             visit(func_node);
+
+            if (func_node->function_name == "__builtin_sqrt" || func_node->function_name == "__builtin_abs" || func_node->function_name == "__builtin_round") {
+                expr->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_DOUBLE);
+                return expr->resolved_type->clone();
+            }
+
             Symbol* func_symbol =
                 symbolTable.lookup(static_cast<FunctionCallNode*>(expr)->function_name);
             if (func_symbol == nullptr) {

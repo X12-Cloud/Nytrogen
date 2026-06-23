@@ -415,7 +415,16 @@ std::unique_ptr<ASTNode> Parser::parseFactor() {
     std::unique_ptr<ASTNode> node;
     const Token& current_token = peek();
 
-    if (current_token.type == Token::INTEGER_LITERAL) {
+    if (current_token.type == Token::MINUS) {
+        consume();
+        auto operand = parseFactor();
+        node = std::make_unique<UnaryOpExpressionNode>(
+            Token::MINUS, 
+            std::move(operand),
+            current_token.line, 
+            current_token.column
+        );
+    } else if (current_token.type == Token::INTEGER_LITERAL) {
         node = parseIntegerLiteralExpression();
     } else if (current_token.type == Token::FLOAT_LITERAL) {
         node = parseFloatLiteralExpression();

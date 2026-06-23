@@ -9,7 +9,7 @@
 // THE MASTER LIST: X(EnumName, StringValue)
 // Keywords use their string value, Operators/Literals use a label
 #define TOKEN_LIST(X)                                                                              \
-    X(KEYWORD_RETURN, "return")                                                                    \
+    X(KEYWORD_RETURN, "return")  X(KEYWORD_BUILTIN, "__builtin_")                                  \
     X(KEYWORD_PRINT, "print") X(KEYWORD_INT, "int") X(KEYWORD_STRING, "string") X(                 \
         KEYWORD_IF, "if") X(KEYWORD_ELSE, "else") X(KEYWORD_VOID, "void")                          \
         X(KEYWORD_WHILE, "while") X(KEYWORD_BOOL, "bool") X(KEYWORD_CHAR, "char") X(               \

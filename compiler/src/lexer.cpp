@@ -31,7 +31,8 @@ static const std::unordered_map<std::string, Token::Type> KEYWORD_MAP = {
     {"void", Token::KEYWORD_VOID},
     {"float", Token::KEYWORD_FLOAT},
     {"double", Token::KEYWORD_DOUBLE},
-    {"namespace", Token::KEYWORD_NAMESPACE}};
+    {"namespace", Token::KEYWORD_NAMESPACE},
+    {"__builtin_", Token::KEYWORD_BUILTIN}};
 
 // Token type to string conversion
 std::string Token::typeToString() const {
