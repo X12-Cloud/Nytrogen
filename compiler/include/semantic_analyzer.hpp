@@ -16,11 +16,15 @@ class SemanticAnalyzer {
         : program_ast(ast), symbolTable(symTable) {}
 
     void analyze();
-    SymbolTable& getSymbolTable() { return symbolTable; }
+    SymbolTable& getSymbolTable() {
+        return symbolTable;
+    }
     int getTypeSize(const TypeNode* type);  // Helper to get size of a type
     bool areTypesCompatible(const TypeNode* type1, const TypeNode* type2);
 
-    void setIsEntryPoint(bool entry) { is_entry_point = entry; }
+    void setIsEntryPoint(bool entry) {
+        is_entry_point = entry;
+    }
     bool debug_mode = false;
 
    private:

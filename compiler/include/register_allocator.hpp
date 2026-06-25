@@ -1,9 +1,9 @@
 #ifndef REGISTER_ALLOCATOR_HPP
 #define REGISTER_ALLOCATOR_HPP
 
-#include <vector>
-#include <unordered_map>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 struct RegStrings {
     std::string byte1;
@@ -12,15 +12,8 @@ struct RegStrings {
 };
 
 class RegisterAllocator {
-public:
-    enum RegID {
-        R10,
-        R11,
-        RBX,
-        RCX,
-        RDI,
-        RSI
-    };
+   public:
+    enum RegID { R10, R11, RBX, RCX, RDI, RSI };
 
     RegisterAllocator();
 
@@ -31,7 +24,7 @@ public:
 
     std::string get_name(RegID reg, int byte_size);
 
-private:
+   private:
     std::vector<RegID> register_pool;
     std::unordered_map<RegID, RegStrings> register_lookup;
 };

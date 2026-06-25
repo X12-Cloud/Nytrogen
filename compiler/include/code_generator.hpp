@@ -9,10 +9,10 @@
 #include <vector>
 
 #include "ast.hpp"
-#include "symbol_table.hpp"
-#include "register_allocator.hpp"
-#include "utils.hpp"
 #include "instruction_set.hpp"
+#include "register_allocator.hpp"
+#include "symbol_table.hpp"
+#include "utils.hpp"
 
 struct GlobalConstant {
     std::string label;
@@ -22,6 +22,7 @@ struct GlobalConstant {
 
 class CodeGenerator {
     InstructionSet emitter;
+
    public:
     CodeGenerator(std::unique_ptr<ProgramNode>& ast, SymbolTable& symTable);
     void generate(const std::string& output_filename, bool is_entry_point);
@@ -73,6 +74,7 @@ class CodeGenerator {
     void visit(ScopeResolutionNode* node);
 
     int getTypeSize(const TypeNode* type);
+    std::string getRegisterName(const std::string& reg64, int size);
     std::string reg_to_str(RegisterAllocator::RegID reg, const TypeNode* type);
 };
 

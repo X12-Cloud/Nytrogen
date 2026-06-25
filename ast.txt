@@ -1,4 +1,122 @@
  PROGRAM_ROOT
+   NAMESPACE_DEF: math
+     NAMESPACE_DEF: constants
+       VAR_DECL
+         DOUBLE_LITERAL: (2.718282)
+       VAR_DECL
+         DOUBLE_LITERAL: (3.141593)
+     FUNCTION_DEF: sqrt
+       RETURN_STMT:
+         FUNC_CALL: __builtin_sqrt
+           VAR_REF: (x)
+     FUNCTION_DEF: abs
+       RETURN_STMT:
+         FUNC_CALL: __builtin_abs
+           VAR_REF: (x)
+     FUNCTION_DEF: round
+       RETURN_STMT:
+         FUNC_CALL: __builtin_round
+           VAR_REF: (x)
+   NAMESPACE_DEF: math
+     FUNCTION_DEF: log2
+       IF_STATEMENT
+         BINARY_OP: 
+           VAR_REF: (x)
+           DOUBLE_LITERAL: (0.000000)
+         RETURN_STMT:
+           DOUBLE_LITERAL: (0.000000)
+       VAR_DECL
+         DOUBLE_LITERAL: (0.000000)
+       ASTNode
+       ASTNode
+       VAR_DECL
+         BINARY_OP: 
+           VAR_REF: (x)
+           DOUBLE_LITERAL: (1.000000)
+       ASTNode
+       RETURN_STMT:
+         VAR_REF: (result)
+     FUNCTION_DEF: ln
+       RETURN_STMT:
+         BINARY_OP: 
+           FUNC_CALL: log2
+             VAR_REF: (x)
+           DOUBLE_LITERAL: (0.693147)
+     FUNCTION_DEF: log
+       RETURN_STMT:
+         BINARY_OP: 
+           FUNC_CALL: ln
+             VAR_REF: (x)
+           FUNC_CALL: ln
+             VAR_REF: (n)
+   NAMESPACE_DEF: std
+     STRUCT_DEF: Color { red green yellow blue reset }
+     FUNCTION_DEF: dbg
+       VAR_DECL
+       ASTNode
+       ASTNode
+       ASTNode
+       ASTNode
+       ASTNode
+       IF_STATEMENT
+         BINARY_OP: 
+           VAR_REF: (color)
+           STR_LITERAL: (red)
+         PRINT_STMT
+           MEMBER_ACCESS: red
+           VAR_REF: (message)
+           MEMBER_ACCESS: reset
+         RETURN_STMT:
+           INT_LITERAL: (0)
+       IF_STATEMENT
+         BINARY_OP: 
+           VAR_REF: (color)
+           STR_LITERAL: (green)
+         PRINT_STMT
+           MEMBER_ACCESS: green
+           VAR_REF: (message)
+           MEMBER_ACCESS: reset
+         RETURN_STMT:
+           INT_LITERAL: (0)
+       IF_STATEMENT
+         BINARY_OP: 
+           VAR_REF: (color)
+           STR_LITERAL: (yellow)
+         PRINT_STMT
+           MEMBER_ACCESS: yellow
+           VAR_REF: (message)
+           MEMBER_ACCESS: reset
+         RETURN_STMT:
+           INT_LITERAL: (0)
+       IF_STATEMENT
+         BINARY_OP: 
+           VAR_REF: (color)
+           STR_LITERAL: (blue)
+         PRINT_STMT
+           MEMBER_ACCESS: blue
+           VAR_REF: (message)
+           MEMBER_ACCESS: reset
+         RETURN_STMT:
+           INT_LITERAL: (0)
+       PRINT_STMT
+         VAR_REF: (message)
+       RETURN_STMT:
+         INT_LITERAL: (0)
+     FUNCTION_DEF: plo
+       IF_STATEMENT
+         BINARY_OP: 
+           VAR_REF: (state)
+           STR_LITERAL: (reg)
+         PRINT_STMT
+           STR_LITERAL: (register: )
+       IF_STATEMENT
+         BINARY_OP: 
+           VAR_REF: (state)
+           STR_LITERAL: (last_op)
+         PRINT_STMT
+           STR_LITERAL: (last op: )
+       RETURN_STMT:
+         INT_LITERAL: (0)
    FUNCTION_DEF: main
      VAR_DECL
        FUNC_CALL: __builtin_sqrt
@@ -11,7 +129,13 @@
          DOUBLE_LITERAL: (3.141590)
      PRINT_STMT
        VAR_REF: (x)
+     PRINT_STMT
        VAR_REF: (y)
+     PRINT_STMT
        VAR_REF: (z)
+     SCOPE_RESOLUTION: std::
+       FUNC_CALL: dbg
+         STR_LITERAL: (hello this is a red debug message)
+         STR_LITERAL: (red)
      RETURN_STMT:
        INT_LITERAL: (0)

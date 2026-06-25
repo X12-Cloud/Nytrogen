@@ -48,7 +48,9 @@ struct Symbol {
 
     Scope* internal_scope = nullptr;
 
-    SymbolTable* get_scope() { return (SymbolTable*)internal_scope; }
+    SymbolTable* get_scope() {
+        return (SymbolTable*)internal_scope;
+    }
 
     // Constructor for namespaces
     Symbol(SymbolType type, std::string name, Scope* scope)
@@ -136,7 +138,9 @@ class Scope {
 
     Scope(Scope* p = nullptr) : currentOffset(0), parent(p) {}
 
-    void addSymbol(Symbol&& symbol) { symbols.emplace(symbol.name, std::move(symbol)); }
+    void addSymbol(Symbol&& symbol) {
+        symbols.emplace(symbol.name, std::move(symbol));
+    }
 
     Symbol* lookup(const std::string& name) {
         auto it = symbols.find(name);
@@ -152,7 +156,9 @@ class SymbolTable {
    public:
     std::vector<std::unique_ptr<Scope>> all_scopes;
     bool debug_mode = false;
-    void setDebugMode(bool mode) { debug_mode = mode; }
+    void setDebugMode(bool mode) {
+        debug_mode = mode;
+    }
 
     Scope* current_scope;
 
@@ -216,7 +222,9 @@ class SymbolTable {
         return nullptr;
     }
 
-    bool isStructDefined(const std::string& name) { return struct_definitions.count(name) > 0; }
+    bool isStructDefined(const std::string& name) {
+        return struct_definitions.count(name) > 0;
+    }
 
     void addStructDefinition(const std::string& name, StructDefinitionNode* node) {
         struct_definitions[name] = node;

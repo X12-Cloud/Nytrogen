@@ -1,0 +1,18 @@
+namespace math {
+
+    namespace constants {
+        double E = 2.718281828459045d;
+        double PI = 3.141592653589793d;
+    } // constants
+
+    double sqrt(double x) {
+        return __builtin_sqrt(x);
+    }
+    double abs(double x) {
+        return __builtin_abs(x);
+    }
+    double round(double x) {
+        return __builtin_round(x);
+    }
+
+} // math

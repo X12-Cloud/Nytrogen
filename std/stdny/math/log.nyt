@@ -1,0 +1,42 @@
+#include <math/builtin.nyt>
+
+namespace math {
+
+double log2(double x) {
+    if (x <= 0.0) {
+        return 0.0;
+    }
+    double result = 0.0;
+
+    // Phase 1: Range normalization
+    // This keeps the loop simple and avoids complex state
+    while (x >= 2.0) {
+        result = result + 1.0;
+        x = x / 2.0;
+    }
+    while (x < 1.0) {
+        result = result - 1.0;
+        x = x * 2.0;
+    }
+
+    // Phase 2: Simple polynomial approximation
+    // Instead of looping 52 times with sqrt, we use a 
+    // basic approximation. This uses standard math 
+    // operators that your emitter already knows.
+    double f = x - 1.0;
+    // A simple 3rd-order approximation of ln(1+f)/ln(2)
+    // This removes the need for complex sqrt logic entirely
+    result = result + f * (1.442695 - f * (0.721347 - f * 0.480899));
+
+    return result;
+}
+
+double ln(double x) {
+    return log2(x) * 0.6931471805599453;
+}
+
+double log(double x, double n) {
+    return ln(x)/ln(n);
+}
+
+} // math

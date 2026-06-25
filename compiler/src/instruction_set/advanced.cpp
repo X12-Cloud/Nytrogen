@@ -97,3 +97,28 @@ void InstructionSet::emit_print_int(const std::string& reg) {
     emit("xor", "rax", "rax");
     call_external("printf");
 }
+
+void InstructionSet::emit_print_raw(int size, const std::shared_ptr<TypeNode>& type) {
+    auto prim = dynamic_cast<PrimitiveTypeNode*>(type.get());
+
+    if (isAFloatingPoint(type.get())) {
+        if (size == 4) {
+            emit("cvtss2sd", "xmm0", "xmm0");
+        }
+        emit("lea", "rdi", "[rel _print_float_raw_format]");
+        emit("mov", "rax", "1");
+    } else if ((prim != nullptr) && prim->primitive_type == Token::KEYWORD_STRING) {
+        emit("mov", "rsi", "rax");
+        emit("lea", "rdi", "[rel _print_raw_format]");
+        emit("xor", "rax", "rax");
+    } else if ((prim != nullptr) && prim->primitive_type == Token::KEYWORD_CHAR) {
+        emit("mov", "rsi", "rax");
+        emit("lea", "rdi", "[rel _print_char_raw_format]");
+        emit("xor", "rax", "rax");
+    } else {
+        emit("mov", "rsi", "rax");
+        emit("lea", "rdi", "[rel _print_int_raw_format]");
+        emit("xor", "rax", "rax");
+    }
+    call_external("printf");
+}

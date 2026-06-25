@@ -418,12 +418,8 @@ std::unique_ptr<ASTNode> Parser::parseFactor() {
     if (current_token.type == Token::MINUS) {
         consume();
         auto operand = parseFactor();
-        node = std::make_unique<UnaryOpExpressionNode>(
-            Token::MINUS, 
-            std::move(operand),
-            current_token.line, 
-            current_token.column
-        );
+        node = std::make_unique<UnaryOpExpressionNode>(Token::MINUS, std::move(operand),
+                                                       current_token.line, current_token.column);
     } else if (current_token.type == Token::INTEGER_LITERAL) {
         node = parseIntegerLiteralExpression();
     } else if (current_token.type == Token::FLOAT_LITERAL) {
@@ -499,9 +495,7 @@ std::unique_ptr<ASTNode> Parser::parseUnaryExpression() {
     }
     if (peek().type == Token::LPAREN) {
         Token::Type target_type_token = peek(1).type;
-        if (target_type_token == Token::KEYWORD_INT || 
-            target_type_token == Token::KEYWORD_CHAR) {
-
+        if (target_type_token == Token::KEYWORD_INT || target_type_token == Token::KEYWORD_CHAR) {
             consume();
             consume();
 
@@ -511,9 +505,10 @@ std::unique_ptr<ASTNode> Parser::parseUnaryExpression() {
                 is_pointer = true;
             }
             expect(Token::RPAREN, "Expected ')' closing the type cast.");
-            auto operand = parseExpression(); 
+            auto operand = parseExpression();
 
-            return std::make_unique<UnaryOpExpressionNode>(target_type_token, std::move(operand), peek().line, peek().column);
+            return std::make_unique<UnaryOpExpressionNode>(target_type_token, std::move(operand),
+                                                           peek().line, peek().column);
         }
     }
     return parseFactor();
@@ -818,6 +813,8 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
             return parseEnumStatement();
         case Token::KEYWORD_NAMESPACE:
             return parseNamespaceDefinition();
+        case Token::KEYWORD_STRUCT:
+            return parseStructDefinition();
         default:
             Utils::report_error("Parser Error", "Unexpected token in statement: '" + peek().value +
                                                     "' at line " + std::to_string(peek().line) +

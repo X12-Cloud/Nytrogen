@@ -8,10 +8,10 @@ UseTab: Never
 # Code layout structure
 ColumnLimit: 100
 AllowShortFunctionsOnASingleLine: Empty
-AllowShortBlocksOnASingleLine: Never
-AllowShortCaseLabelsOnASingleLine: Never
-AllowShortIfStatementsOnASingleLine: Never
-AllowShortLoopsOnASingleLine: Never
+AllowShortBlocksOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
 
 # Alignment preferences
 AlignAfterOpenBracket: Align
@@ -32,7 +32,6 @@ SpacesInCStyleCastParentheses: false
 SpacesInContainerLiterals: false
 SpacesInParentheses: false
 SpacesInSquareBrackets: false
-SpaceInEmptyBlockBraces: false
 
 # Namespace styling
 FixNamespaceComments: true

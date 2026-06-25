@@ -17,7 +17,9 @@ class Parser {
    public:
     Parser(std::vector<Token> tokens);
     std::unique_ptr<ProgramNode> parse();
-    SymbolTable& getSymbolTable() { return symbol_table; }
+    SymbolTable& getSymbolTable() {
+        return symbol_table;
+    }
     bool has_errors = false;
     void report_parser_error(const Token& token, const std::string& msg);
     void synchronize();

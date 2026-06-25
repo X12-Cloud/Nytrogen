@@ -678,14 +678,15 @@ void SemanticAnalyzer::visit(ForStatementNode* node) {
 }
 
 void SemanticAnalyzer::visit(FunctionCallNode* node) {
-    if (node->function_name == "__builtin_sqrt" || node->function_name == "__builtin_abs" || node->function_name == "__builtin_round") {
+    if (node->function_name == "__builtin_sqrt" || node->function_name == "__builtin_abs" ||
+        node->function_name == "__builtin_round") {
         if (node->arguments.size() != 1) {
-            Utils::report_error("Semantic Error", "__builtin_sqrt expects only 1 argument.", node->line);
+            Utils::report_error("Semantic Error", "__builtin_sqrt expects only 1 argument.",
+                                node->line);
         }
 
         std::unique_ptr<TypeNode> arg_type = visitExpression(node->arguments[0].get());
         node->arguments[0]->resolved_type = arg_type->clone();
-
 
         node->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_DOUBLE);
         node->resolved_symbol = nullptr;
@@ -1030,7 +1031,9 @@ std::unique_ptr<TypeNode> SemanticAnalyzer::visitExpression(ASTNode* expr) {
             auto* func_node = static_cast<FunctionCallNode*>(expr);
             visit(func_node);
 
-            if (func_node->function_name == "__builtin_sqrt" || func_node->function_name == "__builtin_abs" || func_node->function_name == "__builtin_round") {
+            if (func_node->function_name == "__builtin_sqrt" ||
+                func_node->function_name == "__builtin_abs" ||
+                func_node->function_name == "__builtin_round") {
                 expr->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_DOUBLE);
                 return expr->resolved_type->clone();
             }

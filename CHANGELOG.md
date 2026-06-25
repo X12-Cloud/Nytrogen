@@ -3,6 +3,7 @@
 ## 0.132 (Current)
 ### Added:
 - More nodes to be castable to eachother.
+- 3 new builtin math functions (sqrt, abs, round). and support for negative numbers.
 
 ## 0.1315
 ### Added:

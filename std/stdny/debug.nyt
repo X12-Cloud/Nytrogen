@@ -1,12 +1,39 @@
 namespace std {
 
-int dbg(string state) {
+struct Color {
+    string red;
+    string green;
+    string yellow;
+    string blue;
+    string reset;
+}
+
+int dbg(string message, string color) {
+    Color c;
+    c.red = "\033[1;31m";
+    c.green = "\033[1;32m";
+    c.yellow = "\033[1;33m";
+    c.blue = "\033[1;34m";
+    c.reset = "\033[0m";
+
+    // TODO: use a switch after i implement them
+    if (color == "red") { print c.red, message, c.reset; return 0; }
+    if (color == "green") { print c.green, message, c.reset; return 0; }
+    if (color == "yellow") { print c.yellow, message, c.reset; return 0; }
+    if (color == "blue") { print c.blue, message, c.reset; return 0; }
+
+    print message;
+    return 0;
+}
+
+int plo(string state) { //  TODO: "print last operation"
     if (state == "reg") {
         print("register: ");
     }
     if (state == "last_op") {
         print("last op: ");
     }
+    return 0;
 }
 
 } // std
