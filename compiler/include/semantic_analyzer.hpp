@@ -8,7 +8,7 @@
 
 #include "ast.hpp"
 #include "symbol_table.hpp"
-#include "utils.hpp"
+#include "utils/utils.hpp"
 
 class SemanticAnalyzer {
    public:

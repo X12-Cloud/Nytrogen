@@ -4,8 +4,6 @@
 #include <string>
 #include <vector>
 
-#include "utils.hpp"
-
 // THE MASTER LIST: X(EnumName, StringValue)
 // Keywords use their string value, Operators/Literals use a label
 #define TOKEN_LIST(X)                                                                              \

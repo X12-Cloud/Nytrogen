@@ -8,7 +8,7 @@
 #include <vector>
 
 #include "lexer.hpp"
-#include "utils.hpp"
+#include "utils/utils.hpp"
 
 struct Symbol;  // Forward declaration for Symbol
 

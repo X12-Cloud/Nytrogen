@@ -816,7 +816,7 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
         case Token::KEYWORD_STRUCT:
             return parseStructDefinition();
         default:
-            Utils::report_error("Parser Error", "Unexpected token in statement: '" + peek().value +
+            Logger::report_error("Parser Error", "Unexpected token in statement: '" + peek().value +
                                                     "' at line " + std::to_string(peek().line) +
                                                     ", column " + std::to_string(peek().column) +
                                                     ".");

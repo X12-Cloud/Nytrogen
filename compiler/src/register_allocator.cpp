@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-#include "utils.hpp"
+#include "utils/utils.hpp"
 
 RegisterAllocator::RegisterAllocator() {
     register_pool = {R10, R11, RBX, RCX, RDI, RSI};
@@ -30,7 +30,7 @@ std::string RegisterAllocator::get_name(RegID reg, int byte_size) {
 
 RegisterAllocator::RegID RegisterAllocator::allocate() {
     if (register_pool.empty()) {
-        Utils::report_error("Register Allocator", "Register pool is empty.");
+        Logger::report_error("Register Allocator", "Register pool is empty.");
     }
 
     RegID allocated_register = register_pool.back();

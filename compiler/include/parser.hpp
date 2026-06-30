@@ -10,7 +10,7 @@
 #include "ast.hpp"
 #include "lexer.hpp"
 #include "symbol_table.hpp"
-#include "utils.hpp"
+#include "utils/utils.hpp"
 
 // Parser class handles syntax analysis and AST construction
 class Parser {

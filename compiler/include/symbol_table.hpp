@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "ast.hpp"
-#include "utils.hpp"
+#include "utils/utils.hpp"
 
 // Forward declaration for StructDefinitionNode if needed, though ast.hpp should include it
 struct EnumStatementNode;
