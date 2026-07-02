@@ -226,15 +226,8 @@ void CodeGenerator::visit(FunctionDefinitionNode *node) {
   emitter.emit("and", "rsp", "-16");
   current_stack_depth = 0;
 
-  std::stringstream body_buffer;
-  std::streambuf *backup = out.std::ios::rdbuf(body_buffer.rdbuf());
-
-  // Generate code for all statements
-  for (const auto &stmt : node->body_statements) {
-    visit(stmt.get());
-  }
-
-  out.std::ios::rdbuf(backup);
+  //std::stringstream body_buffer;
+  //std::streambuf *backup = out.std::ios::rdbuf(body_buffer.rdbuf());
 
   // Calculate total local variable space from current scope
   int local_var_space = 0;
@@ -261,7 +254,14 @@ void CodeGenerator::visit(FunctionDefinitionNode *node) {
     emitter.mov_indirect("rbp", offset, arg_registers[i]);
   }
 
-  emitter.write_raw(body_buffer.str());
+  // Generate code for all statements
+  for (const auto &stmt : node->body_statements) {
+    visit(stmt.get());
+  }
+
+  //out.std::ios::rdbuf(backup);
+
+  //emitter.write_raw(body_buffer.str());
   emitter.label_local(current_function_name + "_epilogue");
 
   emitter.emit("leave");

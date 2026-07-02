@@ -12,25 +12,42 @@ std::string InstructionSet::get_size_prefix(int size) {
     }
 }
 
-void InstructionSet::emit(const std::string& instr) { out << "    " << instr << std::endl; }
-
+void InstructionSet::emit(const std::string& instr) { 
+    out << "    " << instr << std::endl;
+    instructions.push_back({instr, {}}); // Experimental: pushing to the instructions vector for the reg alloc
+}
 void InstructionSet::emit(const std::string& instr, const std::string reg) {
     out << "    " << instr << " " << reg << std::endl;
+    instructions.push_back({instr, {reg}});
 }
-
-void InstructionSet::emit(const std::string& instr, const std::string& dest,
-                         const std::string& src) {
+void InstructionSet::emit(const std::string& instr, const std::string& dest, const std::string& src) {
     out << "    " << instr << " " << dest << ", " << src << std::endl;
+    instructions.push_back({instr, {dest, src}});
 }
 
 void InstructionSet::global(const std::string& name) { emit("global", name); }
 void InstructionSet::section(const std::string& section_name) { out << "\nsection " << section_name << std::endl; }
 void InstructionSet::extern_sym(const std::string& name) { emit("extern", name); }
-void InstructionSet::label(const std::string& label) { out << label << ":" << std::endl; }
-void InstructionSet::label_local(const std::string& name) { out << name << ":" << std::endl; }
-void InstructionSet::mov_indirect(const std::string& base, int offset, const std::string& src) { out << "    mov [rbp + " << offset << "], " << src << std::endl; }
-void InstructionSet::write_raw(const std::string& data) { out << data; }
-void InstructionSet::emit_mem_rel(const std::string& instr, const std::string& label, const std::string& reg) { out << "    " << instr << " [rel " << label << "], " << reg << std::endl; }
+void InstructionSet::label(const std::string& label) {
+    out << label << ":" << std::endl;
+    instructions.push_back({label + ":", {}});
+}
+void InstructionSet::label_local(const std::string& name) {
+    out << name << ":" << std::endl;
+    instructions.push_back({name + ":", {}});
+}
+void InstructionSet::mov_indirect(const std::string& base, int offset, const std::string& src) {
+    out << "    mov [rbp + " << offset << "], " << src << std::endl;
+    instructions.push_back({"mov", {"[rbp + " + std::to_string(offset) + "]", src}});
+}
+void InstructionSet::write_raw(const std::string& data) {
+    out << data;
+    //instructions.push_back({data, {}});
+}
+void InstructionSet::emit_mem_rel(const std::string& instr, const std::string& label, const std::string& reg) {
+    out << "    " << instr << " [rel " << label << "], " << reg << std::endl;
+    instructions.push_back({instr, {"[rel " + label + "]", reg}});
+}
 void InstructionSet::syscall(int code) {
     emit("mov", "rax", std::to_string(code));
     emit("syscall");
@@ -38,11 +55,13 @@ void InstructionSet::syscall(int code) {
 
 void InstructionSet::push(const std::string& reg) {
     out << "    " << "push" << " " << reg << std::endl;
+    instructions.push_back({"push", {reg}});
     current_stack_depth += 8;
 }
 
 void InstructionSet::pop(const std::string& reg) {
     out << "    " << "pop" << " " << reg << std::endl;
+    instructions.push_back({"pop", {reg}});
     current_stack_depth -= 8;
 }
 
@@ -72,6 +91,7 @@ void InstructionSet::emit_dereference() {
 }
 void InstructionSet::emit_data_entry(const std::string& label, const std::string& type, const std::string& value) {
     out << "    " << label << " " << type << " " << value << std::endl;
+    instructions.push_back({label, {type, value}});
 }
 
 bool InstructionSet::isAFloatingPoint(const TypeNode* type) {

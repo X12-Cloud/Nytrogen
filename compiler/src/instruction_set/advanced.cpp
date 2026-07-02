@@ -10,8 +10,7 @@ void InstructionSet::emit_adv(int size, const TypeNode* type, const std::string&
 
     if (is_fp) {
         std::string instr = (size == 4) ? "vmovss" : "vmovsd";
-        out << "    " << instr << " [" << base_reg << " + " << offset << "], " << src_val
-            << std::endl;
+        emit_raw(instr, {"[" + base_reg + " + " + std::to_string(offset) + "]", src_val});
     } else {
         std::string final_src = src_val;
 
@@ -29,8 +28,7 @@ void InstructionSet::emit_adv(int size, const TypeNode* type, const std::string&
             }
         }
 
-        out << "    mov " << size_prefix << " [" << base_reg << " + " << offset << "], "
-            << final_src << std::endl;
+        emit_raw("mov", {size_prefix + " [" + base_reg + " + " + std::to_string(offset) + "]", final_src});
     }
 }
 

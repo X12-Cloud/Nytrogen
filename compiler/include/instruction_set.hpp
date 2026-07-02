@@ -16,10 +16,29 @@
 
 class InstructionSet {
     std::ofstream& out;
+    std::ofstream debug_out;
     int current_stack_depth = 0;
 
    public:
-    InstructionSet(std::ofstream& o) : out(o) {}
+    InstructionSet(std::ofstream& o) : out(o), debug_out("debug_asm.txt") {}
+
+    struct Instruction {
+        std::string mnemonic;
+        std::vector<std::string> operands;
+    };
+    std::vector<Instruction> instructions;
+
+    void flush_to_file() {
+        for (const auto& instr : instructions) {
+            debug_out << "    " << instr.mnemonic;
+
+            for (size_t i = 0; i < instr.operands.size(); ++i) {
+                debug_out << (i == 0 ? " " : ", ") << instr.operands[i];
+            }
+            debug_out << std::endl;
+        }
+        instructions.clear();
+    }
 
     // Instruction set
     std::string get_size_prefix(int size);
@@ -30,6 +49,16 @@ class InstructionSet {
         current_stack_depth = 0;
     }
     bool isAFloatingPoint(const TypeNode* type);
+
+    void emit_raw(const std::string& mnemonic, const std::vector<std::string>& operands) {
+        instructions.push_back({mnemonic, operands});
+
+        out << "    " << mnemonic;
+        for (size_t i = 0; i < operands.size(); ++i) {
+            out << (i == 0 ? " " : ", ") << operands[i];
+        }
+        out << std::endl;
+    }
 
     void emit(const std::string& instr);
     void emit(const std::string& instr, const std::string reg);

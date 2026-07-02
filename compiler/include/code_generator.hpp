@@ -21,10 +21,9 @@ struct GlobalConstant {
 };
 
 class CodeGenerator {
-    InstructionSet emitter;
-
    public:
     CodeGenerator(std::unique_ptr<ProgramNode>& ast, SymbolTable& symTable);
+    InstructionSet emitter;
     void generate(const std::string& output_filename, bool is_entry_point);
     bool isFloatingPoint(const TypeNode* type);
     bool debug_mode = false;
