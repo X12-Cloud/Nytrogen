@@ -104,6 +104,8 @@ void CodeGenerator::generate(const std::string &output_filename,
     }
   }
 
+  emitter.flush_to_file();
+
   out.close();
 }
 

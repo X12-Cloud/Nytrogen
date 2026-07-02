@@ -95,8 +95,7 @@ int main(int argc, char* argv[]) {
     // Generate code
     CodeGenerator codeGenerator(ast_root, semanticAnalyzer.getSymbolTable());
     codeGenerator.generate(output_asm_filename, is_entry);
-
-    codeGenerator.emitter.flush_to_file();
+    //codeGenerator.emitter.flush_to_file();
 
     if (verbose) {
         std::cout << "Successfully generated assembly to '" << output_asm_filename << "'\n";

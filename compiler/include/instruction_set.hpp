@@ -29,13 +29,33 @@ class InstructionSet {
     std::vector<Instruction> instructions;
 
     void flush_to_file() {
-        for (const auto& instr : instructions) {
-            debug_out << "    " << instr.mnemonic;
+        for (size_t i = 0; i < instructions.size(); ++i) {
+            const auto& instr = instructions[i];
+            if (instr.mnemonic.empty()) continue;
 
-            for (size_t i = 0; i < instr.operands.size(); ++i) {
-                debug_out << (i == 0 ? " " : ", ") << instr.operands[i];
+            if (instr.mnemonic.back() == ':') {
+                out << "\n" << instr.mnemonic;
+                if (i + 1 < instructions.size() && 
+                   (instructions[i+1].mnemonic == "db" || 
+                    instructions[i+1].mnemonic == "dw" || 
+                    instructions[i+1].mnemonic == "dd" || 
+                    instructions[i+1].mnemonic == "dq")) {
+                    out << " " << instructions[i+1].mnemonic;
+                    for (const auto& op : instructions[i+1].operands) out << " " << op;
+                    out << "\n";
+                    i++;
+                } else {
+                    out << "\n";
+                }
+            } else if (instr.mnemonic == "section") {
+                out << "\nsection " << instr.operands[0] << "\n";
+            } else {
+                out << "    " << instr.mnemonic;
+                for (size_t i = 0; i < instr.operands.size(); ++i) {
+                    out << (i == 0 ? " " : ", ") << instr.operands[i];
+                }
+                out << "\n";
             }
-            debug_out << std::endl;
         }
         instructions.clear();
     }
@@ -52,12 +72,6 @@ class InstructionSet {
 
     void emit_raw(const std::string& mnemonic, const std::vector<std::string>& operands) {
         instructions.push_back({mnemonic, operands});
-
-        out << "    " << mnemonic;
-        for (size_t i = 0; i < operands.size(); ++i) {
-            out << (i == 0 ? " " : ", ") << operands[i];
-        }
-        out << std::endl;
     }
 
     void emit(const std::string& instr);
