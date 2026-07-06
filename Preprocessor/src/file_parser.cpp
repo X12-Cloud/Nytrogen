@@ -3,7 +3,11 @@
 #include <fstream>
 #include <sstream>
 
-FileParser::FileParser() {}
+FileParser::FileParser() {
+    std::string home = std::getenv("HOME");
+    fs::path user_libs = fs::path(home) / ".nytrogen" / "libs";
+    m_file_handler.addSearchPath(user_libs);
+}
 
 // Helper function to strip leading and trailing whitespace
 std::string FileParser::trim(const std::string& str) {
@@ -15,10 +19,6 @@ std::string FileParser::trim(const std::string& str) {
 
 void FileParser::parse(const std::string& filepath, std::ostream& output_stream) {
     fs::path abs_path = fs::absolute(filepath);
-
-    std::string home = std::getenv("HOME");
-    fs::path user_libs = fs::path(home) / ".nytrogen" / "libs";
-    m_file_handler.addSearchPath(user_libs);
 
     // If a file was already processed skip it (#pragma once logic)
     if (m_file_handler.hasBeenProcessed(abs_path)) {
@@ -103,6 +103,11 @@ void FileParser::parse(const std::string& filepath, std::ostream& output_stream)
 
                 // Resolve the correct path using the file handler
                 fs::path child_file = m_file_handler.resolvePath(include_path, abs_path, is_stdlib);
+
+                if (child_file.empty()) {
+                    std::cerr << "Preprocess Error: Could not find include file: " << include_path << "\n";
+                    continue;
+                }
 
                 parse(child_file.string(), output_stream);
             } else {
