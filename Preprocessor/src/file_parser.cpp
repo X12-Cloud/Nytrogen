@@ -16,6 +16,10 @@ std::string FileParser::trim(const std::string& str) {
 void FileParser::parse(const std::string& filepath, std::ostream& output_stream) {
     fs::path abs_path = fs::absolute(filepath);
 
+    std::string home = std::getenv("HOME");
+    fs::path user_libs = fs::path(home) / ".nytrogen" / "libs";
+    m_file_handler.addSearchPath(user_libs);
+
     // If a file was already processed skip it (#pragma once logic)
     if (m_file_handler.hasBeenProcessed(abs_path)) {
         return;

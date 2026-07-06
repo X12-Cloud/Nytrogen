@@ -15,6 +15,7 @@ class FileParser {
 
    private:
     FileHandler m_file_handler;
+
     MacroHandler m_macro_handler;
     std::vector<bool> m_conditional_stack;
 

@@ -15,6 +15,7 @@ class FileHandler {
     void leaveFile();
     void markAsProcessed(const fs::path& absolute_path);
     bool hasBeenProcessed(const fs::path& absolute_path) const;
+    void addSearchPath(const fs::path& path);
 
    private:
     std::set<std::string> m_processed_files;

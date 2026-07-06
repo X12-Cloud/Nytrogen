@@ -23,6 +23,10 @@ fs::path FileHandler::resolvePath(const std::string& target_path, const fs::path
     return "";
 }
 
+void FileHandler::addSearchPath(const fs::path& path) {
+    m_custom_search_paths.push_back(path);
+}
+
 bool FileHandler::enterFile(const fs::path& absolute_path) {
     for (const auto& active_path : m_include_stack) {
         if (active_path == absolute_path) {
