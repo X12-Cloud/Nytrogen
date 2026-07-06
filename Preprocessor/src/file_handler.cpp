@@ -11,7 +11,16 @@ fs::path FileHandler::resolvePath(const std::string& target_path, const fs::path
         }
         return fs::absolute(fs::path("/usr/include/stdny") / target_path);
     }
-    return fs::absolute(current_file.parent_path() / target_path);
+    fs::path local = current_file.parent_path() / target_path;
+    if (fs::exists(local)) return fs::canonical(local);
+
+    for (const auto& lib_dir : m_custom_search_paths) {
+        fs::path lib_path = lib_dir / target_path;
+        if (fs::exists(lib_path)) {
+            return fs::canonical(lib_path);
+        }
+    }
+    return "";
 }
 
 bool FileHandler::enterFile(const fs::path& absolute_path) {

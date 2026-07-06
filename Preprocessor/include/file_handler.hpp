@@ -19,6 +19,7 @@ class FileHandler {
    private:
     std::set<std::string> m_processed_files;
     std::vector<fs::path> m_include_stack;
+    std::vector<fs::path> m_custom_search_paths;
 };
 
 #endif
