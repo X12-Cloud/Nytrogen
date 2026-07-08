@@ -14,13 +14,13 @@ void InstructionSet::emit_binary_op(const std::string& op_instr, char type) {
             fp_op = "div";  // idiv -> vdivss
         }
 
-        out << "    v" << fp_op << suffix << " xmm0, xmm1, xmm0" << std::endl;
+        emit_raw("v" + fp_op + suffix, {"xmm0", "xmm1", "xmm0"});
     } else {
         if (op_instr == "idiv") {
             emit("mov", "rcx", "rax");
             emit("mov", "rax", "rbx");
             emit("cqo");
-            out << "    idiv rcx" << std::endl;
+            emit_raw("idiv", {"rcx"});
         } else {
             emit(op_instr, "rbx", "rax");
             emit("mov", "rax", "rbx");
