@@ -4,6 +4,8 @@ bin/
 releases/
 media/
 temp
+compiler/codebase.fish
+compiler/codebase.txt
 
 *.o
 *.d

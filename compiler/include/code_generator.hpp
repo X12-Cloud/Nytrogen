@@ -28,7 +28,27 @@ class CodeGenerator {
     bool isFloatingPoint(const TypeNode* type);
     bool debug_mode = false;
 
+    std::string new_vreg() {
+        return "v" + std::to_string(vreg_counter++);
+    }
+
+    std::string vreg_lookup(const std::string& variable_name) {
+        Symbol* sym = symbolTable.lookup(variable_name);
+        if (!sym) {
+            std::cerr << "Error: Undeclared variable '" << variable_name << "' during code generation.\n";
+            return "";
+        }
+
+        if (!sym->assigned_vreg.empty()) {
+            return sym->assigned_vreg;
+        }
+
+        sym->assigned_vreg = new_vreg();
+        return sym->assigned_vreg;
+    }
+
    private:
+    int vreg_counter = 0;
     RegisterAllocator allocator;
 
     std::vector<GlobalConstant> constants;

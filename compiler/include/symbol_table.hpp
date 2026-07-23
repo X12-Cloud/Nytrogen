@@ -43,8 +43,10 @@ struct Symbol {
     int offset;
     int size;
     std::unique_ptr<ASTNode> value;       // For constants
-    std::shared_ptr<EnumInfo> enumInfo;   // For enum types
+    std::shared_ptr<EnumInfo> enumInfo;
     StructMember::Visibility visibility;  // For struct members
+
+    std::string assigned_vreg = ""; // For the RA
 
     Scope* internal_scope = nullptr;
 
