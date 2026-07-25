@@ -244,9 +244,6 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
     emitter.emit("and", "rsp", "-16");
     current_stack_depth = 0;
 
-    // std::stringstream body_buffer;
-    // std::streambuf *backup = out.std::ios::rdbuf(body_buffer.rdbuf());
-
     // Calculate total local variable space from current scope
     int local_var_space = 0;
     if (!symbolTable.all_scopes.empty()) {
@@ -262,14 +259,18 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
         current_stack_depth += aligned_space;
     }
 
-    // Push register arguments onto the stack
-    const std::vector<std::string> arg_registers = {"rdi", "rsi", "rdx",
-                                                    "rcx", "r8",  "r9"};
-    int register_args_size = 0;
-    for (int i = 0; i < node->parameters.size() && i < arg_registers.size();
-         ++i) {
-        int offset = (i + 1) * -8;
-        emitter.mov_indirect("rbp", offset, arg_registers[i]);
+    // Map incoming argument registers into virtual registers
+    const std::vector<std::string> arg_registers = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+    for (size_t i = 0; i < node->parameters.size() && i < arg_registers.size(); ++i) {
+        Symbol* sym = symbolTable.lookup(node->parameters[i]->name);
+        if (sym) {
+            std::string param_vreg = vreg_lookup(sym);
+
+            emitter.emit("mov", param_vreg, arg_registers[i]);
+
+            int offset = (i + 1) * -8;
+            emitter.mov_indirect("rbp", offset, arg_registers[i]);
+        }
     }
 
     // Generate code for all statements
@@ -277,9 +278,6 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
         visit(stmt.get());
     }
 
-    // out.std::ios::rdbuf(backup);
-
-    // emitter.write_raw(body_buffer.str());
     emitter.label_local(current_function_name + "_epilogue");
 
     emitter.emit("leave");
@@ -347,6 +345,9 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
                                      "' not found in symbol table.");
         }
 
+        // Fetch or assign the virtual register for this declared variable
+        std::string vreg = vreg_lookup(decl.resolved_symbol);
+
         std::string final_name = symbol->mangled_name;
 
         if (!final_name.empty() && final_name != decl.name) {
@@ -385,16 +386,16 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
                 visit(decl.initial_value.get());
                 if (is_float || is_double) {
                     std::string instr = is_float ? "vmovss" : "vmovsd";
-                    emitter.emit_mem_rel(instr, final_name, "xmm0");
+                    emitter.emit_mem_rel(instr, final_name, last_expr_vreg);
                 } else {
-                    emitter.emit_mem_rel("mov", final_name, "rax");
+                    emitter.emit_mem_rel("mov", final_name, last_expr_vreg);
                 }
             }
         } else {
+            bool is_fp = is_double || is_float;
             if (decl.initial_value) {
                 visit(decl.initial_value.get());
-                emitter.emit_adv(size, node->type.get(), "rbp", symbol->offset,
-                                 (is_float || is_double) ? "xmm0" : "rax");
+                emitter.emit(is_fp ? "vmovsd" : "mov", vreg, last_expr_vreg);
             }
         }
     }
@@ -403,63 +404,39 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
 void CodeGenerator::visit(VariableAssignmentNode* node) {
     auto type = node->left->resolved_type;
     bool is_fp = isFloatingPoint(type.get());
-    auto literal = dynamic_cast<LiteralExpressionNode*>(node->right.get());
 
     visit(node->right.get());
+    std::string rhs_vreg = last_expr_vreg;
+
     auto* var_ref = dynamic_cast<VariableReferenceNode*>(node->left.get());
-    if ((var_ref != nullptr) &&
-        !var_ref->resolved_symbol->mangled_name.empty()) {
-        std::string label = var_ref->resolved_symbol->mangled_name;
+    if (var_ref != nullptr) {
+        std::string lhs_vreg = vreg_lookup(var_ref->resolved_symbol);
+
         if (is_fp) {
-            std::string instr =
-                (getTypeSize(type.get()) == 4) ? "vmovss" : "vmovsd";
-            emitter.emit_mem_rel(instr, label, "xmm0");
+            std::string instr = (getTypeSize(type.get()) == 4) ? "vmovss" : "vmovsd";
+            emitter.emit(instr, lhs_vreg, rhs_vreg);
         } else {
-            int size = getTypeSize(node->left->resolved_type.get());
-            if (size == 4) {
-                emitter.emit("mov", "dword [rel " + label + "]", "eax");
-            } else if (size == 1) {
-                emitter.emit("mov", "byte [rel " + label + "]", "al");
-            } else {
-                emitter.emit("mov", "[rel " + label + "]", "rax");
-            }
+            emitter.emit("mov", lhs_vreg, rhs_vreg);
         }
+        last_expr_vreg = lhs_vreg;
     } else {
-        int size = getTypeSize(node->left->resolved_type.get());
-        if (is_fp) {
-            is_lvalue = true;
-            visit(node->left.get());
-            is_lvalue = false;
-            emitter.emit_adv(size, type.get(), "rax", 0, "xmm0");
-        } else {
-            emitter.emit("push", "rax");
-            current_stack_depth += 8;
-            is_lvalue = true;
-            visit(node->left.get());
-            is_lvalue = false;
-            emitter.emit("pop", "rbx");
-            current_stack_depth -= 8;
-            emitter.emit_adv(size, type.get(), "rax", 0, "rbx");
-        }
+        // Complex lvalue (e.g., array access or member access)
+        is_lvalue = true;
+        visit(node->left.get());
+        is_lvalue = false;
+        std::string addr_vreg = last_expr_vreg;
+
+        int size = getTypeSize(type.get());
+        emitter.emit_adv(size, type.get(), addr_vreg, 0, rhs_vreg);
+        last_expr_vreg = rhs_vreg;
     }
 }
 
 void CodeGenerator::visit(VariableReferenceNode* node) {
     Symbol* symbol = node->resolved_symbol;
-    int offset = symbol->offset;
-
-    if (node->resolved_symbol == nullptr) {
-        throw std::runtime_error("CodeGen Error: Symbol not resolved for " +
-                                 node->name);
-    }
-    if (!node->resolved_symbol->dataType) {
-        throw std::runtime_error("CodeGen Error: Variable '" + node->name +
-                                 "' has NO TYPE in symbol table!");
-    }
 
     if (symbol == nullptr) {
-        throw std::runtime_error("CodeGen Error: Reference to '" + node->name +
-                                 "' not resolved.");
+        throw std::runtime_error("CodeGen Error: Symbol not resolved for " + node->name);
     }
 
     if (symbol->type == Symbol::SymbolType::CONSTANT) {
@@ -467,149 +444,91 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
         return;
     }
 
-    auto prim = dynamic_cast<PrimitiveTypeNode*>(node->resolved_type.get());
-    bool is_double =
-        (prim != nullptr) && (prim->primitive_type == Token::KEYWORD_DOUBLE);
-    bool is_float =
-        (prim != nullptr) && (prim->primitive_type == Token::KEYWORD_FLOAT);
-    bool is_global =
-        !symbol->mangled_name.empty() && symbol->mangled_name != symbol->name;
-    int size = getTypeSize(node->resolved_type.get());
+    std::string vreg = vreg_lookup(symbol);
 
-    if (is_global) {
-        std::string asm_label = symbol->mangled_name;
-        if (is_lvalue) {
-            emitter.emit("lea", "rax", "[rel " + asm_label + "]");
+    bool is_global = !symbol->mangled_name.empty() && symbol->mangled_name != symbol->name;
+    if (is_global && !is_lvalue) {
+        int size = getTypeSize(node->resolved_type.get());
+        bool is_fp = isFloatingPoint(node->resolved_type.get());
+
+        if (is_fp) {
+            std::string instr = (size == 4) ? "vmovss" : "vmovsd";
+            emitter.emit(instr, vreg, "[rel " + symbol->mangled_name + "]");
         } else {
-            if (is_float || is_double) {
-                std::string instr = is_float ? "vmovss" : "vmovsd";
-                emitter.emit(size == 4 ? "vmovss" : "vmovsd", "xmm0",
-                             "[rel " + asm_label + "]");
-            } else {
-                std::string instr = (size == 1)   ? "movsx rax, byte"
-                                    : (size == 4) ? "movsx rax, dword"
-                                                  : "mov rax,";
-                emitter.emit(instr, "[rel " + asm_label + "]");
-            }
+            // Use movsx for smaller types when loading into 64-bit vregs
+            std::string instr = (size == 1) ? "movsx" : (size == 4 ? "movsx" : "mov");
+            emitter.emit(instr, vreg, "[rel " + symbol->mangled_name + "]");
         }
-        return;
     }
-    offset = symbol->offset;
-    if (is_lvalue) {
-        emitter.emit("lea", "rax", "[rbp + " + std::to_string(offset) + "]");
-    } else {
-        emitter.load_adv(size, node->resolved_type.get(),
-                         (is_float || is_double) ? "xmm0" : "rax", "rbp",
-                         offset);
-    }
+
+    last_expr_vreg = vreg;
 }
 
 void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
-    bool is_float = false;
+    bool is_fp = isFloatingPoint(node->resolved_type.get());
     bool is_double = false;
-
-    if (node->resolved_type->category == TypeNode::TypeCategory::PRIMITIVE) {
-        auto prim =
-            std::static_pointer_cast<PrimitiveTypeNode>(node->resolved_type);
-        is_float = (prim->primitive_type == Token::KEYWORD_FLOAT ||
-                    prim->primitive_type == Token::FLOAT_LITERAL);
-        is_double = (prim->primitive_type == Token::KEYWORD_DOUBLE ||
-                     prim->primitive_type == Token::DOUBLE_LITERAL);
-    }
-    if (debug_mode) {
-        if (node->resolved_type->category ==
-            TypeNode::TypeCategory::PRIMITIVE) {
-            auto prim = std::static_pointer_cast<PrimitiveTypeNode>(
-                node->resolved_type);
-            std::cout << "Debug: Primitive Type ID found: "
-                      << prim->primitive_type << std::endl;
-            std::cout << "Debug: Expected FLOAT_LITERAL: "
-                      << Token::FLOAT_LITERAL << std::endl;
-            std::cout << "Debug: Expected KEYWORD_FLOAT: "
-                      << Token::KEYWORD_FLOAT << std::endl;
-        }
+    if (is_fp) {
+        auto prim = std::static_pointer_cast<PrimitiveTypeNode>(node->resolved_type);
+        is_double = (prim->primitive_type == Token::KEYWORD_DOUBLE || prim->primitive_type == Token::DOUBLE_LITERAL);
     }
 
-    // Left
     visit(node->left.get());
-    if (is_float || is_double) {
-        emitter.emit("sub", "rsp", "8");
-        current_stack_depth += 8;
-        if (is_double) {
-            emitter.emit("vmovsd", "qword [rsp]", "xmm0");
-        } else {
-            emitter.emit("vmovss", "dword [rsp]", "xmm0");
-        }
-    } else {
-        emitter.emit("push", "rax");
-        current_stack_depth += 8;
-    }
+    std::string left_vreg = last_expr_vreg;
 
-    // Right
     visit(node->right.get());
+    std::string right_vreg = last_expr_vreg;
 
-    if (is_float || is_double) {
-        if (is_double) {
-            emitter.emit("vmovsd", "xmm1", "qword [rsp]");
-        } else {
-            emitter.emit("vmovss", "xmm1", "dword [rsp]");
-        }
-        emitter.emit("add", "rsp", "8");  // Left is in xmm1, Right is in xmm0
-        current_stack_depth -= 8;
-    } else {
-        emitter.emit("pop", "rbx");
-        current_stack_depth -= 8;
-        emitter.emit("add", "rcx", "rbx");  // Left is in rbx, Right is in rax
-    }
-
-    char type = 'd';
-    bool is_string = false;
-    if (is_float) {
-        type = 'f';
-    } else if (is_double) {
-        type = 'l';
-    }
-    if (node->left->resolved_type && node->left->resolved_type->category ==
-                                         TypeNode::TypeCategory::PRIMITIVE) {
-        auto prim =
-            static_cast<PrimitiveTypeNode*>(node->left->resolved_type.get());
-        is_string = (prim->primitive_type == Token::KEYWORD_STRING);
-    }
+    std::string result_vreg = new_vreg();
 
     switch (node->op_type) {
         case Token::PLUS:
-            emitter.emit_binary_op("add", type);
+            if (is_fp) {
+                emitter.emit(is_double ? "vaddsd" : "vaddss", result_vreg, left_vreg + ", " + right_vreg);
+            } else {
+                emitter.emit("mov", result_vreg, left_vreg);
+                emitter.emit("add", result_vreg, right_vreg);
+            }
             break;
         case Token::MINUS:
-            emitter.emit_binary_op("sub", type);
+            if (is_fp) {
+                emitter.emit(is_double ? "vsubsd" : "vsubss", result_vreg, left_vreg + ", " + right_vreg);
+            } else {
+                emitter.emit("mov", result_vreg, left_vreg);
+                emitter.emit("sub", result_vreg, right_vreg);
+            }
             break;
         case Token::STAR:
-            emitter.emit_binary_op("imul", type);
+            if (is_fp) {
+                emitter.emit(is_double ? "vmulsd" : "vmulss", result_vreg, left_vreg + ", " + right_vreg);
+            } else {
+                emitter.emit("mov", result_vreg, left_vreg);
+                emitter.emit("imul", result_vreg, right_vreg);
+            }
             break;
         case Token::SLASH:
-            emitter.emit_binary_op("idiv", type);
-            break;
-        case Token::EQUAL_EQUAL:
-            emitter.emit_cmp("sete", is_string);
-            break;
-        case Token::BANG_EQUAL:
-            emitter.emit_cmp("setne", is_string);
-            break;
-        case Token::LESS:
-            emitter.emit_cmp("setl", false);
-            break;
-        case Token::GREATER:
-            emitter.emit_cmp("setg", false);
-            break;
-        case Token::LESS_EQUAL:
-            emitter.emit_cmp("setle", false);
-            break;
-        case Token::GREATER_EQUAL:
-            emitter.emit_cmp("setge", false);
+            if (is_fp) {
+                emitter.emit(is_double ? "vdivsd" : "vdivss", result_vreg, left_vreg + ", " + right_vreg);
+            } else {
+                emitter.emit("mov", "rax", left_vreg);
+                emitter.emit("cqo");
+                emitter.emit("idiv", right_vreg);
+                emitter.emit("mov", result_vreg, "rax");
+            }
             break;
         default:
-            throw std::runtime_error("Unknown operator");
+            emitter.emit("cmp", left_vreg, right_vreg);
+            std::string set_instr;
+            if (node->op_type == Token::EQUAL_EQUAL) set_instr = "sete";
+            else if (node->op_type == Token::BANG_EQUAL) set_instr = "setne";
+            else if (node->op_type == Token::LESS) set_instr = "setl";
+            else if (node->op_type == Token::GREATER) set_instr = "setg";
+
+            emitter.emit(set_instr, "al");
+            emitter.emit("movzx", result_vreg, "al");
+            break;
     }
+
+    last_expr_vreg = result_vreg;
 }
 
 void CodeGenerator::visit(PrintStatementNode* node) {
@@ -618,15 +537,12 @@ void CodeGenerator::visit(PrintStatementNode* node) {
 
         auto expr_type = node->expressions[i]->resolved_type;
         int size = getTypeSize(expr_type.get());
-        if (!expr_type) {
-            // Fallback if semantic analysis missed a type
-            emitter.emit_print_int("rax");
-            continue;
-        }
+
+        // Move vreg to physical regs for printf (handled inside emitter.emit_print)
         if (i == node->expressions.size() - 1) {
-            emitter.emit_print(size, expr_type);
+            emitter.emit_print(size, expr_type, last_expr_vreg);
         } else {
-            emitter.emit_print_raw(size, expr_type);
+            emitter.emit_print_raw(size, expr_type, last_expr_vreg);
         }
     }
 }
@@ -634,37 +550,22 @@ void CodeGenerator::visit(PrintStatementNode* node) {
 void CodeGenerator::visit(ReturnStatementNode* node) {
     if (node->expression) {
         visit(node->expression.get());
+        bool is_fp = isFloatingPoint(node->expression->resolved_type.get());
 
-        if (isFloatingPoint(node->expression->resolved_type.get())) {
-            emitter.emit("jmp", current_function_name + "_epilogue");
-            return;
-        }
-
-        auto* var_ref =
-            dynamic_cast<VariableReferenceNode*>(node->expression.get());
-
-        if (var_ref && var_ref->resolved_symbol &&
-            var_ref->resolved_symbol->offset < 0) {
-            int size = getTypeSize(var_ref->resolved_type.get());
-            std::string reg =
-                isFloatingPoint(var_ref->resolved_type.get()) ? "xmm0" : "rax";
-            emitter.load_adv(size, var_ref->resolved_type.get(), reg, "rbp",
-                             var_ref->resolved_symbol->offset);
-        }
+        emitter.emit(is_fp ? "vmovsd" : "mov", is_fp ? "xmm0" : "rax", last_expr_vreg);
     }
-
     emitter.emit("jmp", current_function_name + "_epilogue");
 }
 
 void CodeGenerator::visit(IfStatementNode* node) {
     static int if_counter = 0;
     int id = if_counter++;
-
     std::string false_label = "_if_false_" + std::to_string(id);
     std::string end_label = "_if_end_" + std::to_string(id);
 
+    // Condition
     visit(node->condition.get());
-    emitter.emit("cmp", "rax", "0");
+    emitter.emit("cmp", last_expr_vreg, "0");
     emitter.emit("je", false_label);
 
     // True block
@@ -692,18 +593,16 @@ void CodeGenerator::visit(SwitchStatementNode* node) {  // TODO:
 void CodeGenerator::visit(WhileStatementNode* node) {
     static int while_counter = 0;
     int id = while_counter++;
-
     std::string start_label = "_while_start_" + std::to_string(id);
     std::string end_label = "_while_end_" + std::to_string(id);
 
     emitter.label(start_label);
+
     visit(node->condition.get());
-    emitter.emit("cmp", "rax", "0");
+    emitter.emit("cmp", last_expr_vreg, "0");
     emitter.emit("je", end_label);
 
-    for (const auto& stmt : node->body) {
-        visit(stmt.get());
-    }
+    for (const auto& stmt : node->body) visit(stmt.get());
 
     emitter.emit("jmp", start_label);
     emitter.label(end_label);
@@ -724,7 +623,7 @@ void CodeGenerator::visit(ForStatementNode* node) {
     emitter.label(condition_label);
     if (node->condition) {
         visit(node->condition.get());
-        emitter.emit("cmp", "rax", "0");
+        emitter.emit("cmp", last_expr_vreg, "0"); 
         emitter.emit("je", end_label);
     }
 
@@ -742,161 +641,141 @@ void CodeGenerator::visit(ForStatementNode* node) {
 }
 
 void CodeGenerator::visit(FunctionCallNode* node) {
-    if (node->function_name == "__builtin_sqrt") {
-        if (!node->arguments.empty()) {
-            visit(node->arguments[0].get());
-            emitter.emit("sqrtsd", "xmm0", "xmm0");
+    const std::vector<std::string> arg_regs = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+    std::vector<std::string> evaluated_vregs;
+
+    for (auto& arg : node->arguments) {
+        visit(arg.get());
+        evaluated_vregs.push_back(last_expr_vreg);
+    }
+
+    int int_idx = 0;
+    int xmm_idx = 0;
+    for (size_t i = 0; i < evaluated_vregs.size(); ++i) {
+        bool is_fp = isFloatingPoint(node->arguments[i]->resolved_type.get());
+        if (is_fp && xmm_idx < 8) {
+            emitter.emit("vmovsd", "xmm" + std::to_string(xmm_idx++), evaluated_vregs[i]);
+        } else if (!is_fp && int_idx < 6) {
+            emitter.emit("mov", arg_regs[int_idx++], evaluated_vregs[i]);
         }
-        return;
-    } else if (node->function_name == "__builtin_abs") {
-        visit(node->arguments[0].get());
-        emitter.emit("andpd", "xmm0", "[rel _abs_mask]");
-        return;
-    } else if (node->function_name == "__builtin_round") {
-        visit(node->arguments[0].get());
-        emitter.emit("roundsd", "xmm0", "xmm0, 0");
-        return;
+        // Stack-based arguments would be handled here
     }
 
-    const std::vector<std::string> arg_regs = {"rdi", "rsi", "rdx",
-                                               "rcx", "r8",  "r9"};
-    const std::vector<std::string> arg_regs_32 = {"edi", "esi", "edx",
-                                                  "ecx", "r8d", "r9d"};
-    int arg_count = node->arguments.size();
-    int xmm_reg_idx = 0;
-    int int_reg_idx = 0;
+    emitter.emit("call", node->resolved_symbol->mangled_name);
 
-    if (node->resolved_symbol == nullptr) {
-        throw std::runtime_error("CodeGen Error: Function " +
-                                 node->function_name + " not found.");
+    std::string result_vreg = new_vreg();
+    bool ret_fp = isFloatingPoint(node->resolved_type.get());
+    if (ret_fp) {
+        emitter.emit("vmovsd", result_vreg, "xmm0");
+    } else {
+        emitter.emit("mov", result_vreg, "rax");
     }
 
-    for (int i = 0; i < std::min(arg_count, 6); ++i) {
-        visit(node->arguments[i].get());
-
-        if (isFloatingPoint(node->arguments[i]->resolved_type.get())) {
-            if (xmm_reg_idx < 8) {
-                if (xmm_reg_idx != 0) {
-                    emitter.emit("movsd", "xmm" + std::to_string(xmm_reg_idx),
-                                 "xmm0");
-                }
-                xmm_reg_idx++;
-            }
-        } else {
-            if (int_reg_idx < 6) {
-                int size = getTypeSize(node->arguments[i]->resolved_type.get());
-                std::string reg = arg_regs[int_reg_idx++];
-
-                if (size == 8) {
-                    emitter.emit("mov", reg, "rax");
-                } else {
-                    // Use your 32-bit logic here safely
-                    emitter.emit("mov", getRegisterName(reg, size), "eax");
-                }
-            }
-        }
-    }
-
-    std::string target_label = node->resolved_symbol->mangled_name;
-
-    emitter.emit("call", target_label);
-
-    if (arg_count > arg_regs.size()) {
-        int cleanup = (arg_count - arg_regs.size()) * 8;
-        emitter.emit("add", "rsp", std::to_string(cleanup));
-        current_stack_depth -= cleanup;
-    }
+    last_expr_vreg = result_vreg;
 }
 
 void CodeGenerator::visit(MemberAccessNode* node) {
     bool old_lvalue = is_lvalue;
-    is_lvalue = true;
+    is_lvalue = true; 
     visit(node->struct_expr.get());
+    std::string base_addr_vreg = last_expr_vreg;
     is_lvalue = old_lvalue;
 
+    std::string member_addr_vreg = new_vreg();
     Symbol* member_symbol = node->resolved_symbol;
-    if ((member_symbol != nullptr) && member_symbol->offset != 0) {
-        emitter.emit("add", "rax", std::to_string(member_symbol->offset));
+
+    if (member_symbol && member_symbol->offset != 0) {
+        emitter.emit("add", member_addr_vreg, base_addr_vreg + ", " + std::to_string(member_symbol->offset));
+    } else {
+        emitter.emit("mov", member_addr_vreg, base_addr_vreg);
     }
 
-    if (!node->resolved_type) {
-        throw std::runtime_error("CodeGen Error: Member access '" +
-                                 node->member_name + "' has no resolved type.");
-    }
-
-    if (!is_lvalue) {
+    if (is_lvalue) {
+        last_expr_vreg = member_addr_vreg;
+    } else {
+        std::string val_vreg = new_vreg();
         int size = getTypeSize(node->resolved_type.get());
-        emitter.load_from_address(size, "rax");
+        emitter.load_adv(size, node->resolved_type.get(), val_vreg, member_addr_vreg, 0);
+        last_expr_vreg = val_vreg;
     }
 }
 
 void CodeGenerator::visit(UnaryOpExpressionNode* node) {
-    if (node->op_type == Token::KEYWORD_INT ||
-        node->op_type == Token::KEYWORD_CHAR) {
+    if (node->op_type == Token::KEYWORD_INT || node->op_type == Token::KEYWORD_CHAR) {
         visit(node->operand.get());
+        std::string res_vreg = new_vreg();
         if (isFloatingPoint(node->operand->resolved_type.get())) {
             int size = getTypeSize(node->operand->resolved_type.get());
-            emitter.emit(size == 8 ? "cvtsd2si" : "cvtss2si", "rax", "xmm0");
+            emitter.emit(size == 8 ? "vcvttsd2si" : "vcvttss2si", res_vreg, last_expr_vreg);
+        } else {
+            emitter.emit("mov", res_vreg, last_expr_vreg); // Identity cast
         }
+        last_expr_vreg = res_vreg;
         return;
     }
 
     if (node->op_type == Token::ADDRESSOF) {
-        const auto* ref_node =
-            static_cast<const VariableReferenceNode*>(node->operand.get());
-        if (!ref_node->resolved_symbol) {
-            throw std::runtime_error("CodeGen Error: Symbol not resolved for " +
-                                     ref_node->name);
-        }
-        emitter.emit_lea_stack(ref_node->resolved_symbol->offset);
+        is_lvalue = true;
+        visit(node->operand.get());
+        is_lvalue = false;
+        // last_expr_vreg already contains the address from the child's lvalue logic
         return;
     }
 
     visit(node->operand.get());
-    if (node->op_type == Token::STAR) {
-        emitter.emit_dereference();
-    } else if (node->op_type == Token::BANG) {
-        emitter.emit("test", "rax", "rax");
+    std::string op_vreg = last_expr_vreg;
+    std::string res_vreg = new_vreg();
+
+    if (node->op_type == Token::STAR) { // Dereference
+        int size = getTypeSize(node->resolved_type.get());
+        emitter.load_adv(size, node->resolved_type.get(), res_vreg, op_vreg, 0);
+    } else if (node->op_type == Token::BANG) { // Logical NOT
+        emitter.emit("test", op_vreg, op_vreg);
         emitter.emit("setz", "al");
-        emitter.emit("movzx", "rax", "al");
+        emitter.emit("movzx", res_vreg, "al");
     }
+    last_expr_vreg = res_vreg;
 }
 
 void CodeGenerator::visit(ArrayAccessNode* node) {
     bool was_lvalue = is_lvalue;
+
     is_lvalue = false;
     visit(node->index_expr.get());
-    emitter.emit("mov", "rbx", "rax");
-    is_lvalue = was_lvalue;
+    std::string index_vreg = last_expr_vreg;
 
-    int element_size = 8;
-    if (node->array_expr && node->array_expr->resolved_type) {
-        if (node->array_expr->resolved_type->category ==
-            TypeNode::TypeCategory::ARRAY) {
-            auto arr_type = static_cast<ArrayTypeNode*>(
-                node->array_expr->resolved_type.get());
-            element_size = getTypeSize(arr_type->base_type.get());
-        }
-    }
-
+    std::string base_vreg = new_vreg();
     if (node->array_expr->node_type == ASTNode::NodeType::VARIABLE_REFERENCE) {
-        auto var_ref =
-            static_cast<VariableReferenceNode*>(node->array_expr.get());
+        auto var_ref = static_cast<VariableReferenceNode*>(node->array_expr.get());
         if (var_ref->resolved_symbol) {
-            emitter.emit_lea_stack(var_ref->resolved_symbol->offset);
-        } else {
-            throw std::runtime_error("CodeGen Error: Symbol not found.");
+            // bridge: Get stack offset address into a virtual register
+            emitter.emit_lea_stack(base_vreg, var_ref->resolved_symbol->offset);
         }
     } else {
         visit(node->array_expr.get());
+        emitter.emit("mov", base_vreg, last_expr_vreg);
+    }
+    is_lvalue = was_lvalue;
+
+    int element_size = 8;
+    if (node->array_expr->resolved_type && node->array_expr->resolved_type->category == TypeNode::TypeCategory::ARRAY) {
+        auto arr_type = static_cast<ArrayTypeNode*>(node->array_expr->resolved_type.get());
+        element_size = getTypeSize(arr_type->base_type.get());
     }
 
-    emitter.emit("imul", "rbx", std::to_string(element_size));
-    emitter.emit("add", "rax", "rbx");
+    // addr = base + (index * size)
+    std::string offset_vreg = new_vreg();
+    emitter.emit("imul", offset_vreg, index_vreg + ", " + std::to_string(element_size));
 
-    if (!was_lvalue) {
-        // Reuse your handy helper!
-        emitter.load_from_address(element_size, "rax");
+    std::string final_addr_vreg = new_vreg();
+    emitter.emit("add", final_addr_vreg, base_vreg + ", " + offset_vreg);
+
+    if (is_lvalue) {
+        last_expr_vreg = final_addr_vreg;
+    } else {
+        std::string val_vreg = new_vreg();
+        emitter.load_adv(element_size, node->resolved_type.get(), val_vreg, final_addr_vreg, 0);
+        last_expr_vreg = val_vreg;
     }
 }
 
@@ -905,26 +784,22 @@ void CodeGenerator::visit(StructDefinitionNode* node) {
 }
 
 void CodeGenerator::visit(IntegerLiteralExpressionNode* node) {
-    emitter.emit("mov", "rax", std::to_string(node->value));
-
-    if (!node->resolved_type) {
-        node->resolved_type =
-            std::make_shared<PrimitiveTypeNode>(Token::KEYWORD_INT);
-    }
+    std::string vreg = new_vreg();
+    emitter.emit("mov", vreg, std::to_string(node->value));
+    last_expr_vreg = vreg;
 }
 
 void CodeGenerator::visit(FloatLiteralExpressionNode* node) {
-    std::stringstream ss;
-    ss << std::fixed << std::setprecision(6) << node->value;
-    std::string val_str = ss.str();
-
+    std::string val_str = std::to_string(node->value);
     if (constants_map.find(val_str) == constants_map.end()) {
         std::string label = "_float_" + std::to_string(string_label_counter++);
         constants_map[val_str] = label;
         constants.push_back({label, "dd", val_str});
     }
 
-    emitter.emit_load_constant("vmovss", constants_map[val_str]);
+    std::string vreg = new_vreg();
+    emitter.emit("vmovss", vreg, "[rel " + constants_map[val_str] + "]");
+    last_expr_vreg = vreg;
 }
 
 void CodeGenerator::visit(DoubleLiteralExpressionNode* node) {
@@ -938,7 +813,9 @@ void CodeGenerator::visit(DoubleLiteralExpressionNode* node) {
         constants.push_back({label, "dq", val_str});
     }
 
-    emitter.emit_load_constant("vmovsd", constants_map[val_str]);
+    std::string vreg = new_vreg();
+    emitter.emit("vmovsd", vreg, "[rel " + constants_map[val_str] + "]");
+    last_expr_vreg = vreg;
 }
 
 void CodeGenerator::visit(StringLiteralExpressionNode* node) {
@@ -949,26 +826,28 @@ void CodeGenerator::visit(StringLiteralExpressionNode* node) {
         constants.push_back({label, "db", formatted_val});
     }
 
-    emitter.emit("lea", "rax", "[rel " + constants_map[formatted_val] + "]");
-    node->resolved_type =
-        std::make_shared<PrimitiveTypeNode>(Token::KEYWORD_STRING);
+    std::string vreg = new_vreg();
+    emitter.emit("lea", vreg, "[rel " + constants_map[formatted_val] + "]");
+    last_expr_vreg = vreg;
 }
 
 void CodeGenerator::visit(BooleanLiteralExpressionNode* node) {
-    emitter.emit("mov", "rax", std::to_string(node->value ? 1 : 0));
+    std::string vreg = new_vreg();
+    emitter.emit("mov", vreg, std::to_string(node->value ? 1 : 0));
+    last_expr_vreg = vreg;
 }
 
 void CodeGenerator::visit(CharacterLiteralExpressionNode* node) {
-    emitter.emit("mov", "rax", std::to_string(static_cast<int>(node->value)));
+    std::string vreg = new_vreg();
+    emitter.emit("mov", vreg, std::to_string(static_cast<int>(node->value)));
+    last_expr_vreg = vreg;
     if (!node->resolved_type) {
-        node->resolved_type =
-            std::make_shared<PrimitiveTypeNode>(Token::KEYWORD_BOOL);
+        node->resolved_type = std::make_shared<PrimitiveTypeNode>(Token::KEYWORD_CHAR);
     }
 }
 
 void CodeGenerator::visit(AsmStatementNode* node) {
     for (const auto& line : node->lines) {
-        // out << "    " << line << "\n";
         emitter.emit(line);
     }
 }

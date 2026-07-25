@@ -32,10 +32,9 @@ class CodeGenerator {
         return "v" + std::to_string(vreg_counter++);
     }
 
-    std::string vreg_lookup(const std::string& variable_name) {
-        Symbol* sym = symbolTable.lookup(variable_name);
+    std::string vreg_lookup(Symbol* sym) {
         if (!sym) {
-            std::cerr << "Error: Undeclared variable '" << variable_name << "' during code generation.\n";
+            std::cerr << "Error: Resolved symbol is null during code generation.\n";
             return "";
         }
 
@@ -49,6 +48,7 @@ class CodeGenerator {
 
    private:
     int vreg_counter = 0;
+    std::string last_expr_vreg;
     RegisterAllocator allocator;
 
     std::vector<GlobalConstant> constants;
