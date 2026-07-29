@@ -5,6 +5,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "lexer.hpp"
@@ -65,24 +66,24 @@ struct ASTNode {
 
     virtual ~ASTNode() = default;
 
-    virtual std::string type_name() const {
+    [[nodiscard]] virtual auto type_name() const -> std::string {
         return "ASTNode";
     }
 
-    virtual std::vector<ASTNode*> get_children() const {
+    [[nodiscard]] virtual auto get_children() const -> std::vector<ASTNode*> {
         return {};  // Base node has no children
     }
 
-    virtual std::string get_value() const {
+    [[nodiscard]] virtual auto get_value() const -> std::string {
         return "";
     }
 
-    virtual bool is_constant() const {
+    [[nodiscard]] virtual auto is_constant() const -> bool {
         return false;
     }
 
     void dump_to_stream(std::ostream& out,
-                        int indent) {  // TODO: make it output to .json and Graphvis
+                        int indent) const {  // TODO: make it output to .json and Graphvis
         std::string space(indent * 2, ' ');
         out << space << " " << this->type_name();
 
@@ -112,26 +113,26 @@ struct ASTNode {
 struct LiteralExpressionNode : public ASTNode {
     LiteralExpressionNode(NodeType type, int line, int column) : ASTNode(type, line, column) {}
 
-    virtual std::string getValueAsString() const = 0;
+    [[nodiscard]] virtual auto getValueAsString() const -> std::string = 0;
 };
 
 // Node representing integer literals (e.g., 42)
 struct IntegerLiteralExpressionNode : public LiteralExpressionNode {
     int value;
 
-    std::string type_name() const override {
+    [[nodiscard]] auto type_name() const -> std::string override {
         return "INT_LITERAL:";
     }
-    std::string get_value() const override {
+    [[nodiscard]] auto get_value() const -> std::string override {
         return getValueAsString();
     }
-    bool is_constant() const override {
+    [[nodiscard]] auto is_constant() const -> bool override {
         return true;
     }
 
     IntegerLiteralExpressionNode(int val, int line = -1, int column = -1)
         : LiteralExpressionNode(NodeType::INTEGER_LITERAL_EXPRESSION, line, column), value(val) {}
-    std::string getValueAsString() const override {
+    [[nodiscard]] auto getValueAsString() const -> std::string override {
         return std::to_string(value);
     }
 };
@@ -140,20 +141,20 @@ struct IntegerLiteralExpressionNode : public LiteralExpressionNode {
 struct StringLiteralExpressionNode : public LiteralExpressionNode {
     std::string value;
 
-    std::string type_name() const override {
+    [[nodiscard]] auto type_name() const -> std::string override {
         return "STR_LITERAL:";
     }
-    std::string get_value() const override {
+    [[nodiscard]] auto get_value() const -> std::string override {
         return getValueAsString();
     }
-    bool is_constant() const override {
+    [[nodiscard]] auto is_constant() const -> bool override {
         return true;
     }
 
     StringLiteralExpressionNode(std::string val, int line = -1, int column = -1)
         : LiteralExpressionNode(NodeType::STRING_LITERAL_EXPRESSION, line, column),
           value(std::move(val)) {}
-    std::string getValueAsString() const override {
+    [[nodiscard]] auto getValueAsString() const -> std::string override {
         return value;
     }
 };
@@ -162,20 +163,20 @@ struct StringLiteralExpressionNode : public LiteralExpressionNode {
 struct BooleanLiteralExpressionNode : public LiteralExpressionNode {
     bool value;
 
-    std::string type_name() const override {
+    [[nodiscard]] auto type_name() const -> std::string override {
         return "BOOL_LITERAL:";
     }
-    std::string get_value() const override {
+    [[nodiscard]] auto get_value() const -> std::string override {
         return getValueAsString();
     }
-    bool is_constant() const override {
+    [[nodiscard]] auto is_constant() const -> bool override {
         return true;
     }
 
     BooleanLiteralExpressionNode(int val, int line = -1, int column = -1)
         : LiteralExpressionNode(NodeType::BOOLEAN_LITERAL_EXPRESSION, line, column),
           value(val != 0) {}
-    std::string getValueAsString() const override {
+    [[nodiscard]] auto getValueAsString() const -> std::string override {
         return value ? "true" : "false";
     }
 };
@@ -184,19 +185,19 @@ struct BooleanLiteralExpressionNode : public LiteralExpressionNode {
 struct CharacterLiteralExpressionNode : public LiteralExpressionNode {
     char value;
 
-    std::string type_name() const override {
+    [[nodiscard]] auto type_name() const -> std::string override {
         return "CHAR_LITERAL:";
     }
-    std::string get_value() const override {
+    [[nodiscard]] auto get_value() const -> std::string override {
         return getValueAsString();
     }
-    bool is_constant() const override {
+    [[nodiscard]] auto is_constant() const -> bool override {
         return true;
     }
 
     CharacterLiteralExpressionNode(int val, int line = -1, int column = -1)
         : LiteralExpressionNode(NodeType::CHARACTER_LITERAL_EXPRESSION, line, column), value(val) {}
-    std::string getValueAsString() const override {
+    [[nodiscard]] auto getValueAsString() const -> std::string override {
         return std::to_string(value);
     }
 };
@@ -206,21 +207,19 @@ struct FloatLiteralExpressionNode : public LiteralExpressionNode {
     float value;
     std::string label;
 
-    std::string type_name() const override {
+    [[nodiscard]] auto type_name() const -> std::string override {
         return "FLOAT_LITERAL:";
     }
-    std::string get_value() const override {
+    [[nodiscard]] auto get_value() const -> std::string override {
         return getValueAsString();
     }
-    bool is_constant() const override {
+    [[nodiscard]] auto is_constant() const -> bool override {
         return true;
     }
 
     FloatLiteralExpressionNode(float val, int line = -1, int column = -1)
-        : LiteralExpressionNode(NodeType::FLOAT_LITERAL_EXPRESSION, line, column),
-          value(val),
-          label("") {}
-    std::string getValueAsString() const override {
+        : LiteralExpressionNode(NodeType::FLOAT_LITERAL_EXPRESSION, line, column), value(val) {}
+    [[nodiscard]] auto getValueAsString() const -> std::string override {
         return std::to_string(value);
     }
 };
@@ -230,21 +229,19 @@ struct DoubleLiteralExpressionNode : public LiteralExpressionNode {
     double value;
     std::string label;
 
-    std::string type_name() const override {
+    [[nodiscard]] auto type_name() const -> std::string override {
         return "DOUBLE_LITERAL:";
     }
-    std::string get_value() const override {
+    [[nodiscard]] auto get_value() const -> std::string override {
         return getValueAsString();
     }
-    bool is_constant() const override {
+    [[nodiscard]] auto is_constant() const -> bool override {
         return true;
     }
 
     DoubleLiteralExpressionNode(double val, int line = -1, int column = -1)
-        : LiteralExpressionNode(NodeType::DOUBLE_LITERAL_EXPRESSION, line, column),
-          value(val),
-          label("") {}
-    std::string getValueAsString() const override {
+        : LiteralExpressionNode(NodeType::DOUBLE_LITERAL_EXPRESSION, line, column), value(val) {}
+    [[nodiscard]] auto getValueAsString() const -> std::string override {
         return std::to_string(value);
     }
 };
@@ -253,10 +250,10 @@ struct DoubleLiteralExpressionNode : public LiteralExpressionNode {
 struct ReturnStatementNode : public ASTNode {
     std::unique_ptr<ASTNode> expression;
 
-    std::string type_name() const override {
+    [[nodiscard]] auto type_name() const -> std::string override {
         return "RETURN_STMT:";
     }
-    std::vector<ASTNode*> get_children() const override {
+    [[nodiscard]] auto get_children() const -> std::vector<ASTNode*> override {
         return {expression.get()};
     }
 
@@ -270,15 +267,15 @@ struct TypeNode {
     TypeCategory category;
     TypeNode(TypeCategory cat) : category(cat) {}
     virtual ~TypeNode() = default;
-    virtual std::string typeName() const = 0;
-    virtual std::unique_ptr<TypeNode> clone() const = 0;
+    [[nodiscard]] virtual auto typeName() const -> std::string = 0;
+    [[nodiscard]] virtual auto clone() const -> std::unique_ptr<TypeNode> = 0;
 };
 
 struct PrimitiveTypeNode : public TypeNode {
     Token::Type primitive_type;
     PrimitiveTypeNode(Token::Type type) : TypeNode(TypeCategory::PRIMITIVE), primitive_type(type) {}
 
-    std::string typeName() const override {
+    [[nodiscard]] auto typeName() const -> std::string override {
         switch (primitive_type) {
             case Token::KEYWORD_INT:
                 return "int";
@@ -294,7 +291,7 @@ struct PrimitiveTypeNode : public TypeNode {
                 return "unknown_primitive";
         }
     }
-    std::unique_ptr<TypeNode> clone() const override {
+    [[nodiscard]] auto clone() const -> std::unique_ptr<TypeNode> override {
         return std::make_unique<PrimitiveTypeNode>(primitive_type);
     }
 };
@@ -303,10 +300,10 @@ struct PointerTypeNode : public TypeNode {
     std::unique_ptr<TypeNode> base_type;
     PointerTypeNode(std::unique_ptr<TypeNode> base)
         : TypeNode(TypeCategory::POINTER), base_type(std::move(base)) {}
-    std::string typeName() const override {
+    [[nodiscard]] auto typeName() const -> std::string override {
         return base_type->typeName() + "*";
     }
-    std::unique_ptr<TypeNode> clone() const override {
+    [[nodiscard]] auto clone() const -> std::unique_ptr<TypeNode> override {
         return std::make_unique<PointerTypeNode>(base_type->clone());
     }
 };
@@ -317,10 +314,10 @@ struct ArrayTypeNode : public TypeNode {
 
     ArrayTypeNode(std::unique_ptr<TypeNode> base, int sz)
         : TypeNode(TypeCategory::ARRAY), base_type(std::move(base)), size(sz) {}
-    std::unique_ptr<TypeNode> clone() const override {
+    [[nodiscard]] auto clone() const -> std::unique_ptr<TypeNode> override {
         return std::make_unique<ArrayTypeNode>(base_type->clone(), size);
     }
-    std::string typeName() const override {
+    [[nodiscard]] auto typeName() const -> std::string override {
         return base_type->typeName() + "[" + std::to_string(size) + "]";
     }
 };
@@ -329,10 +326,10 @@ struct StructTypeNode : public TypeNode {
     std::string struct_name;
     StructTypeNode(std::string name)
         : TypeNode(TypeCategory::STRUCT), struct_name(std::move(name)) {}
-    std::unique_ptr<TypeNode> clone() const override {
+    [[nodiscard]] auto clone() const -> std::unique_ptr<TypeNode> override {
         return std::make_unique<StructTypeNode>(struct_name);
     }
-    std::string typeName() const override {
+    [[nodiscard]] auto typeName() const -> std::string override {
         return "struct " + struct_name;
     }
 };
@@ -341,10 +338,10 @@ struct AutoTypeNode : public TypeNode {
     AutoTypeNode()
         : TypeNode(TypeCategory::PRIMITIVE) {
     }  // Treat as primitive for simplicity, actual type deduced later
-    std::unique_ptr<TypeNode> clone() const override {
+    [[nodiscard]] auto clone() const -> std::unique_ptr<TypeNode> override {
         return std::make_unique<AutoTypeNode>();
     }
-    std::string typeName() const override {
+    [[nodiscard]] auto typeName() const -> std::string override {
         return "auto (deducing)";
     }
 };
@@ -354,16 +351,16 @@ struct StructMember {
 
     std::unique_ptr<TypeNode> type;
     std::string name;
-    int offset;
+    int offset{};
     Visibility visibility = Visibility::PUBLIC;  // Default to public
 };
 
 struct StructDefinitionNode : public ASTNode {
     std::string name;
     std::vector<StructMember> members;
-    int size;
+    int size{0};
 
-    std::string type_name() const override {
+    [[nodiscard]] auto type_name() const -> std::string override {
         std::string info = "STRUCT_DEF: " + name + " { ";
         for (const auto& m : members) {
             info += m.name + " ";  // Just the names for simplicity
@@ -371,16 +368,14 @@ struct StructDefinitionNode : public ASTNode {
         info += "}";
         return info;
     }
-    std::vector<ASTNode*> get_children() const override {
+    [[nodiscard]] auto get_children() const -> std::vector<ASTNode*> override {
         return {};
     }
 
     StructDefinitionNode(std::string struct_name, int line = -1, int column = -1)
-        : ASTNode(NodeType::STRUCT_DEFINITION, line, column),
-          name(std::move(struct_name)),
-          size(0) {}
+        : ASTNode(NodeType::STRUCT_DEFINITION, line, column), name(std::move(struct_name)) {}
 
-    std::shared_ptr<StructDefinitionNode> clone() const {
+    [[nodiscard]] auto clone() const -> std::shared_ptr<StructDefinitionNode> {
         auto new_node = std::make_shared<StructDefinitionNode>(name, line, column);
         new_node->size = size;
         for (const auto& m : members) {
@@ -398,9 +393,9 @@ struct StructDefinitionNode : public ASTNode {
 struct MemberAccessNode : public ASTNode {
     std::unique_ptr<ASTNode> struct_expr;  // The expression representing the struct instance
     std::string member_name;
-    Symbol* resolved_symbol;
+    Symbol* resolved_symbol{nullptr};
 
-    std::string type_name() const override {
+    [[nodiscard]] auto type_name() const -> std::string override {
         return "MEMBER_ACCESS: " + member_name;
     }
 
@@ -408,8 +403,7 @@ struct MemberAccessNode : public ASTNode {
                      int column = -1)
         : ASTNode(NodeType::MEMBER_ACCESS_EXPRESSION, line, column),
           struct_expr(std::move(expr)),
-          member_name(std::move(member)),
-          resolved_symbol(nullptr) {}
+          member_name(std::move(member)) {}
 };
 
 struct NamespaceMember {
@@ -422,15 +416,15 @@ class SymbolTable;  // Forward declaration
 struct NamespaceDefinition : public ASTNode {
     std::string name;
     std::vector<NamespaceMember> members;
-    int size;
+    int size{};
 
-    SymbolTable* namespace_scope;
+    SymbolTable* namespace_scope{nullptr};
 
-    std::string type_name() const override {
+    [[nodiscard]] auto type_name() const -> std::string override {
         return "NAMESPACE_DEF: " + name;
     }
 
-    std::vector<ASTNode*> get_children() const override {
+    [[nodiscard]] auto get_children() const -> std::vector<ASTNode*> override {
         std::vector<ASTNode*> children;
         for (const auto& m : members) {
             if (m.node) {
@@ -441,23 +435,21 @@ struct NamespaceDefinition : public ASTNode {
     }
 
     NamespaceDefinition(std::string n, int line = -1, int column = -1)
-        : ASTNode(NodeType::NAMESPACE_DEFINITION, line, column),
-          name(std::move(n)),
-          namespace_scope(nullptr) {}
+        : ASTNode(NodeType::NAMESPACE_DEFINITION, line, column), name(std::move(n)) {}
 };
 
 class ScopeResolutionNode : public ASTNode {
    public:
     std::string namespace_name;
     std::unique_ptr<ASTNode> member;
-    Symbol* resolved_symbol;
+    Symbol* resolved_symbol{nullptr};
     std::string mangled_name;
 
-    std::string type_name() const override {
+    [[nodiscard]] auto type_name() const -> std::string override {
         return "SCOPE_RESOLUTION: " + namespace_name + "::";
     }
 
-    std::vector<ASTNode*> get_children() const override {
+    [[nodiscard]] auto get_children() const -> std::vector<ASTNode*> override {
         return {member.get()};
     }
 
@@ -465,10 +457,9 @@ class ScopeResolutionNode : public ASTNode {
                         int column = -1)
         : ASTNode(NodeType::SCOPE_RESOLUTION, line, column),  // Use SCOPE_RESOLUTION here
           namespace_name(std::move(ns)),
-          member(std::move(mem)),
-          resolved_symbol(nullptr) {}
+          member(std::move(mem)) {}
 
-    bool is_constant() const override {
+    [[nodiscard]] auto is_constant() const -> bool override {
         return member->is_constant();
     }
 };
@@ -486,12 +477,12 @@ struct VariableDeclarationNode : public ASTNode {
     std::unique_ptr<TypeNode> type;
     std::vector<Declaration> declarations;
 
-    std::string type_name() const override {
+    [[nodiscard]] auto type_name() const -> std::string override {
         return "VAR_DECL";
     }
-    std::vector<ASTNode*> get_children() const override {
+    [[nodiscard]] auto get_children() const -> std::vector<ASTNode*> override {
         std::vector<ASTNode*> refs;
-        for (auto& decl : declarations) {
+        for (const auto& decl : declarations) {
             if (decl.initial_value) {
                 refs.push_back(decl.initial_value.get());
             }
@@ -520,49 +511,45 @@ struct VariableAssignmentNode : public ASTNode {
 // Node for variable references in expressions (e.g., x in x + 1)
 struct VariableReferenceNode : public ASTNode {
     std::string name;
-    Symbol* resolved_symbol;
-    int resolved_offset;
+    Symbol* resolved_symbol{nullptr};
+    int resolved_offset{0};
     // std::unique_ptr<TypeNode> resolved_type;
     std::vector<std::string> scopes;
 
-    std::string type_name() const override {
+    [[nodiscard]] auto type_name() const -> std::string override {
         return "VAR_REF:";
     }
-    std::string get_value() const override {
+    [[nodiscard]] auto get_value() const -> std::string override {
         return name;
     }
 
     VariableReferenceNode(std::string var_name, int line = -1, int column = -1)
-        : ASTNode(NodeType::VARIABLE_REFERENCE, line, column),
-          name(std::move(var_name)),
-          resolved_symbol(nullptr),
-          resolved_offset(0) {}
+        : ASTNode(NodeType::VARIABLE_REFERENCE, line, column), name(std::move(var_name)) {}
 };
 
 // Node for unary operations.
 struct UnaryOpExpressionNode : public ASTNode {
     Token::Type op_type;
     std::unique_ptr<ASTNode> operand;
-    Symbol* resolved_symbol;
+    Symbol* resolved_symbol{nullptr};
     // std::unique_ptr<TypeNode> resolved_type;
 
     UnaryOpExpressionNode(Token::Type op, std::unique_ptr<ASTNode> operand_node, int line = -1,
                           int column = -1)
         : ASTNode(NodeType::UNARY_OP_EXPRESSION, line, column),
           op_type(op),
-          operand(std::move(operand_node)),
-          resolved_symbol(nullptr) {}
+          operand(std::move(operand_node)) {}
 };
 
 struct ArrayAccessNode : public ASTNode {
     std::unique_ptr<ASTNode> array_expr;
     std::unique_ptr<ASTNode> index_expr;
-    Symbol* resolved_symbol;
+    Symbol* resolved_symbol{nullptr};
 
-    std::string type_name() const override {
+    [[nodiscard]] auto type_name() const -> std::string override {
         return "ARRAY_ACCESS";
     }
-    std::vector<ASTNode*> get_children() const override {
+    [[nodiscard]] auto get_children() const -> std::vector<ASTNode*> override {
         return {array_expr.get(), index_expr.get()};
     }
 
@@ -570,8 +557,7 @@ struct ArrayAccessNode : public ASTNode {
                     int column = -1)
         : ASTNode(NodeType::ARRAY_ACCESS_EXPRESSION, line, column),
           array_expr(std::move(array)),
-          index_expr(std::move(index)),
-          resolved_symbol(nullptr) {}
+          index_expr(std::move(index)) {}
 };
 
 struct ParameterNode {
@@ -588,38 +574,37 @@ struct FunctionDefinitionNode : public ASTNode {
     std::vector<std::unique_ptr<ParameterNode>> parameters;
     std::vector<std::unique_ptr<ASTNode>> body_statements;
 
-    std::string type_name() const override {
+    [[nodiscard]] auto type_name() const -> std::string override {
         return "FUNCTION_DEF: " + name;
     }
-    std::vector<ASTNode*> get_children() const override {
+    [[nodiscard]] auto get_children() const -> std::vector<ASTNode*> override {
         std::vector<ASTNode*> refs;
-        for (auto& stmt : body_statements) {
+        for (const auto& stmt : body_statements) {
             refs.push_back(stmt.get());
         }
         return refs;
     }
 
-    FunctionDefinitionNode(std::unique_ptr<TypeNode> ret_type, const std::string& func_name,
-                           int line = -1, int column = -1)
+    FunctionDefinitionNode(std::unique_ptr<TypeNode> ret_type, std::string func_name, int line = -1,
+                           int column = -1)
         : ASTNode(NodeType::FUNCTION_DEFINITION, line, column),
           return_type(std::move(ret_type)),
-          name(func_name),
-          is_extern(false) {}
-    bool is_extern;
+          name(std::move(func_name)) {}
+    bool is_extern{false};
 };
 
 // Node for function calls
 struct FunctionCallNode : public ASTNode {
     std::string function_name;
     std::vector<std::unique_ptr<ASTNode>> arguments;
-    Symbol* resolved_symbol;
+    Symbol* resolved_symbol{nullptr};
 
-    std::string type_name() const override {
+    [[nodiscard]] auto type_name() const -> std::string override {
         return "FUNC_CALL: " + function_name;
     }
-    std::vector<ASTNode*> get_children() const override {
+    [[nodiscard]] auto get_children() const -> std::vector<ASTNode*> override {
         std::vector<ASTNode*> refs;
-        for (auto& arg : arguments) {
+        for (const auto& arg : arguments) {
             refs.push_back(arg.get());
         }
         return refs;
@@ -629,8 +614,7 @@ struct FunctionCallNode : public ASTNode {
                      int column = -1)
         : ASTNode(NodeType::FUNCTION_CALL, line, column),
           function_name(std::move(name)),
-          arguments(std::move(args)),
-          resolved_symbol(nullptr) {}
+          arguments(std::move(args)) {}
 };
 
 // Node for while statements
@@ -671,10 +655,10 @@ struct BinaryOperationExpressionNode : public ASTNode {
     std::unique_ptr<ASTNode> right;
     // std::unique_ptr<TypeNode> resolved_type;
 
-    std::string type_name() const override {
+    [[nodiscard]] auto type_name() const -> std::string override {
         return "BINARY_OP: ";
     }
-    std::vector<ASTNode*> get_children() const override {
+    [[nodiscard]] auto get_children() const -> std::vector<ASTNode*> override {
         return {left.get(), right.get()};
     }
 
@@ -691,12 +675,12 @@ struct BinaryOperationExpressionNode : public ASTNode {
 struct PrintStatementNode : public ASTNode {
     std::vector<std::unique_ptr<ASTNode>> expressions;
 
-    std::string type_name() const override {
+    [[nodiscard]] auto type_name() const -> std::string override {
         return "PRINT_STMT";
     }
-    std::vector<ASTNode*> get_children() const override {
+    [[nodiscard]] auto get_children() const -> std::vector<ASTNode*> override {
         std::vector<ASTNode*> refs;
-        for (auto& expr : expressions) {
+        for (const auto& expr : expressions) {
             refs.push_back(expr.get());
         }
         return refs;
@@ -712,18 +696,18 @@ struct IfStatementNode : public ASTNode {
     std::vector<std::unique_ptr<ASTNode>> true_block;
     std::vector<std::unique_ptr<ASTNode>> false_block;
 
-    std::string type_name() const override {
+    [[nodiscard]] auto type_name() const -> std::string override {
         return "IF_STATEMENT";
     }
-    std::vector<ASTNode*> get_children() const override {
+    [[nodiscard]] auto get_children() const -> std::vector<ASTNode*> override {
         std::vector<ASTNode*> refs;
         if (condition) {
             refs.push_back(condition.get());
         }
-        for (auto& stmt : true_block) {
+        for (const auto& stmt : true_block) {
             refs.push_back(stmt.get());
         }
-        for (auto& stmt : false_block) {
+        for (const auto& stmt : false_block) {
             refs.push_back(stmt.get());
         }
         return refs;
@@ -753,19 +737,19 @@ struct SwitchStatementNode : public ASTNode {
     long long min_case = 0;
     long long max_case = 0;
 
-    std::string type_name() const override {
+    [[nodiscard]] auto type_name() const -> std::string override {
         return "SWITCH_STATEMENT";
     }
-    std::vector<ASTNode*> get_children() const override {
+    [[nodiscard]] auto get_children() const -> std::vector<ASTNode*> override {
         std::vector<ASTNode*> refs;
         if (condition) {
             refs.push_back(condition.get());
         }
-        for (auto& c : cases) {
+        for (const auto& c : cases) {
             if (c.constant_expr) {
                 refs.push_back(c.constant_expr.get());
             }
-            for (auto& stmt : c.body) {
+            for (const auto& stmt : c.body) {
                 refs.push_back(stmt.get());
             }
         }
@@ -782,21 +766,21 @@ struct ProgramNode : public ASTNode {
     std::vector<std::unique_ptr<FunctionDefinitionNode>> functions;
     std::vector<std::unique_ptr<StructDefinitionNode>> structs;
 
-    std::vector<ASTNode*> get_children() const override {
+    [[nodiscard]] auto get_children() const -> std::vector<ASTNode*> override {
         std::vector<ASTNode*> refs;
-        for (auto& stmt : statements) {
+        for (const auto& stmt : statements) {
             refs.push_back(stmt.get());
         }
-        for (auto& func : functions) {
+        for (const auto& func : functions) {
             refs.push_back(func.get());
         }
-        for (auto& str : structs) {
+        for (const auto& str : structs) {
             refs.push_back(str.get());
         }
         return refs;
     }
 
-    std::string type_name() const override {
+    [[nodiscard]] auto type_name() const -> std::string override {
         return "PROGRAM_ROOT";
     }
 
@@ -815,12 +799,12 @@ struct ConstantDeclarationNode : public ASTNode {
     std::string name;
     std::unique_ptr<TypeNode> type;
     std::unique_ptr<ASTNode> initial_value;
-    Symbol* resolved_symbol;
+    Symbol* resolved_symbol{nullptr};
 
-    std::string type_name() const override {
+    [[nodiscard]] auto type_name() const -> std::string override {
         return "CONST_DECL: " + name;
     }
-    std::vector<ASTNode*> get_children() const override {
+    [[nodiscard]] auto get_children() const -> std::vector<ASTNode*> override {
         return {initial_value.get()};
     }
 
@@ -829,8 +813,7 @@ struct ConstantDeclarationNode : public ASTNode {
         : ASTNode(NodeType::CONSTANT_DECLARATION, line, column),
           name(std::move(name)),
           type(std::move(type)),
-          initial_value(std::move(initial_val)),
-          resolved_symbol(nullptr) {}
+          initial_value(std::move(initial_val)) {}
 };
 
 struct EnumMemberNode {
@@ -845,10 +828,10 @@ struct EnumStatementNode : public ASTNode {
     std::string name;
     std::vector<std::unique_ptr<EnumMemberNode>> members;
 
-    std::string type_name() const override {
+    [[nodiscard]] auto type_name() const -> std::string override {
         return "ENUM: " + name;
     }
-    std::vector<ASTNode*> get_children() const override {
+    [[nodiscard]] auto get_children() const -> std::vector<ASTNode*> override {
         return {};
     }
 

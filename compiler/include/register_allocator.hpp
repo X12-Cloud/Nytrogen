@@ -1,10 +1,11 @@
 #ifndef REGISTER_ALLOCATOR_HPP
 #define REGISTER_ALLOCATOR_HPP
 
+#include <regex>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <regex>
+
 #include "instruction_set.hpp"
 
 class RegisterAllocator {
@@ -21,14 +22,17 @@ class RegisterAllocator {
     std::unordered_map<std::string, std::string> spill_slots;
     int next_spill_offset;
 
-    struct LiveInterval { int end; };
+    struct LiveInterval {
+        int end;
+    };
     std::unordered_map<std::string, LiveInterval> intervals;
 
     void calculate_liveness(const std::vector<InstructionSet::Instruction>& instrs);
-    bool needs_xmm(const std::string& mnemonic);
-    bool is_vreg(const std::string& op);
+    auto needs_xmm(const std::string& mnemonic) -> bool;
+    auto is_vreg(const std::string& op) -> bool;
 
-    std::string get_sized_reg(const std::string& phys, const std::string& current_op, const InstructionSet::Instruction& instr);
+    auto get_sized_reg(const std::string& phys, const std::string& current_op,
+                       const InstructionSet::Instruction& instr) -> std::string;
 };
 
 #endif

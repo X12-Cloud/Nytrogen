@@ -1,15 +1,18 @@
 Checks: >
   -*,
-  readability-else-after-return,
-  readability-braces-around-statements,
-  readability-implicit-bool-conversion,
-  bugprone-branch-clone,
-  bugprone-suspicious-semicolon
+  bugprone-*,
+  readability-*,
+  modernize-*,
+  cppcoreguidelines-*,
+  -bugprone-easily-swappable-parameters,
+  -readability-magic-numbers,
+  -readability-function-cognitive-complexity,
+  -readability-identifier-length,
+  -bugprone-implicit-widening-of-multiplication-result
 
-# Allow headers
+# This ensures it doesn't try to fix system headers
 HeaderFilterRegex: 'compiler/include/.*'
 
-# Extra configurations for specific checks
 CheckOptions:
   - key:             readability-braces-around-statements.ShortStatementLines
     value:           '1'

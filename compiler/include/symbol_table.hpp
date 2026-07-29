@@ -42,16 +42,16 @@ struct Symbol {
     std::shared_ptr<StructDefinitionNode> structDef;
     int offset;
     int size;
-    std::unique_ptr<ASTNode> value;       // For constants
+    std::unique_ptr<ASTNode> value;  // For constants
     std::shared_ptr<EnumInfo> enumInfo;
     StructMember::Visibility visibility;  // For struct members
 
-    std::string assigned_vreg = ""; // For the RA
+    std::string assigned_vreg;  // For the RA
 
     Scope* internal_scope = nullptr;
 
-    SymbolTable* get_scope() {
-        return (SymbolTable*)internal_scope;
+    auto get_scope() const -> SymbolTable* {
+        return reinterpret_cast<SymbolTable*>(internal_scope);
     }
 
     // Constructor for namespaces
@@ -135,17 +135,17 @@ struct Symbol {
 class Scope {
    public:
     std::map<std::string, Symbol> symbols;
-    int currentOffset;  // For local variables, tracks the current stack offset
+    int currentOffset{0};  // For local variables, tracks the current stack offset
     Scope* parent;
     std::string scope_name;
 
-    Scope(Scope* p = nullptr) : currentOffset(0), parent(p) {}
+    Scope(Scope* p = nullptr) : parent(p) {}
 
     void addSymbol(Symbol&& symbol) {
         symbols.emplace(symbol.name, std::move(symbol));
     }
 
-    Symbol* lookup(const std::string& name) {
+    auto lookup(const std::string& name) -> Symbol* {
         auto it = symbols.find(name);
         if (it != symbols.end()) {
             return &it->second;
@@ -163,11 +163,11 @@ class SymbolTable {
         debug_mode = mode;
     }
 
-    Scope* current_scope;
+    Scope* current_scope{nullptr};
 
     std::map<std::string, StructDefinitionNode*> struct_definitions;
 
-    SymbolTable() : current_scope(nullptr) {
+    SymbolTable() {
         enterScope();  // Creates the Global Scope
     }
 
@@ -195,7 +195,7 @@ class SymbolTable {
         }
     }
 
-    Symbol* addSymbol(Symbol&& symbol) {
+    auto addSymbol(Symbol&& symbol) const -> Symbol* {
         if (current_scope != nullptr) {
             if (debug_mode) {
                 std::cerr << "Debug: Adding symbol '" << symbol.name << "' to current scope."
@@ -207,14 +207,14 @@ class SymbolTable {
         return nullptr;
     }
 
-    Symbol* lookupShallow(const std::string& name) {
+    auto lookupShallow(const std::string& name) const -> Symbol* {
         if (current_scope != nullptr) {
             return current_scope->lookup(name);
         }
         return nullptr;
     }
 
-    Symbol* lookup(const std::string& name) {
+    auto lookup(const std::string& name) const -> Symbol* {
         Scope* search_head = current_scope;
         while (search_head != nullptr) {
             if (Symbol* symbol = search_head->lookup(name)) {
@@ -225,7 +225,7 @@ class SymbolTable {
         return nullptr;
     }
 
-    bool isStructDefined(const std::string& name) {
+    auto isStructDefined(const std::string& name) const -> bool {
         return struct_definitions.count(name) > 0;
     }
 
@@ -233,7 +233,7 @@ class SymbolTable {
         struct_definitions[name] = node;
     }
 
-    std::map<std::string, StructDefinitionNode*> getStructDefinitions() {
+    auto getStructDefinitions() const -> std::map<std::string, StructDefinitionNode*> {
         return struct_definitions;
     }
 };

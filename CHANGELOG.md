@@ -4,6 +4,7 @@
 ### Added:
 - More nodes to be castable to eachother.
 - 3 new builtin math functions (sqrt, abs, round). and support for negative numbers.
+- Register allocator with stack spilling to further stablise the compiler.
 
 ## 0.1315
 ### Added:

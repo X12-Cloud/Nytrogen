@@ -25,15 +25,15 @@ class CodeGenerator {
     CodeGenerator(std::unique_ptr<ProgramNode>& ast, SymbolTable& symTable);
     InstructionSet emitter;
     void generate(const std::string& output_filename, bool is_entry_point);
-    bool isFloatingPoint(const TypeNode* type);
+    static auto isFloatingPoint(const TypeNode* type) -> bool;
     bool debug_mode = false;
 
-    std::string new_vreg() {
+    auto new_vreg() -> std::string {
         return "v" + std::to_string(vreg_counter++);
     }
 
-    std::string vreg_lookup(Symbol* sym) {
-        if (!sym) {
+    auto vreg_lookup(Symbol* sym) -> std::string {
+        if (sym == nullptr) {
             std::cerr << "Error: Resolved symbol is null during code generation.\n";
             return "";
         }
@@ -53,10 +53,10 @@ class CodeGenerator {
 
     std::vector<GlobalConstant> constants;
     std::map<std::string, std::string> constants_map;
-    int string_label_counter;
+    int string_label_counter{0};
     std::string current_function_name;
     std::string current_namespace_name;
-    int current_stack_depth;
+    int current_stack_depth{};
 
     std::unique_ptr<ProgramNode>& program_ast;
     SymbolTable& symbolTable;
@@ -72,7 +72,7 @@ class CodeGenerator {
     void visit(PrintStatementNode* node);
     void visit(ReturnStatementNode* node);
     void visit(IfStatementNode* node);
-    void visit(SwitchStatementNode* node);
+    static void visit(SwitchStatementNode* node);
     void visit(WhileStatementNode* node);
     void visit(ForStatementNode* node);
     void visit(FunctionCallNode* node);
@@ -92,8 +92,8 @@ class CodeGenerator {
     void visit(NamespaceDefinition* node);
     void visit(ScopeResolutionNode* node);
 
-    int getTypeSize(const TypeNode* type);
-    std::string getRegisterName(const std::string& reg64, int size);
+    auto getTypeSize(const TypeNode* type) -> int;
+    static auto getRegisterName(const std::string& reg64, int size) -> std::string;
 };
 
 #endif  // CODE_GENERATOR_HPP

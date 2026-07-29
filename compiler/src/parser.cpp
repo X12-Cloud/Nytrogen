@@ -817,9 +817,9 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
             return parseStructDefinition();
         default:
             Logger::report_error("Parser Error", "Unexpected token in statement: '" + peek().value +
-                                                    "' at line " + std::to_string(peek().line) +
-                                                    ", column " + std::to_string(peek().column) +
-                                                    ".");
+                                                     "' at line " + std::to_string(peek().line) +
+                                                     ", column " + std::to_string(peek().column) +
+                                                     ".");
     }
 }
 

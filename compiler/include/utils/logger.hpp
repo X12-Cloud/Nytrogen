@@ -24,6 +24,6 @@ namespace Logger {
     std::exit(1);
 }
 
-} // namespace logger
+}  // namespace Logger
 
 #endif

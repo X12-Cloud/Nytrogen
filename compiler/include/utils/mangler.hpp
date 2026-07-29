@@ -6,8 +6,8 @@
 
 namespace Mangler {
 
-inline std::string mangleVariable(const std::vector<std::string>& scopes,
-                                  const std::string& varName) {
+inline auto mangleVariable(const std::vector<std::string>& scopes, const std::string& varName)
+    -> std::string {
     std::string result = "_N";
     for (const auto& scope : scopes) {
         result += std::to_string(scope.length()) + scope;
@@ -16,7 +16,8 @@ inline std::string mangleVariable(const std::vector<std::string>& scopes,
     return result;
 }
 
-inline std::string mangleFunction(const std::vector<std::string>& scopes, const std::string& name) {
+inline auto mangleFunction(const std::vector<std::string>& scopes, const std::string& name)
+    -> std::string {
     if (name == "main") {
         return "main";
     }

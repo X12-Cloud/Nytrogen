@@ -1,9 +1,10 @@
-#include "instruction_set.hpp"
 #include <sstream>
 #include <stdexcept>
 
+#include "instruction_set.hpp"
+
 void InstructionSet::emit_adv(int size, const TypeNode* type, const std::string& base_vreg,
-                             int offset, const std::string& src_vreg) {
+                              int offset, const std::string& src_vreg) {
     bool is_fp = isAFloatingPoint(type);
     std::string size_prefix = get_size_prefix(size);
     std::string addr = size_prefix + " [" + base_vreg + " + " + std::to_string(offset) + "]";
@@ -16,20 +17,24 @@ void InstructionSet::emit_adv(int size, const TypeNode* type, const std::string&
 }
 
 void InstructionSet::load_adv(int size, const TypeNode* type, const std::string& dest_vreg,
-                             const std::string& base_vreg, int offset) {
+                              const std::string& base_vreg, int offset) {
     bool is_fp = isAFloatingPoint(type);
     std::string addr = "[" + base_vreg + " + " + std::to_string(offset) + "]";
 
     if (is_fp) {
         emit(size == 4 ? "vmovss" : "vmovsd", dest_vreg, addr);
     } else {
-        if (size == 1)      emit("movsx", dest_vreg, "byte " + addr);
-        else if (size == 4) emit("movsxd", dest_vreg, "dword " + addr); // FIX HERE
-        else                emit("mov", dest_vreg, addr);
+        if (size == 1)
+            emit("movsx", dest_vreg, "byte " + addr);
+        else if (size == 4)
+            emit("movsxd", dest_vreg, "dword " + addr);  // FIX HERE
+        else
+            emit("mov", dest_vreg, addr);
     }
 }
 
-void InstructionSet::load_from_address(int size, const TypeNode* type, const std::string& dest_vreg, const std::string& addr_vreg) {
+void InstructionSet::load_from_address(int size, const TypeNode* type, const std::string& dest_vreg,
+                                       const std::string& addr_vreg) {
     bool is_fp = isAFloatingPoint(type);
     std::string prefix = get_size_prefix(size);
     std::string addr = "[" + addr_vreg + "]";
@@ -37,13 +42,17 @@ void InstructionSet::load_from_address(int size, const TypeNode* type, const std
     if (is_fp) {
         emit(size == 4 ? "vmovss" : "vmovsd", dest_vreg, addr);
     } else {
-        if (size == 1)      emit("movsx", dest_vreg, "byte " + addr);
-        else if (size == 4) emit("movsx", dest_vreg, "dword " + addr);
-        else                emit("mov", dest_vreg, addr);
+        if (size == 1)
+            emit("movsx", dest_vreg, "byte " + addr);
+        else if (size == 4)
+            emit("movsx", dest_vreg, "dword " + addr);
+        else
+            emit("mov", dest_vreg, addr);
     }
 }
 
-void InstructionSet::emit_print(int size, const std::shared_ptr<TypeNode>& type, const std::string& src_vreg) {
+void InstructionSet::emit_print(int size, const std::shared_ptr<TypeNode>& type,
+                                const std::string& src_vreg) {
     auto prim = dynamic_cast<PrimitiveTypeNode*>(type.get());
     bool is_fp = isAFloatingPoint(type.get());
 
@@ -70,7 +79,8 @@ void InstructionSet::emit_print(int size, const std::shared_ptr<TypeNode>& type,
     call_external("printf");
 }
 
-void InstructionSet::emit_print_raw(int size, const std::shared_ptr<TypeNode>& type, const std::string& src_vreg) {
+void InstructionSet::emit_print_raw(int size, const std::shared_ptr<TypeNode>& type,
+                                    const std::string& src_vreg) {
     auto prim = dynamic_cast<PrimitiveTypeNode*>(type.get());
     bool is_fp = isAFloatingPoint(type.get());
 

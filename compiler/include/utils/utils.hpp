@@ -13,14 +13,15 @@
 
 namespace Utils {
 
-static std::string cleanString(std::string s) {
-    s.erase(std::remove_if(s.begin(), s.end(),
-                           [](unsigned char c) { return std::iscntrl(c) || std::isspace(c); }),
-            s.end());
+static auto cleanString(std::string s) -> std::string {
+    s.erase(
+        std::remove_if(s.begin(), s.end(),
+                       [](unsigned char c) -> bool { return std::iscntrl(c) || std::isspace(c); }),
+        s.end());
     return s;
 }
 
-static std::string get_distro_name() {
+static auto get_distro_name() -> std::string {
     std::ifstream file("/etc/os-release");
     std::string line;
     if (file.is_open()) {
