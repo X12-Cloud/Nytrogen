@@ -137,6 +137,7 @@ class Scope {
     std::map<std::string, Symbol> symbols;
     int currentOffset;  // For local variables, tracks the current stack offset
     Scope* parent;
+    std::string scope_name;
 
     Scope(Scope* p = nullptr) : currentOffset(0), parent(p) {}
 

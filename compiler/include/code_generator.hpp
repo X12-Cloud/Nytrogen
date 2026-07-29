@@ -94,7 +94,6 @@ class CodeGenerator {
 
     int getTypeSize(const TypeNode* type);
     std::string getRegisterName(const std::string& reg64, int size);
-    std::string reg_to_str(RegisterAllocator::RegID reg, const TypeNode* type);
 };
 
 #endif  // CODE_GENERATOR_HPP

@@ -119,6 +119,7 @@ void CodeGenerator::generate(const std::string& output_filename,
         }
     }
 
+    allocator.allocate_registers(emitter.instructions);
     emitter.flush_to_file();
 
     out.close();
@@ -230,59 +231,66 @@ void CodeGenerator::visit(ProgramNode* node) {
 
 void CodeGenerator::visit(FunctionDefinitionNode* node) {
     current_function_name = node->mangled_name;
-    current_stack_depth = 0;
-    if (node->is_extern) {
-        emitter.extern_sym(node->mangled_name);
-        return;  // No further code generation for extern functions
-    }
+    if (node->is_extern) { emitter.extern_sym(node->mangled_name); return; }
 
     emitter.label_local(node->mangled_name);
     emitter.emit("push", "rbp");
-    current_stack_depth += 8;
     emitter.emit("mov", "rbp", "rsp");
-
     emitter.emit("and", "rsp", "-16");
-    current_stack_depth = 0;
 
-    // Calculate total local variable space from current scope
-    int local_var_space = 0;
-    if (!symbolTable.all_scopes.empty()) {
-        local_var_space = -symbolTable.all_scopes.back()->currentOffset;
-    }
-    if (local_var_space == 0) {
-        local_var_space = 64;
-    }
+    auto* original_scope = symbolTable.current_scope;
+    bool found = false;
 
-    int aligned_space = (local_var_space + 15) & ~15;
-    if (aligned_space > 0) {
-        emitter.emit("sub", "rsp", std::to_string(aligned_space));
-        current_stack_depth += aligned_space;
-    }
+    Symbol* func_sym = symbolTable.lookup(node->mangled_name);
+    if (!func_sym) func_sym = symbolTable.lookup(node->name);
 
-    // Map incoming argument registers into virtual registers
-    const std::vector<std::string> arg_registers = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
-    for (size_t i = 0; i < node->parameters.size() && i < arg_registers.size(); ++i) {
-        Symbol* sym = symbolTable.lookup(node->parameters[i]->name);
-        if (sym) {
-            std::string param_vreg = vreg_lookup(sym);
-
-            emitter.emit("mov", param_vreg, arg_registers[i]);
-
-            int offset = (i + 1) * -8;
-            emitter.mov_indirect("rbp", offset, arg_registers[i]);
+    if (func_sym && func_sym->internal_scope) {
+        symbolTable.current_scope = func_sym->internal_scope;
+        found = true;
+    } else {
+        // Search all scopes for a name match if the above doesnt work
+        for (auto& s : symbolTable.all_scopes) {
+            if (s->scope_name == node->mangled_name || s->scope_name == node->name) {
+                symbolTable.current_scope = s.get();
+                found = true;
+                break;
+            }
         }
     }
 
-    // Generate code for all statements
-    for (const auto& stmt : node->body_statements) {
-        visit(stmt.get());
+    if (!found) {
+        std::cerr << "CRITICAL ERROR: Scope not found for function: " << node->name << std::endl;
     }
 
-    emitter.label_local(current_function_name + "_epilogue");
+    // Allocate stack space
+    int local_var_space = -symbolTable.current_scope->currentOffset;
+    if (local_var_space <= 0) local_var_space = 128;
+    int aligned_space = (local_var_space + 128 + 15) & ~15; 
+    emitter.emit("sub", "rsp", std::to_string(aligned_space));
 
+    // Bridge: Map physical args to the correct scope symbols
+    const std::vector<std::string> arg_registers = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+    for (size_t i = 0; i < node->parameters.size() && i < arg_registers.size(); ++i) {
+        std::string p_name = node->parameters[i]->name;
+
+        Symbol* sym = symbolTable.lookup(p_name);
+
+        if (sym != nullptr) {
+            std::string param_vreg = vreg_lookup(sym);
+            emitter.emit("mov", param_vreg, arg_registers[i]);
+            emitter.mov_indirect("rbp", sym->offset, arg_registers[i]);
+        } else {
+            std::cerr << "BRIDGE ERROR: Parameter '" << p_name << "' not found in scope." << std::endl;
+        }
+    }
+
+    for (const auto& stmt : node->body_statements) visit(stmt.get());
+
+    emitter.label_local(current_function_name + "_epilogue");
     emitter.emit("leave");
     emitter.emit("ret");
 
+    symbolTable.current_scope = original_scope;
     current_function_name = "";
 }
 
@@ -403,41 +411,27 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
 
 void CodeGenerator::visit(VariableAssignmentNode* node) {
     auto type = node->left->resolved_type;
-    bool is_fp = isFloatingPoint(type.get());
 
     visit(node->right.get());
-    std::string rhs_vreg = last_expr_vreg;
+    std::string rhs_val_vreg = last_expr_vreg;
 
-    auto* var_ref = dynamic_cast<VariableReferenceNode*>(node->left.get());
-    if (var_ref != nullptr) {
-        std::string lhs_vreg = vreg_lookup(var_ref->resolved_symbol);
+    bool old_lvalue = is_lvalue;
+    is_lvalue = true;
+    visit(node->left.get()); 
+    std::string lhs_addr_vreg = last_expr_vreg; // memory address
+    is_lvalue = old_lvalue;
 
-        if (is_fp) {
-            std::string instr = (getTypeSize(type.get()) == 4) ? "vmovss" : "vmovsd";
-            emitter.emit(instr, lhs_vreg, rhs_vreg);
-        } else {
-            emitter.emit("mov", lhs_vreg, rhs_vreg);
-        }
-        last_expr_vreg = lhs_vreg;
-    } else {
-        // Complex lvalue (e.g., array access or member access)
-        is_lvalue = true;
-        visit(node->left.get());
-        is_lvalue = false;
-        std::string addr_vreg = last_expr_vreg;
+    int size = getTypeSize(type.get());
 
-        int size = getTypeSize(type.get());
-        emitter.emit_adv(size, type.get(), addr_vreg, 0, rhs_vreg);
-        last_expr_vreg = rhs_vreg;
-    }
+    emitter.emit_adv(size, type.get(), lhs_addr_vreg, 0, rhs_val_vreg);
+
+    last_expr_vreg = rhs_val_vreg;
 }
+
 
 void CodeGenerator::visit(VariableReferenceNode* node) {
     Symbol* symbol = node->resolved_symbol;
-
-    if (symbol == nullptr) {
-        throw std::runtime_error("CodeGen Error: Symbol not resolved for " + node->name);
-    }
+    if (symbol == nullptr) throw std::runtime_error("Symbol not found");
 
     if (symbol->type == Symbol::SymbolType::CONSTANT) {
         visit(symbol->value.get());
@@ -445,19 +439,28 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
     }
 
     std::string vreg = vreg_lookup(symbol);
-
     bool is_global = !symbol->mangled_name.empty() && symbol->mangled_name != symbol->name;
-    if (is_global && !is_lvalue) {
-        int size = getTypeSize(node->resolved_type.get());
-        bool is_fp = isFloatingPoint(node->resolved_type.get());
+    int size = getTypeSize(node->resolved_type.get());
+    bool is_complex = (node->resolved_type->category == TypeNode::TypeCategory::STRUCT || 
+                       node->resolved_type->category == TypeNode::TypeCategory::ARRAY);
 
-        if (is_fp) {
-            std::string instr = (size == 4) ? "vmovss" : "vmovsd";
-            emitter.emit(instr, vreg, "[rel " + symbol->mangled_name + "]");
+    if (is_global) {
+        std::string prefix = emitter.get_size_prefix(size);
+        if (is_lvalue || is_complex) {
+            emitter.emit("lea", vreg, "[rel " + symbol->mangled_name + "]");
         } else {
-            // Use movsx for smaller types when loading into 64-bit vregs
-            std::string instr = (size == 1) ? "movsx" : (size == 4 ? "movsx" : "mov");
-            emitter.emit(instr, vreg, "[rel " + symbol->mangled_name + "]");
+            std::string instr = (size == 1) ? "movsx" : (size == 4 ? "movsxd" : "mov");
+            if (isFloatingPoint(node->resolved_type.get())) instr = (size == 4 ? "vmovss" : "vmovsd");
+            emitter.emit(instr, vreg, prefix + " [rel " + symbol->mangled_name + "]");
+        }
+    } else {
+        // local
+        if (is_lvalue || is_complex) {
+            // the address on the stack for Structs/Arrays/Assignments
+            emitter.emit_lea_stack(vreg, symbol->offset);
+        } else {
+            // the actual value for Math/Printing
+            emitter.load_adv(size, node->resolved_type.get(), vreg, "rbp", symbol->offset);
         }
     }
 
@@ -538,7 +541,6 @@ void CodeGenerator::visit(PrintStatementNode* node) {
         auto expr_type = node->expressions[i]->resolved_type;
         int size = getTypeSize(expr_type.get());
 
-        // Move vreg to physical regs for printf (handled inside emitter.emit_print)
         if (i == node->expressions.size() - 1) {
             emitter.emit_print(size, expr_type, last_expr_vreg);
         } else {
@@ -684,10 +686,9 @@ void CodeGenerator::visit(MemberAccessNode* node) {
     std::string member_addr_vreg = new_vreg();
     Symbol* member_symbol = node->resolved_symbol;
 
+    emitter.emit("mov", member_addr_vreg, base_addr_vreg);
     if (member_symbol && member_symbol->offset != 0) {
-        emitter.emit("add", member_addr_vreg, base_addr_vreg + ", " + std::to_string(member_symbol->offset));
-    } else {
-        emitter.emit("mov", member_addr_vreg, base_addr_vreg);
+        emitter.emit("add", member_addr_vreg, std::to_string(member_symbol->offset));
     }
 
     if (is_lvalue) {
@@ -748,7 +749,6 @@ void CodeGenerator::visit(ArrayAccessNode* node) {
     if (node->array_expr->node_type == ASTNode::NodeType::VARIABLE_REFERENCE) {
         auto var_ref = static_cast<VariableReferenceNode*>(node->array_expr.get());
         if (var_ref->resolved_symbol) {
-            // bridge: Get stack offset address into a virtual register
             emitter.emit_lea_stack(base_vreg, var_ref->resolved_symbol->offset);
         }
     } else {
@@ -757,18 +757,19 @@ void CodeGenerator::visit(ArrayAccessNode* node) {
     }
     is_lvalue = was_lvalue;
 
-    int element_size = 8;
+    int element_size = 4; // Default to int size
     if (node->array_expr->resolved_type && node->array_expr->resolved_type->category == TypeNode::TypeCategory::ARRAY) {
         auto arr_type = static_cast<ArrayTypeNode*>(node->array_expr->resolved_type.get());
         element_size = getTypeSize(arr_type->base_type.get());
     }
 
-    // addr = base + (index * size)
     std::string offset_vreg = new_vreg();
-    emitter.emit("imul", offset_vreg, index_vreg + ", " + std::to_string(element_size));
+    emitter.emit("mov", offset_vreg, index_vreg);
+    emitter.emit("imul", offset_vreg, std::to_string(element_size));
 
     std::string final_addr_vreg = new_vreg();
-    emitter.emit("add", final_addr_vreg, base_vreg + ", " + offset_vreg);
+    emitter.emit("mov", final_addr_vreg, base_vreg);
+    emitter.emit("add", final_addr_vreg, offset_vreg);
 
     if (is_lvalue) {
         last_expr_vreg = final_addr_vreg;

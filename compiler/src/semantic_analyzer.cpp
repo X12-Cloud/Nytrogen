@@ -282,6 +282,7 @@ void SemanticAnalyzer::visit(FunctionDefinitionNode* node) {
     symbolTable.addSymbol(std::move(func_symbol));
 
     symbolTable.enterScope();
+    symbolTable.current_scope->scope_name = node->mangled_name;
 
     currentFunctionReturnType = nullptr;
 

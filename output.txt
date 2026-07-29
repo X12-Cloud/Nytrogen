@@ -1,0 +1,428 @@
+--- Performing an incremental build of Nytrogen ---
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/x12/dev/Nytrogen/build
+[ 27%] Built target nytro-pre
+[ 44%] Built target nytro
+[100%] Built target nytro-c
+CMake Warning:
+  No source or binary directory provided.  Both will be assumed to be the
+  same as the current working directory, but note that this warning will
+  become a fatal error in future CMake releases.
+
+
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/x12/dev/Nytrogen
+--- Incremental build complete ---
+--- Cleaning out/ directory ---
+--- Running Nytrogen Preprocessor ---
+Running: "/home/x12/dev/Nytrogen/build/bin/nytro-pre" "stress_test.ny" > "./out/stress_test.pre.nyt"
+--- Running Nytrogen Compiler ---
+Running: "/home/x12/dev/Nytrogen/build/bin/nytro-c" "./out/stress_test.pre.nyt" "./out/stress_test.asm"  -verbose -debug -entry
+Nytrogen Compiler Arch Linux
+
+--- Processing Source File: ./out/stress_test.pre.nyt ---
+
+Debug: Entered new scope. Total scopes in archive: 2
+Debug: Adding symbol 'calculate_score' to current scope.
+Debug: Adding symbol 'main' to current scope.
+Debug: Adding symbol 'Status' to current scope.
+Debug: Adding symbol 'OFF' to current scope.
+Debug: Adding symbol 'ON' to current scope.
+Debug: Adding symbol 'PENDING' to current scope.
+Debug: Adding symbol 'PI' to current scope.
+Debug: Adding symbol 'calculate_score' to current scope.
+Debug: Entered new scope. Total scopes in archive: 3
+Debug: Adding symbol 'a' to current scope.
+Debug: Adding symbol 'b' to current scope.
+Debug: Binary Op resolving to: int
+Debug: Binary Op resolving to: int
+Debug: Binary Op resolving to: int
+Debug: Binary Op resolving to: int
+Debug: Exited scope. Head moved to parent.
+Debug: Adding symbol 'main' to current scope.
+Debug: Entered new scope. Total scopes in archive: 4
+Debug: Adding symbol 'map' to current scope.
+Debug: Adding symbol 'data' to current scope.
+Debug: Adding symbol 'p' to current scope.
+Debug: Adding symbol 'current_status' to current scope.
+Debug: Adding symbol 'total' to current scope.
+Debug: Adding symbol 'i' to current scope.
+Debug: Entered new scope. Total scopes in archive: 5
+Debug: Binary Op resolving to: int
+Debug: Binary Op resolving to: int
+Debug: Exited scope. Head moved to parent.
+Debug: Adding symbol 'radius' to current scope.
+Debug: Binary Op resolving to: float
+Debug: Adding symbol 'radiusp2' to current scope.
+Debug: Binary Op resolving to: float
+Debug: Adding symbol 'area' to current scope.
+Debug: Adding symbol 'final_result' to current scope.
+Debug: Exited scope. Head moved to parent.
+CodeGen Warning: Symbol 'a' not found for bridge.
+CodeGen Warning: Symbol 'b' not found for bridge.
+Successfully generated assembly to './out/stress_test.asm'
+
+--- Assembling stress_test.asm ---
+Running: nasm -f elf64 "./out/stress_test.asm" -o "./out/stress_test.o"
+
+--- Linking ---
+Running: ld -o "./out/nytrogen_test" "./out/stress_test.o"  -lc --dynamic-linker /lib64/ld-linux-x86-64.so.2
+
+--- Running output program ---
+
+Exit Code: 0
+--- Printing output assembly file ---
+
+section .text
+    extern printf
+    extern strcmp
+    global _start
+    global calculate_score
+    global main
+
+_start:
+    call main
+    mov rdi, rax
+    mov rax, 60
+    syscall
+
+_N15calculate_score:
+    push rbp
+    mov rbp, rsp
+    and rsp, -16
+    sub rsp, 64
+    movsxd r8, dword [rbp + -8]
+    movsxd r9, dword [rbp + -16]
+    cmp r8, r9
+    setg al
+    movzx r10, al
+    cmp r10, 0
+    je _if_false_0
+    movsxd r8, dword [rbp + -8]
+    mov r10, 2
+    mov r11, r8
+    imul r11, r10
+    movsxd r9, dword [rbp + -16]
+    mov r10, 2
+    mov rax, r9
+    cqo
+    idiv r10
+    mov r10, rax
+    mov rbx, r11
+    add rbx, r10
+    mov rax, rbx
+    jmp _N15calculate_score_epilogue
+    jmp _if_end_0
+
+_if_false_0:
+
+_if_end_0:
+    movsxd r8, dword [rbp + -8]
+    movsxd r9, dword [rbp + -16]
+    mov rbx, r8
+    sub rbx, r9
+    mov rax, rbx
+    jmp _N15calculate_score_epilogue
+
+_N15calculate_score_epilogue:
+    leave
+    ret
+
+main:
+    push rbp
+    mov rbp, rsp
+    and rsp, -16
+    sub rsp, 64
+    lea rbx, [rel _str_0]
+    mov rsi, rbx
+    lea rdi, [rel _print_str_format]
+    xor rax, rax
+    call printf
+    mov rbx, 2
+    mov r9, 0
+    lea r8, [rbp - 12]
+    mov r10, r9
+    imul r10, 4
+    mov r9, r8
+    add r9, r10
+    mov dword [r9 + 0], ebx
+    mov rbx, 0
+    mov r9, 1
+    lea r10, [rbp - 12]
+    mov r8, r9
+    imul r8, 4
+    mov r9, r10
+    add r9, r8
+    mov dword [r9 + 0], ebx
+    mov rbx, 1
+    mov r9, 2
+    lea r8, [rbp - 12]
+    mov r10, r9
+    imul r10, 4
+    mov r9, r8
+    add r9, r10
+    mov dword [r9 + 0], ebx
+    mov rbx, 100
+    mov r9, 0
+    lea r10, [rbp - 24]
+    mov r8, r9
+    imul r8, 4
+    mov r9, r10
+    add r9, r8
+    mov dword [r9 + 0], ebx
+    mov rbx, 200
+    mov r9, 1
+    lea r8, [rbp - 24]
+    mov r10, r9
+    imul r10, 4
+    mov r9, r8
+    add r9, r10
+    mov dword [r9 + 0], ebx
+    mov rbx, 300
+    mov r9, 2
+    lea r10, [rbp - 24]
+    mov r8, r9
+    imul r8, 4
+    mov r9, r10
+    add r9, r8
+    mov dword [r9 + 0], ebx
+    lea rbx, [rel _str_1]
+    mov rsi, rbx
+    lea rdi, [rel _print_str_format]
+    xor rax, rax
+    call printf
+    mov rbx, 0
+    lea r9, [rbp - 12]
+    mov r8, rbx
+    imul r8, 4
+    mov rbx, r9
+    add rbx, r8
+    movsxd r8, dword [rbx + 0]
+    lea rbx, [rbp - 24]
+    mov r9, r8
+    imul r9, 4
+    mov r8, rbx
+    add r8, r9
+    movsxd r9, dword [r8 + 0]
+    mov rsi, r9
+    lea rdi, [rel _print_int_format]
+    xor rax, rax
+    call printf
+    mov r9, 999
+    mov r8, 1
+    lea rbx, [rbp - 12]
+    mov r10, r8
+    imul r10, 4
+    mov r8, rbx
+    add r8, r10
+    movsxd r10, dword [r8 + 0]
+    lea r8, [rbp - 24]
+    mov rbx, r10
+    imul rbx, 4
+    mov r10, r8
+    add r10, rbx
+    mov dword [r10 + 0], r9d
+    lea r9, [rel _str_2]
+    mov rsi, r9
+    lea rdi, [rel _print_str_format]
+    xor rax, rax
+    call printf
+    mov r9, 0
+    lea r10, [rbp - 24]
+    mov rbx, r9
+    imul rbx, 4
+    mov r9, r10
+    add r9, rbx
+    movsxd rbx, dword [r9 + 0]
+    mov rsi, rbx
+    lea rdi, [rel _print_int_format]
+    xor rax, rax
+    call printf
+    mov rbx, 10
+    lea r9, [rel _N1p]
+    mov r10, r9
+    mov dword [r10 + 0], ebx
+    mov rbx, 20
+    lea r9, [rel _N1p]
+    mov r10, r9
+    add r10, 4
+    mov dword [r10 + 0], ebx
+    mov rbx, 1
+    mov [rel _N14current_status], rbx
+
+_while_start_0:
+    movsxd rbx, dword [rel _N1i]
+    mov r10, 3
+    cmp rbx, r10
+    setl al
+    movzx r10, al
+    cmp r10, 0
+    je _while_end_0
+    lea r10, [rel _str_3]
+    mov rsi, r10
+    lea rdi, [rel _print_str_format]
+    xor rax, rax
+    call printf
+    movsxd r10, dword [rel _N5total]
+    movsxd rbx, dword [rel _N1i]
+    lea r8, [rbp - 24]
+    mov r11, rbx
+    imul r11, 4
+    mov r12, r8
+    add r12, r11
+    movsxd r11, dword [r12 + 0]
+    mov r12, r10
+    add r12, r11
+    lea r10, [rel _N5total]
+    mov dword [r10 + 0], r12d
+    movsxd rbx, dword [rel _N1i]
+    mov r12, 1
+    mov r11, rbx
+    add r11, r12
+    lea rbx, [rel _N1i]
+    mov dword [rbx + 0], r11d
+    jmp _while_start_0
+
+_while_end_0:
+    lea r11, [rel _str_3]
+    mov rsi, r11
+    lea rdi, [rel _print_str_format]
+    xor rax, rax
+    call printf
+    vmovss xmm1, dword [rel _N6radius]
+    vmovss xmm1, dword [rel _N6radius]
+    vmulss xmm2, xmm1, xmm1
+    vmovss [rel _N8radiusp2], xmm2
+    vmovss xmm2, dword [rel _N2PI]
+    vmovss xmm1, dword [rel _N8radiusp2]
+    vmulss xmm3, xmm2, xmm1
+    vmovss [rel _N4area], xmm3
+    lea r11, [rel _str_4]
+    mov rsi, r11
+    lea rdi, [rel _print_raw_format]
+    xor rax, rax
+    call printf
+    vmovss xmm3, dword [rel _N4area]
+    vcvtss2sd xmm0, xmm3, xmm3
+    lea rdi, [rel _print_float_format]
+    mov rax, 1
+    call printf
+    movsxd r10, dword [rel _N5total]
+    lea r9, [rel _N1p]
+    mov r11, r9
+    add r11, 4
+    movsxd r9, dword [r11 + 0]
+    mov rdi, r10
+    mov rsi, r9
+    call _N15calculate_score
+    mov r9, rax
+    mov [rel _N12final_result], r9
+    lea r9, [rel _str_5]
+    mov rsi, r9
+    lea rdi, [rel _print_str_format]
+    xor rax, rax
+    call printf
+    lea r9, [rel _str_6]
+    mov rsi, r9
+    lea rdi, [rel _print_raw_format]
+    xor rax, rax
+    call printf
+    movsxd r9, dword [rel _N12final_result]
+    mov rsi, r9
+    lea rdi, [rel _print_int_format]
+    xor rax, rax
+    call printf
+    movsxd r10, dword [rel _N14current_status]
+    mov r11, 1
+    cmp r10, r11
+    sete al
+    movzx r10, al
+    cmp r10, 0
+    je _if_false_1
+    movsxd r9, dword [rel _N12final_result]
+    mov r10, 1000
+    cmp r9, r10
+    setg al
+    movzx r10, al
+    cmp r10, 0
+    je _if_false_2
+    movsxd r9, dword [rel _N12final_result]
+    mov r10, 3008
+    cmp r9, r10
+    sete al
+    movzx r9, al
+    cmp r9, 0
+    je _if_false_3
+    lea r9, [rel _str_7]
+    mov rsi, r9
+    lea rdi, [rel _print_str_format]
+    xor rax, rax
+    call printf
+    jmp _if_end_3
+
+_if_false_3:
+    lea r9, [rel _str_8]
+    mov rsi, r9
+    lea rdi, [rel _print_str_format]
+    xor rax, rax
+    call printf
+
+_if_end_3:
+    jmp _if_end_2
+
+_if_false_2:
+    lea r9, [rel _str_9]
+    mov rsi, r9
+    lea rdi, [rel _print_str_format]
+    xor rax, rax
+    call printf
+
+_if_end_2:
+    jmp _if_end_1
+
+_if_false_1:
+
+_if_end_1:
+    mov r9, 0
+    mov rax, r9
+    jmp main_epilogue
+
+main_epilogue:
+    leave
+    ret
+
+section .data
+    _print_int_format: db "%d", 10, 0
+    _print_str_format: db "%s", 10, 0
+    _print_char_format: db "%c", 10, 0
+    _print_float_format: db "%f", 10, 0
+    _print_int_raw_format: db "%d", 0
+    _print_raw_format: db "%s", 0
+    _print_char_raw_format: db "%c", 0
+    _print_float_raw_format: db "%f", 0
+    align 16
+    _abs_mask: dq 0x7FFFFFFFFFFFFFFF
+    align 8
+    _N2PI: dd 3.141590
+    _str_0: db "Hello", 0
+    _N3map: dw 0
+    _N4data: dw 0
+    _str_1: db "nested index access (300):", 0
+    _str_2: db "nested assignment result (999):", 0
+    _N1p: dq 0
+    _N14current_status: dd 0
+    _N5total: dd 0
+    _N1i: dd 0
+    _str_3: db "processing index...", 0
+    _N6radius: dd 5.000000
+    _N8radiusp2: dd 0
+    _N4area: dd 0
+    _str_4: db "circle area:", 0
+    _N12final_result: dd 0
+    _str_5: db "", 10, "", 0
+    _str_6: db "final score (3008):", 0
+    _str_7: db "status: pass (3008)", 0
+    _str_8: db "status: pass (not 3008)", 0
+    _str_9: db "status: fail", 0

@@ -4,29 +4,31 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-
-struct RegStrings {
-    std::string byte1;
-    std::string byte4;
-    std::string byte8;
-};
+#include <regex>
+#include "instruction_set.hpp"
 
 class RegisterAllocator {
    public:
-    enum RegID { R10, R11, RBX, RCX, RDI, RSI };
-
     RegisterAllocator();
-
-    RegID allocate();
-    void free_reg(RegID reg);
-
-    void reset();
-
-    std::string get_name(RegID reg, int byte_size);
+    void allocate_registers(std::vector<InstructionSet::Instruction>& instructions);
 
    private:
-    std::vector<RegID> register_pool;
-    std::unordered_map<RegID, RegStrings> register_lookup;
+    std::vector<std::string> int_pool;
+    std::vector<std::string> xmm_pool;
+
+    std::unordered_map<std::string, std::string> vreg_to_phys;
+
+    std::unordered_map<std::string, std::string> spill_slots;
+    int next_spill_offset;
+
+    struct LiveInterval { int end; };
+    std::unordered_map<std::string, LiveInterval> intervals;
+
+    void calculate_liveness(const std::vector<InstructionSet::Instruction>& instrs);
+    bool needs_xmm(const std::string& mnemonic);
+    bool is_vreg(const std::string& op);
+
+    std::string get_sized_reg(const std::string& phys, const std::string& current_op, const InstructionSet::Instruction& instr);
 };
 
 #endif

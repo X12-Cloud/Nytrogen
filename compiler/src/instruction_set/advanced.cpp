@@ -6,13 +6,12 @@ void InstructionSet::emit_adv(int size, const TypeNode* type, const std::string&
                              int offset, const std::string& src_vreg) {
     bool is_fp = isAFloatingPoint(type);
     std::string size_prefix = get_size_prefix(size);
-    std::string addr = "[" + base_vreg + " + " + std::to_string(offset) + "]";
+    std::string addr = size_prefix + " [" + base_vreg + " + " + std::to_string(offset) + "]";
 
     if (is_fp) {
-        std::string instr = (size == 4) ? "vmovss" : "vmovsd";
-        emit(instr, addr, src_vreg);
+        emit(size == 4 ? "vmovss" : "vmovsd", addr, src_vreg);
     } else {
-        emit("mov", size_prefix + " " + addr, src_vreg);
+        emit("mov", addr, src_vreg);
     }
 }
 
@@ -24,20 +23,24 @@ void InstructionSet::load_adv(int size, const TypeNode* type, const std::string&
     if (is_fp) {
         emit(size == 4 ? "vmovss" : "vmovsd", dest_vreg, addr);
     } else {
-        // Sign-extend smaller types into the 64-bit virtual register
-        if (size == 1) {
-            emit("movsx", dest_vreg, "byte " + addr);
-        } else if (size == 4) {
-            emit("movsx", dest_vreg, "dword " + addr);
-        } else {
-            emit("mov", dest_vreg, addr);
-        }
+        if (size == 1)      emit("movsx", dest_vreg, "byte " + addr);
+        else if (size == 4) emit("movsxd", dest_vreg, "dword " + addr); // FIX HERE
+        else                emit("mov", dest_vreg, addr);
     }
 }
 
 void InstructionSet::load_from_address(int size, const TypeNode* type, const std::string& dest_vreg, const std::string& addr_vreg) {
-    // Similar to load_adv but offset is 0 and base is the address register
-    load_adv(size, type, dest_vreg, addr_vreg, 0);
+    bool is_fp = isAFloatingPoint(type);
+    std::string prefix = get_size_prefix(size);
+    std::string addr = "[" + addr_vreg + "]";
+
+    if (is_fp) {
+        emit(size == 4 ? "vmovss" : "vmovsd", dest_vreg, addr);
+    } else {
+        if (size == 1)      emit("movsx", dest_vreg, "byte " + addr);
+        else if (size == 4) emit("movsx", dest_vreg, "dword " + addr);
+        else                emit("mov", dest_vreg, addr);
+    }
 }
 
 void InstructionSet::emit_print(int size, const std::shared_ptr<TypeNode>& type, const std::string& src_vreg) {
