@@ -1,3 +1,0 @@
-int printer(x) {
-	print(x);
-}

@@ -1,60 +1,36 @@
  PROGRAM_ROOT
-   FUNCTION_DEF: main
-     VAR_DECL
-       FLOAT_LITERAL: (42.990002)
-     VAR_DECL
-       ASTNode
-     PRINT_STMT
-       STR_LITERAL: (Float 42.99 to Int (42): )
-       VAR_REF: (f_to_i)
-     VAR_DECL
-       INT_LITERAL: (100)
-     VAR_DECL
-       ASTNode
-     PRINT_STMT
-       STR_LITERAL: (Int 100 to Float (100.000000): )
-       VAR_REF: (i_to_f)
-     VAR_DECL
-       DOUBLE_LITERAL: (3.141593)
-     VAR_DECL
-       ASTNode
-     PRINT_STMT
-       STR_LITERAL: (Double PI to Float (3.141593): )
-       VAR_REF: (d_to_f)
-     VAR_DECL
-       INT_LITERAL: (65)
-     VAR_DECL
-       ASTNode
-     PRINT_STMT
-       STR_LITERAL: (Int 65 to Char (A): )
-       VAR_REF: (i_to_c)
-     VAR_DECL
-       CHAR_LITERAL: (66)
-     VAR_DECL
-       ASTNode
-     PRINT_STMT
-       STR_LITERAL: (Char B to Int (66): )
-       VAR_REF: (c_to_i)
+   FUNCTION_DEF: add
+     RETURN_STMT:
+       BINARY_OP: 
+         VAR_REF: (x)
+         VAR_REF: (y)
+   FUNCTION_DEF: sub
+     RETURN_STMT:
+       BINARY_OP: 
+         VAR_REF: (x)
+         VAR_REF: (y)
+   FUNCTION_DEF: pow
      VAR_DECL
        INT_LITERAL: (1)
      VAR_DECL
-       ASTNode
+     ASTNode
+   FUNCTION_DEF: main
+     VAR_DECL
+       FUNC_CALL: add
+         INT_LITERAL: (1)
+         INT_LITERAL: (2)
+     VAR_DECL
+       FUNC_CALL: mul
+         INT_LITERAL: (5)
+         INT_LITERAL: (6)
      PRINT_STMT
-       STR_LITERAL: (Int 1 to Bool (1): )
-       VAR_REF: (b)
-     VAR_DECL
-       INT_LITERAL: (0)
-     VAR_DECL
-       ASTNode
+       STR_LITERAL: (x = )
+       VAR_REF: (x)
      PRINT_STMT
-       STR_LITERAL: (Int 0 to Bool (0): )
-       VAR_REF: (b2)
-     VAR_DECL
-       DOUBLE_LITERAL: (55.550000)
-     VAR_DECL
-       ASTNode
+       STR_LITERAL: (y = )
+       VAR_REF: (y)
      PRINT_STMT
-       STR_LITERAL: (Double 55.55 -> Int -> Float (55.000000): )
-       VAR_REF: (result)
+       STR_LITERAL: (z = )
+       VAR_REF: (z)
      RETURN_STMT:
        INT_LITERAL: (0)

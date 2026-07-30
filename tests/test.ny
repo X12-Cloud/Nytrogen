@@ -1,4 +1,4 @@
-include <stdlib.nyt>
+#include <stdlib.nyt>
 
 int main() {
     char my_char;
