@@ -81,7 +81,7 @@ void RegisterAllocator::allocate_registers(std::vector<InstructionSet::Instructi
     spill_slots.clear();
     next_spill_offset = 128;
 
-    int_pool = {"r15", "r14", "r13", "r12", "rbx", "r11", "r10", "r9", "r8"};
+    int_pool = {"r14", "r13", "r12", "rbx", "r11", "r10", "r9", "r8"};
     xmm_pool = {"xmm7", "xmm6", "xmm5", "xmm4", "xmm3", "xmm2", "xmm1"};
 
     std::vector<InstructionSet::Instruction> physical_instrs;
