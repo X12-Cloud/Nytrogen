@@ -450,8 +450,15 @@ std::unique_ptr<ASTNode> Parser::parseFactor() {
         }
     } else if (current_token.type == Token::LPAREN) {
         consume();
-        node = parseExpression();
-        expect(Token::RPAREN, "Expected ')' after expression in parentheses.");
+        if (Utils::isTypeKeyword(peek().type)) {
+            Token type_token = consume();
+            expect(Token::RPAREN, "Expected ')' after type name in cast.");
+            auto operand = parseFactor(); 
+            node = std::make_unique<UnaryOpExpressionNode>(type_token.type, std::move(operand), current_token.line, current_token.column);
+        } else {
+            node = parseExpression();
+            expect(Token::RPAREN, "Expected ')' after expression in parentheses.");
+        }
     } else if (current_token.type == Token::STRING_LITERAL) {
         node = parseStringLiteralExpression();
     } else if (current_token.type == Token::TRUE || current_token.type == Token::FALSE) {
@@ -481,34 +488,32 @@ std::unique_ptr<ASTNode> Parser::parseFactor() {
 }
 
 std::unique_ptr<ASTNode> Parser::parseUnaryExpression() {
-    if (peek().type == Token::STAR || peek().type == Token::ADDRESSOF) {
-        const Token& op_token = consume();
-        auto operand = parseUnaryExpression();
-        return std::make_unique<UnaryOpExpressionNode>(op_token.type, std::move(operand),
-                                                       op_token.line, op_token.column);
-    }
-    if (peek().type == Token::BANG) {
-        const Token& op_token = consume();
-        auto operand = parseUnaryExpression();
-        return std::make_unique<UnaryOpExpressionNode>(op_token.type, std::move(operand),
-                                                       op_token.line, op_token.column);
-    }
-    if (peek().type == Token::LPAREN) {
-        Token::Type target_type_token = peek(1).type;
-        if (target_type_token == Token::KEYWORD_INT || target_type_token == Token::KEYWORD_CHAR) {
-            consume();
-            consume();
+    const Token& current_token = peek();
 
-            bool is_pointer = false;
+    if (current_token.type == Token::STAR || current_token.type == Token::ADDRESSOF ||
+        current_token.type == Token::BANG || current_token.type == Token::MINUS) {
+
+        consume();
+        auto operand = parseUnaryExpression(); // Recursive for things like !!ptr
+        return std::make_unique<UnaryOpExpressionNode>(current_token.type, std::move(operand),
+                                                       current_token.line, current_token.column);
+    }
+
+    if (current_token.type == Token::LPAREN) {
+        if (Utils::isTypeKeyword(peek(1).type)) {
+            consume();
+            Token type_token = consume();
+
+            // Check if it's a pointer cast: (int*) or (float*)
+            bool is_pointer_cast = false;
             if (peek().type == Token::STAR) {
                 consume();
-                is_pointer = true;
+                is_pointer_cast = true;
             }
-            expect(Token::RPAREN, "Expected ')' closing the type cast.");
-            auto operand = parseExpression();
 
-            return std::make_unique<UnaryOpExpressionNode>(target_type_token, std::move(operand),
-                                                           peek().line, peek().column);
+            expect(Token::RPAREN, "Expected ')' closing the type cast.");
+            auto operand = parseUnaryExpression();
+            return std::make_unique<UnaryOpExpressionNode>(type_token.type, std::move(operand), current_token.line, current_token.column);
         }
     }
     return parseFactor();

@@ -2,7 +2,7 @@
 
 ## 0.132 (Current)
 ### Added:
-- More nodes to be castable to eachother.
+- Implemented a centralized type-conversion matrix for explicit casts.
 - 3 new builtin math functions (sqrt, abs, round). and support for negative numbers.
 - Register allocator with stack spilling to further stablise the compiler.
 

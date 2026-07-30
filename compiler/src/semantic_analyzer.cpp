@@ -816,14 +816,14 @@ void SemanticAnalyzer::visit(StructDefinitionNode* node) {
 void SemanticAnalyzer::visit(UnaryOpExpressionNode* node) {
     std::unique_ptr<TypeNode> operand_type = visitExpression(node->operand.get());
 
-    if (node->op_type == Token::KEYWORD_INT) {
-        node->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_INT);
+    if (Utils::isTypeKeyword(node->op_type)) {
+        node->resolved_type = std::make_unique<PrimitiveTypeNode>(node->op_type);
+
+        // Optional: Add cast validation here
+        // e.g., if (!canCast(operand_type.get(), node->resolved_type.get())) Logger::report_error("Invalid cast...", node->line);
         return;
     }
-    if (node->op_type == Token::KEYWORD_CHAR) {
-        node->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_CHAR);
-        return;
-    }
+
     if (node->op_type == Token::ADDRESSOF) {
         if (node->operand->node_type != ASTNode::NodeType::VARIABLE_REFERENCE) {
             Logger::report_error("Semantic Error",

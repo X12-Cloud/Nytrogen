@@ -10,6 +10,7 @@
 
 #include "logger.hpp"
 #include "mangler.hpp"
+#include "lexer.hpp"
 
 namespace Utils {
 
@@ -37,6 +38,20 @@ static auto get_distro_name() -> std::string {
         }
     }
     return "Unknown Distribution";
+}
+
+static bool isTypeKeyword(Token::Type type) {
+    switch (type) {
+        case Token::KEYWORD_INT:
+        case Token::KEYWORD_CHAR:
+        case Token::KEYWORD_FLOAT:
+        case Token::KEYWORD_DOUBLE:
+        case Token::KEYWORD_BOOL:
+        case Token::KEYWORD_STRING:
+            return true;
+        default:
+            return false;
+    }
 }
 
 };  // namespace Utils

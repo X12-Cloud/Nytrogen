@@ -710,16 +710,11 @@ void CodeGenerator::visit(MemberAccessNode* node) {
 }
 
 void CodeGenerator::visit(UnaryOpExpressionNode* node) {
-    if (node->op_type == Token::KEYWORD_INT || node->op_type == Token::KEYWORD_CHAR) {
-        visit(node->operand.get());
-        std::string res_vreg = new_vreg();
-        if (isFloatingPoint(node->operand->resolved_type.get())) {
-            int size = getTypeSize(node->operand->resolved_type.get());
-            emitter.emit(size == 8 ? "vcvttsd2si" : "vcvttss2si", res_vreg, last_expr_vreg);
-        } else {
-            emitter.emit("mov", res_vreg, last_expr_vreg);  // Identity cast
-        }
-        last_expr_vreg = res_vreg;
+    if (Utils::isTypeKeyword(node->op_type)) {
+        visit(node->operand.get()); 
+        std::string dest_vreg = new_vreg();
+        emit_cast(node->operand->resolved_type.get(), node->resolved_type.get(), last_expr_vreg, dest_vreg);
+        last_expr_vreg = dest_vreg;
         return;
     }
 
@@ -947,4 +942,36 @@ auto CodeGenerator::getRegisterName(const std::string& reg64, int size) -> std::
         {"rcx", "ecx"}, {"r8", "r8d"},  {"r9", "r9d"}};
 
     return map32.at(reg64);
+}
+
+void CodeGenerator::emit_cast(const TypeNode* from, const TypeNode* to, const std::string& src_vreg, const std::string& dest_vreg) {
+    if (!from || !to) return;
+
+    bool src_fp = isFloatingPoint(from);
+    bool dest_fp = isFloatingPoint(to);
+    int src_size = getTypeSize(from);
+    int dest_size = getTypeSize(to);
+
+    // 1. Float -> Int (e.g., (int)float_var)
+    if (src_fp && !dest_fp) {
+        emitter.emit(src_size == 8 ? "vcvttsd2si" : "vcvttss2si", dest_vreg, src_vreg);
+    } 
+    // 2. Int -> Float (e.g., (float)int_var)
+    else if (!src_fp && dest_fp) {
+        std::string instr = (dest_size == 8) ? "vcvtsi2sd" : "vcvtsi2ss";
+        emitter.emit_raw(instr, {dest_vreg, dest_vreg, src_vreg});
+    } 
+    // 3. Float -> Float (e.g., (double)float_var)
+    else if (src_fp && dest_fp) {
+        if (src_size == 4 && dest_size == 8) 
+            emitter.emit_raw("vcvtss2sd", {dest_vreg, dest_vreg, src_vreg});
+        else if (src_size == 8 && dest_size == 4)
+            emitter.emit_raw("vcvtsd2ss", {dest_vreg, dest_vreg, src_vreg});
+        else
+            emitter.emit("vmovss", dest_vreg, src_vreg);
+    } 
+    // 4. Int -> Int (Identity / Widening)
+    else {
+        emitter.emit("mov", dest_vreg, src_vreg);
+    }
 }
