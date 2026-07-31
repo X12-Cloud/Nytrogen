@@ -12,4 +12,4 @@ nasm -f elf64 setup.asm -o out/setup.o
 g++ -c test_qlib.cpp -o out/test_qlib.o
 
 # 3. Link them all together
-g++ out/init.o out/g.o out/setup.o out/test_qlib.o -o out/qtest -mavx
+g++ out/init.o out/g.o out/setup.o out/test_qlib.o -o out/qtest -mavx -lm
