@@ -59,33 +59,11 @@ void CodeGenerator::generate(const std::string& output_filename, bool is_entry_p
         throw std::runtime_error("Could not open output file: " + output_filename);
     }
 
-    // print formats
-    constants.push_back({"_print_int_format", "db", "\"%d\", 10, 0"});
-    constants.push_back({"_print_str_format", "db", "\"%s\", 10, 0"});
-    constants.push_back({"_print_char_format", "db", "\"%c\", 10, 0"});
-    constants.push_back({"_print_float_format", "db", "\"%f\", 10, 0"});
-    constants.push_back({"_print_int_raw_format", "db", "\"%d\", 0"});
-    constants.push_back({"_print_raw_format", "db", "\"%s\", 0"});
-    constants.push_back({"_print_char_raw_format", "db", "\"%c\", 0"});
-    constants.push_back({"_print_float_raw_format", "db", "\"%f\", 0"});
     constants.push_back({"align", "16"});
     constants.push_back({"_abs_mask", "dq", "0x7FFFFFFFFFFFFFFF"});
     constants.push_back({"align", "8"});
 
     emitter.section(".text");
-    emitter.extern_sym("printf");
-    emitter.extern_sym("strcmp");
-
-    // Qlib extern calls
-    emitter.extern_sym("q_init");
-    emitter.extern_sym("setup");
-    emitter.extern_sym("q_measure");
-    emitter.extern_sym("print_q");
-    emitter.extern_sym("q_h");
-    emitter.extern_sym("q_x");
-    emitter.extern_sym("q_z");
-    emitter.extern_sym("q_s");
-    emitter.extern_sym("q_t");
 
     if (is_entry_point) {
         emitter.global("_start");
@@ -104,11 +82,11 @@ void CodeGenerator::generate(const std::string& output_filename, bool is_entry_p
         emitter.label("_start");
 
         emitter.emit("lea", "rdi", "[rel _N_qlib_state]");
-        emitter.emit("call", "setup");
+        emitter.call_external("setup");
 
         emitter.emit("call", "main");
         emitter.emit("mov", "rdi", "rax");
-        emitter.syscall(60);
+        emitter.call_external("ny_exit");
     }
 
     visit(program_ast.get());
@@ -576,7 +554,7 @@ void CodeGenerator::visit(GateAppOperationExpressionNode* node) {
 
         if (optimized_gates.count(name)) {
             emitter.emit("mov", "rdi", qubit_offset_vreg);
-            emitter.emit("call", optimized_gates[name]);
+            emitter.call_external(optimized_gates[name]);
             return;
         }
     }

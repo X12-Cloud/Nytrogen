@@ -8,12 +8,14 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <set>
 
 #include "ast.hpp"
 
 class InstructionSet {
     std::ofstream& out;
     int current_stack_depth = 0;
+    std::set<std::string> needed_externs;
 
    public:
     InstructionSet(std::ofstream& o) : out(o) {}
@@ -86,6 +88,8 @@ class InstructionSet {
     void emit_print_int(const std::string& src_vreg);
     void emit_print_raw(int size, const std::shared_ptr<TypeNode>& type,
                         const std::string& src_vreg);
+    void emit_print_internal(int size, const std::shared_ptr<TypeNode>& type,
+                                         const std::string& src_vreg, bool is_raw);
 };
 
 #endif

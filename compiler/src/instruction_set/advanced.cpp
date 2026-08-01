@@ -53,9 +53,21 @@ void InstructionSet::load_from_address(int size, const TypeNode* type, const std
 
 void InstructionSet::emit_print(int size, const std::shared_ptr<TypeNode>& type,
                                 const std::string& src_vreg) {
+    emit_print_internal(size, type, src_vreg, false);
+}
+
+void InstructionSet::emit_print_raw(int size, const std::shared_ptr<TypeNode>& type,
+                                    const std::string& src_vreg) {
+    emit_print_internal(size, type, src_vreg, true);
+}
+
+// Helper to consolidate logic
+void InstructionSet::emit_print_internal(int size, const std::shared_ptr<TypeNode>& type,
+                                         const std::string& src_vreg, bool is_raw) {
     auto prim = dynamic_cast<PrimitiveTypeNode*>(type.get());
     bool is_fp = isAFloatingPoint(type.get());
 
+    // Qubits use the specialized qlib printer
     if (prim && prim->primitive_type == Token::KEYWORD_QUBIT) {
         emit("mov", "rdi", src_vreg);
         call_external("print_q");
@@ -68,49 +80,22 @@ void InstructionSet::emit_print(int size, const std::shared_ptr<TypeNode>& type,
         } else {
             emit("vmovsd", "xmm0", src_vreg);
         }
-        emit("lea", "rdi", "[rel _print_float_format]");
-        emit("mov", "rax", "1");
+        call_external(is_raw ? "ny_print_float_raw" : "ny_print_float");
     } else {
-        emit("mov", "rsi", src_vreg);
+        emit("mov", "rdi", src_vreg);
 
-        if (prim && prim->primitive_type == Token::KEYWORD_STRING) {
-            emit("lea", "rdi", "[rel _print_str_format]");
-        } else if (prim && prim->primitive_type == Token::KEYWORD_CHAR) {
-            emit("lea", "rdi", "[rel _print_char_format]");
-        } else {
-            emit("lea", "rdi", "[rel _print_int_format]");
-        }
-        emit("xor", "rax", "rax");
+        std::string func;
+        if (prim && prim->primitive_type == Token::KEYWORD_STRING) 
+            func = is_raw ? "ny_print_string_raw" : "ny_print_string";
+        else if (prim && prim->primitive_type == Token::KEYWORD_CHAR)
+            func = is_raw ? "ny_print_char_raw" : "ny_print_char";
+        else if (prim && prim->primitive_type == Token::KEYWORD_BOOL)
+            func = is_raw ? "ny_print_bool_raw" : "ny_print_bool";
+        else 
+            func = is_raw ? "ny_print_int_raw" : "ny_print_int";
+
+        call_external(func);
     }
-    call_external("printf");
-}
-
-void InstructionSet::emit_print_raw(int size, const std::shared_ptr<TypeNode>& type,
-                                    const std::string& src_vreg) {
-    auto prim = dynamic_cast<PrimitiveTypeNode*>(type.get());
-    bool is_fp = isAFloatingPoint(type.get());
-
-    if (is_fp) {
-        if (size == 4) {
-            emit("vcvtss2sd", "xmm0", src_vreg + ", " + src_vreg);
-        } else {
-            emit("vmovsd", "xmm0", src_vreg);
-        }
-        emit("lea", "rdi", "[rel _print_float_raw_format]");
-        emit("mov", "rax", "1");
-    } else {
-        emit("mov", "rsi", src_vreg);
-
-        if (prim && prim->primitive_type == Token::KEYWORD_STRING) {
-            emit("lea", "rdi", "[rel _print_raw_format]");
-        } else if (prim && prim->primitive_type == Token::KEYWORD_CHAR) {
-            emit("lea", "rdi", "[rel _print_char_raw_format]");
-        } else {
-            emit("lea", "rdi", "[rel _print_int_raw_format]");
-        }
-        emit("xor", "rax", "rax");
-    }
-    call_external("printf");
 }
 
 void InstructionSet::emit_print_int(const std::string& src_vreg) {

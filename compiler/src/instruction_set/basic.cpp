@@ -23,6 +23,12 @@ void InstructionSet::emit(const std::string& instr) {
 }
 
 void InstructionSet::emit(const std::string& instr, const std::string reg) {
+    if (instr == "call") {
+        if (reg != "main" && reg.find("_") != 0) {
+            needed_externs.insert(reg);
+        }
+    }
+
     instructions.push_back({instr, {reg}});
 }
 
@@ -41,7 +47,7 @@ void InstructionSet::section(const std::string& section_name) {
 }
 
 void InstructionSet::extern_sym(const std::string& name) {
-    instructions.push_back({"extern", {name}});
+    needed_externs.insert(name);
 }
 
 void InstructionSet::label(const std::string& label_name) {
@@ -111,6 +117,8 @@ bool InstructionSet::isAFloatingPoint(const TypeNode* type) {
 
 // Call logic with alignment
 void InstructionSet::call_external(const std::string& func_name) {
+    needed_externs.insert(func_name);
+
     bool misaligned = (current_stack_depth % 16 != 0);
     if (misaligned)
         emit("sub", "rsp", "8");
@@ -120,6 +128,13 @@ void InstructionSet::call_external(const std::string& func_name) {
 }
 
 void InstructionSet::flush_to_file() {
+    out << "section .text\n";
+    for (const auto& ext : needed_externs) {
+        out << "    extern " << ext << "\n";
+    }
+    out << "\n";
+
+
     for (size_t i = 0; i < instructions.size(); ++i) {
         const auto& instr = instructions[i];
         if (instr.mnemonic.empty())
@@ -151,4 +166,5 @@ void InstructionSet::flush_to_file() {
         }
     }
     instructions.clear();
+    needed_externs.clear();
 }
