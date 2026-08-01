@@ -45,7 +45,7 @@
     X(CHARACTER_LITERAL, "CHAR_LIT")                                                \
     X(FLOAT_LITERAL, "FLOAT_LIT")                                                   \
     X(DOUBLE_LITERAL, "DOUBLE_LIT")                                                 \
-    X(COMPLEX_LITERAL, "COMPLEX_LIT")                                                 \
+    X(COMPLEX_LITERAL, "COMPLEX_LIT")                                               \
     X(TRUE, "true")                                                                 \
     X(FALSE, "false")                                                               \
                                                                                     \
@@ -63,6 +63,7 @@
     X(SLASH, "/")                                                                   \
     X(ADDRESSOF, "&")                                                               \
     X(BANG, "!")                                                                    \
+    X(ARROW, "->")                                                                  \
                                                                                     \
     /* Delimiters and Punctuation */                                                \
     X(DOUBLE_COLON, "::")                                                           \

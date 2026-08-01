@@ -56,6 +56,12 @@ void InstructionSet::emit_print(int size, const std::shared_ptr<TypeNode>& type,
     auto prim = dynamic_cast<PrimitiveTypeNode*>(type.get());
     bool is_fp = isAFloatingPoint(type.get());
 
+    if (prim && prim->primitive_type == Token::KEYWORD_QUBIT) {
+        emit("mov", "rdi", src_vreg);
+        call_external("print_q");
+        return;
+    }
+
     if (is_fp) {
         if (size == 4) {
             emit("vcvtss2sd", "xmm0", src_vreg + ", " + src_vreg);

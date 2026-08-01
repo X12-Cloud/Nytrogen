@@ -608,6 +608,16 @@ std::unique_ptr<ASTNode> Parser::parseExpression() {
         throw std::runtime_error("Invalid left-hand side in assignment expression.");
     }
 
+    if (peek().type == Token::ARROW) {
+        const Token& op_token = consume();
+        auto right = parseUnaryExpression();
+
+        return std::make_unique<GateAppOperationExpressionNode>(
+            std::move(left), op_token.type, std::move(right), 
+            op_token.line, op_token.column
+        );
+    }
+
     return left;
 }
 

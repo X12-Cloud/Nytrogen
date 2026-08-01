@@ -23,11 +23,13 @@ done
 
 # Clean build if requested
 if [ "$clean_build" = true ]; then
+    cd $SCRIPT_DIR/qlib/asm/ && ./build.sh && cd ../..
     "$SCRIPT_DIR/run_scripts/clean_build.sh"
 fi
 
 # Incremental build if requested
 if [ "$build" = true ]; then
+    cd $SCRIPT_DIR/qlib/asm/ && ./build.sh && cd ../..
     "$SCRIPT_DIR/run_scripts/build.sh"
 fi
 

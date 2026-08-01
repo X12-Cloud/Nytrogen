@@ -231,7 +231,7 @@ int main(int argc, char* argv[]) {
         link_cmd = lua_config.linker_cmd;
     } else {
         link_cmd = lua_config.linker_bin + " -o \"" + final_exe + "\" " + all_objs +
-                           lib_flags + " -lc --dynamic-linker /lib64/ld-linux-x86-64.so.2";
+                           lib_flags + " -Lqlib/asm/out/ -lqlib -lc --dynamic-linker /lib64/ld-linux-x86-64.so.2";
         // link_cmd = "gcc -no-pie -o \"" + final_exe + "\" " + all_objs + lib_flags;
     }
 

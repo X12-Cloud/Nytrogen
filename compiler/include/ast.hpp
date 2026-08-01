@@ -53,6 +53,7 @@ struct ASTNode {
         SCOPE_RESOLUTION = 29,
         COMPLEX_LITERAL_EXPRESSION = 30,
         QUBIT_DEFINITION = 31,
+        GATE_APPLICATION_OPERATION_EXPRESSION = 32,
     };
 
     NodeType node_type;
@@ -729,6 +730,27 @@ struct BinaryOperationExpressionNode : public ASTNode {
           left(std::move(left_expr)),
           op_type(op),
           right(std::move(right_expr)) {}
+};
+
+struct GateAppOperationExpressionNode : public ASTNode {
+    std::unique_ptr<ASTNode> gate;
+    Token::Type op_type;
+    std::unique_ptr<ASTNode> qubit;
+
+    [[nodiscard]] auto type_name() const -> std::string override {
+        return "GATE_APPLICATION_OP: ";
+    }
+    [[nodiscard]] auto get_children() const -> std::vector<ASTNode*> override {
+        return {gate.get(), qubit.get()};
+    }
+
+    GateAppOperationExpressionNode(std::unique_ptr<ASTNode> left_expr, Token::Type op,
+                              std::unique_ptr<ASTNode> right_expr, int line = -1,
+                              int column = -1)
+    : ASTNode(NodeType::GATE_APPLICATION_OPERATION_EXPRESSION, line, column),
+      gate(std::move(left_expr)),
+      op_type(op),
+      qubit(std::move(right_expr)) {}
 };
 
 // Node for print statements (e.g., 'print x, "hello";')

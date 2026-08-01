@@ -79,6 +79,13 @@ void CodeGenerator::generate(const std::string& output_filename, bool is_entry_p
     // Qlib extern calls
     emitter.extern_sym("q_init");
     emitter.extern_sym("setup");
+    emitter.extern_sym("q_measure");
+    emitter.extern_sym("print_q");
+    emitter.extern_sym("q_h");
+    emitter.extern_sym("q_x");
+    emitter.extern_sym("q_z");
+    emitter.extern_sym("q_s");
+    emitter.extern_sym("q_t");
 
     if (is_entry_point) {
         emitter.global("_start");
@@ -96,8 +103,8 @@ void CodeGenerator::generate(const std::string& output_filename, bool is_entry_p
     if (is_entry_point) {
         emitter.label("_start");
 
-        //emitter.emit("lea", "rdi", "[rel _N_qlib_state]"); // TODO: uncomment after the driver can link against qlib
-        //emitter.emit("call", "setup");
+        emitter.emit("lea", "rdi", "[rel _N_qlib_state]");
+        emitter.emit("call", "setup");
 
         emitter.emit("call", "main");
         emitter.emit("mov", "rdi", "rax");
@@ -109,6 +116,7 @@ void CodeGenerator::generate(const std::string& output_filename, bool is_entry_p
     // print the .data section
     emitter.section(".data");
     std::unordered_set<std::string> emitted_data_labels;
+    emitter.emit("global _N_qlib_state");
     constants.push_back({"_N_qlib_state", "times 8192", "db 0"});
     constants.push_back({"align", "32"});
     for (const auto& c : constants) {
@@ -217,6 +225,9 @@ void CodeGenerator::visit(ASTNode* node) {
             break;
         case ASTNode::NodeType::QUBIT_DEFINITION:
             visit(dynamic_cast<QubitDefinitionNode*>(node));
+            break;
+        case ASTNode::NodeType::GATE_APPLICATION_OPERATION_EXPRESSION:
+            visit(dynamic_cast<GateAppOperationExpressionNode*>(node));
             break;
         default:
             throw std::runtime_error("Code Generation Error: Unknown AST node type.");
@@ -551,6 +562,33 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
     last_expr_vreg = result_vreg;
 }
 
+void CodeGenerator::visit(GateAppOperationExpressionNode* node) {
+    visit(node->qubit.get());
+    std::string qubit_offset_vreg = last_expr_vreg;
+
+    if (node->gate->node_type == ASTNode::NodeType::VARIABLE_REFERENCE) {
+        auto* gate_ref = static_cast<VariableReferenceNode*>(node->gate.get());
+        std::string name = gate_ref->name;
+
+        static std::unordered_map<std::string, std::string> optimized_gates = {
+            {"h", "q_h"}, {"x", "q_x"}, {"z", "q_z"}, {"s", "q_s"}, {"t", "q_t"}
+        };
+
+        if (optimized_gates.count(name)) {
+            emitter.emit("mov", "rdi", qubit_offset_vreg);
+            emitter.emit("call", optimized_gates[name]);
+            return;
+        }
+    }
+
+    visit(node->gate.get());
+    std::string matrix_addr_vreg = last_expr_vreg;
+
+    emitter.emit("mov", "rdi", matrix_addr_vreg);
+    emitter.emit("mov", "rsi", qubit_offset_vreg);
+    emitter.emit("call", "q_apply_matrix");
+}
+
 void CodeGenerator::visit(PrintStatementNode* node) {
     for (size_t i = 0; i < node->expressions.size(); ++i) {
         visit(node->expressions[i].get());
@@ -664,22 +702,20 @@ void CodeGenerator::visit(ForStatementNode* node) {
 }
 
 void CodeGenerator::visit(QubitDefinitionNode* node) {
-    int offset = node->qubit_index * 32;
+    Symbol* sym = symbolTable.lookup(node->qubit_name);
+    int q_offset = node->qubit_index * 32;
 
     std::string addr_vreg = new_vreg();
-    emitter.emit("mov", addr_vreg, "r15");
-    if (offset != 0) {
-        emitter.emit("add", addr_vreg, std::to_string(offset));
-    }
+    emitter.emit("lea", addr_vreg, "[r15 + " + std::to_string(q_offset) + "]");
+
+    std::string imm_vreg = new_vreg();
+    emitter.emit("mov", imm_vreg, std::to_string(q_offset));
+    emitter.emit_adv(8, sym->dataType.get(), "rbp", sym->offset, imm_vreg);
 
     if (node->has_custom_amplitudes) {
-        // Handle: qubit q1 { alpha: 1.0+0.0i, beta: 0.0+0.0i }
         visit(node->alpha.get());
-        // Store to [addr_vreg + 0]
         emitter.emit("vmovupd", "[" + addr_vreg + " + 0]", last_expr_vreg);
-
         visit(node->beta.get());
-        // Store to [addr_vreg + 16]
         emitter.emit("vmovupd", "[" + addr_vreg + " + 16]", last_expr_vreg);
     } else {
         emitter.emit("mov", "rdi", addr_vreg);
@@ -917,6 +953,9 @@ auto CodeGenerator::getTypeSize(const TypeNode* type) -> int {
                     return 4;
                 case Token::KEYWORD_DOUBLE:
                     return 8;
+                case Token::KEYWORD_COMPLEX: return 16;
+                case Token::KEYWORD_MATRIX:  return 64;
+                case Token::KEYWORD_QUBIT:   return 8;
                 default:
                     throw std::runtime_error(
                         "Code Generation Error: Unknown primitive type (" +
@@ -988,17 +1027,26 @@ void CodeGenerator::emit_cast(const TypeNode* from, const TypeNode* to, const st
     bool dest_fp = isFloatingPoint(to);
     int src_size = getTypeSize(from);
     int dest_size = getTypeSize(to);
+    auto* prim_from = dynamic_cast<const PrimitiveTypeNode*>(from);
 
-    // 1. Float -> Int (e.g., (int)float_var)
+    // Qubit -> Int (measuring qubits)
+    if (prim_from && prim_from->primitive_type == Token::KEYWORD_QUBIT && !dest_fp) {
+        emitter.emit("mov", "rdi", src_vreg);
+        emitter.call_external("q_measure");
+        emitter.emit("mov", dest_vreg, "rax");
+        return;
+    }
+
+    // Float -> Int (e.g., (int)float_var)
     if (src_fp && !dest_fp) {
         emitter.emit(src_size == 8 ? "vcvttsd2si" : "vcvttss2si", dest_vreg, src_vreg);
     } 
-    // 2. Int -> Float (e.g., (float)int_var)
+    // Int -> Float (e.g., (float)int_var)
     else if (!src_fp && dest_fp) {
         std::string instr = (dest_size == 8) ? "vcvtsi2sd" : "vcvtsi2ss";
         emitter.emit_raw(instr, {dest_vreg, dest_vreg, src_vreg});
     } 
-    // 3. Float -> Float (e.g., (double)float_var)
+    // Float -> Float (e.g., (double)float_var)
     else if (src_fp && dest_fp) {
         if (src_size == 4 && dest_size == 8) 
             emitter.emit_raw("vcvtss2sd", {dest_vreg, dest_vreg, src_vreg});
@@ -1007,7 +1055,7 @@ void CodeGenerator::emit_cast(const TypeNode* from, const TypeNode* to, const st
         else
             emitter.emit("vmovss", dest_vreg, src_vreg);
     } 
-    // 4. Int -> Int (Identity / Widening)
+    // Int -> Int (Identity / Widening)
     else {
         emitter.emit("mov", dest_vreg, src_vreg);
     }

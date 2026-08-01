@@ -32,7 +32,7 @@ int SemanticAnalyzer::getTypeSize(const TypeNode* type) {
                 case Token::KEYWORD_MATRIX:
                     return 64; // 4 complex numbers
                 case Token::KEYWORD_QUBIT:
-                    return 32; // 2 complex numbers
+                    return 8; // 8 byte offset
                 default:
                     Logger::report_error("Semantic Error",
                                          "Unknown primitive type for size calculation.");
@@ -130,6 +130,14 @@ void SemanticAnalyzer::analyze() {
     // Process structs
     for (const auto& struct_node : program_ast->structs) {
         visit(struct_node.get());
+    }
+
+    // Bootstrap built in gates
+    std::vector<std::string> built_ins = {"h", "x", "z", "s", "t"};
+    for (const auto& name : built_ins) {
+        Symbol gate_sym(Symbol::SymbolType::VARIABLE, name, 
+                        std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_MATRIX));
+        symbolTable.addSymbol(std::move(gate_sym));
     }
 
     // Declare functions (but don't visit bodies yet)
@@ -273,6 +281,9 @@ void SemanticAnalyzer::visit(ASTNode* node) {
             break;
         case ASTNode::NodeType::QUBIT_DEFINITION:
             visit(static_cast<QubitDefinitionNode*>(node));
+            break;
+        case ASTNode::NodeType::GATE_APPLICATION_OPERATION_EXPRESSION:
+            visit(static_cast<GateAppOperationExpressionNode*>(node));
             break;
         default:
             Logger::report_error("Semantic Error",
@@ -536,6 +547,18 @@ void SemanticAnalyzer::visit(BinaryOperationExpressionNode* node) {
             }
             node->resolved_type = left_type->clone();
             break;
+    }
+}
+
+void SemanticAnalyzer::visit(GateAppOperationExpressionNode* node) {
+    std::unique_ptr<TypeNode> left = visitExpression(node->gate.get());
+    std::unique_ptr<TypeNode> right = visitExpression(node->qubit.get());
+
+    node->gate->resolved_type = left->clone();
+    node->qubit->resolved_type = right->clone();
+
+    if (node->op_type != Token::ARROW) {
+        Logger::report_error("Semantic Error", "Unsupported operator in gate application expression, did you mean `->`.");
     }
 }
 
@@ -837,10 +860,12 @@ void SemanticAnalyzer::visit(QubitDefinitionNode* node) {
         visit(node->beta.get());
     }
 
-    int offset = node->qubit_index * 32;
+    symbolTable.current_scope->currentOffset -= 8;
+    int stack_offset = symbolTable.current_scope->currentOffset;
+
     Symbol q_sym(Symbol::SymbolType::VARIABLE, node->qubit_name, 
                  std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_QUBIT), 
-                 offset, 32); // 32 bytes size
+                 stack_offset, 8);
 
     symbolTable.addSymbol(std::move(q_sym));
 }
@@ -1060,6 +1085,17 @@ std::unique_ptr<TypeNode> SemanticAnalyzer::visitExpression(ASTNode* expr) {
             }
 
             result_type = bin_node->resolved_type->clone();
+            break;
+        }
+        case ASTNode::NodeType::GATE_APPLICATION_OPERATION_EXPRESSION: {
+            auto* gate_node = static_cast<GateAppOperationExpressionNode*>(expr);
+            visit(gate_node);
+            if(!gate_node->resolved_type) {
+                Logger::report_error("Semantic Error", "Gate application op failed type resolution",
+                        gate_node->line);
+            }
+
+            result_type = gate_node->resolved_type->clone();
             break;
         }
         case ASTNode::NodeType::FUNCTION_CALL: {

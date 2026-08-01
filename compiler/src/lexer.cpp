@@ -294,9 +294,15 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
         }
 
         if (currentChar == '-') {
-            tokens.push_back({Token::MINUS, "-", line, column});
-            currentPos++;
-            column++;
+            if (currentPos + 1 < sourceCode.length() && sourceCode[currentPos + 1] == '>') {
+                tokens.push_back({Token::ARROW, "->", line, column});
+                currentPos += 2;
+                column += 2;
+            } else {
+                tokens.push_back({Token::MINUS, "-", line, column});
+                currentPos++;
+                column++;
+            }
             continue;
         }
 
