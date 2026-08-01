@@ -28,6 +28,7 @@ class Parser {
     std::vector<Token> tokens;
     size_t current_token_index;
     std::map<std::string, int> declared_variables;
+    int next_qubit_index = 0;
     SymbolTable symbol_table;  // Add SymbolTable member
 
     // Token handling methods
@@ -55,6 +56,7 @@ class Parser {
     std::unique_ptr<EnumStatementNode> parseEnumStatement();
     std::unique_ptr<SwitchStatementNode> parseSwitchStatement();
     std::unique_ptr<NamespaceDefinition> parseNamespaceDefinition();
+    std::unique_ptr<QubitDefinitionNode> parseQubitDefinitionNode();
 
     // Expression parsing methods (now hierarchical for precedence)
     std::unique_ptr<ASTNode> parseExpression();            // Handles + and - (lowest precedence)
@@ -73,6 +75,7 @@ class Parser {
     std::unique_ptr<BooleanLiteralExpressionNode> parseBooleanLiteralExpression();
     std::unique_ptr<CharacterLiteralExpressionNode> parseCharacterLiteralExpression();
     std::unique_ptr<FunctionDefinitionNode> parseFunctionDefinition();
+    std::unique_ptr<ComplexLiteralExpressionNode> parseComplexLiteralExpression();
 };
 
 #endif  // NYTROGEN_PARSER_HPP

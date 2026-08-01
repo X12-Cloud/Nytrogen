@@ -51,6 +51,8 @@ struct ASTNode {
         SWITCH_STATEMENT = 27,
         NAMESPACE_DEFINITION = 28,
         SCOPE_RESOLUTION = 29,
+        COMPLEX_LITERAL_EXPRESSION = 30,
+        QUBIT_DEFINITION = 31,
     };
 
     NodeType node_type;
@@ -246,6 +248,33 @@ struct DoubleLiteralExpressionNode : public LiteralExpressionNode {
     }
 };
 
+// Node representing complex literals (e.g., 1.0+2.0i)
+struct ComplexLiteralExpressionNode : public LiteralExpressionNode {
+    double real;
+    double imaginary;
+
+    [[nodiscard]] auto type_name() const -> std::string override {
+        return "COMPLEX_LITERAL:";
+    }
+
+    [[nodiscard]] auto get_value() const -> std::string override {
+        return getValueAsString();
+    }
+
+    [[nodiscard]] auto is_constant() const -> bool override {
+        return true;
+    }
+
+    ComplexLiteralExpressionNode(double re, double im, int line = -1, int column = -1)
+        : LiteralExpressionNode(NodeType::COMPLEX_LITERAL_EXPRESSION, line, column), 
+          real(re), imaginary(im) {}
+
+    [[nodiscard]] auto getValueAsString() const -> std::string override {
+        std::string sign = (imaginary >= 0) ? "+" : "";
+        return std::to_string(real) + sign + std::to_string(imaginary) + "i";
+    }
+};
+
 // Node for return statements (e.g., return x;)
 struct ReturnStatementNode : public ASTNode {
     std::unique_ptr<ASTNode> expression;
@@ -287,6 +316,8 @@ struct PrimitiveTypeNode : public TypeNode {
                 return "string";
             case Token::KEYWORD_BOOL:
                 return "bool";
+            case Token::KEYWORD_COMPLEX:
+                return "complex";
             default:
                 return "unknown_primitive";
         }
@@ -404,6 +435,35 @@ struct MemberAccessNode : public ASTNode {
         : ASTNode(NodeType::MEMBER_ACCESS_EXPRESSION, line, column),
           struct_expr(std::move(expr)),
           member_name(std::move(member)) {}
+};
+
+struct QubitDefinitionNode : public ASTNode {
+    int qubit_index;
+    std::string qubit_name;
+
+    bool has_custom_amplitudes = false;
+    std::unique_ptr<ASTNode> alpha;
+    std::unique_ptr<ASTNode> beta;
+
+    [[nodiscard]] auto type_name() const -> std::string override {
+        std::string info = "QUBIT_DEF: " + qubit_name + " { ";
+        info += "alpha: " + (alpha ? alpha->get_value() : "default") + ", ";
+        info += "beta: " + (beta ? beta->get_value() : "default");
+        info += " }";
+        return info;
+    }
+
+    [[nodiscard]] auto get_children() const -> std::vector<ASTNode*> override {
+        std::vector<ASTNode*> children;
+        if (alpha) children.push_back(alpha.get());
+        if (beta) children.push_back(beta.get());
+        return children;
+    }
+
+    QubitDefinitionNode(int index, std::string name, int line = -1, int column = -1)
+        : ASTNode(NodeType::QUBIT_DEFINITION, line, column), 
+          qubit_index(index), 
+          qubit_name(std::move(name)) {}
 };
 
 struct NamespaceMember {

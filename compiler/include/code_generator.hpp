@@ -91,6 +91,7 @@ class CodeGenerator {
     void visit(FloatLiteralExpressionNode* node);
     void visit(NamespaceDefinition* node);
     void visit(ScopeResolutionNode* node);
+    void visit(QubitDefinitionNode* node);
 
     auto getTypeSize(const TypeNode* type) -> int;
     static auto getRegisterName(const std::string& reg64, int size) -> std::string;

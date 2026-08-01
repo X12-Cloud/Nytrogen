@@ -114,7 +114,7 @@ void InstructionSet::call_external(const std::string& func_name) {
     bool misaligned = (current_stack_depth % 16 != 0);
     if (misaligned)
         emit("sub", "rsp", "8");
-    emit("call", func_name);
+        emit("call", func_name);
     if (misaligned)
         emit("add", "rsp", "8");
 }

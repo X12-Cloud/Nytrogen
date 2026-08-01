@@ -11,7 +11,7 @@ section .data
     T_SIN:  dq 0.70710678
 
 section .text
-    global q_h, q_x, q_z, q_s, q_t, q_rz
+    global q_h, q_x, q_z, q_s, q_t, q_rz, q_apply_matrix
 
 q_h:
     vmovupd ymm0, [r15 + rdi]
@@ -60,3 +60,18 @@ q_rz:
     vinsertf128 ymm0, ymm0, xmm2, 1
     vmovupd [r15 + rdi], ymm0
     ret
+
+q_apply_matrix:
+    ; Load Matrix (8 doubles = 2 YMM registers)
+    ;vmovupd ymm0, [rdi]      ; Rows a, b
+    ;vmovupd ymm1, [rdi + 32] ; Rows c, d
+
+    ; Load Qubit Amplitudes
+    ;vmovupd ymm2, [r15 + rsi]
+
+    ; Perform Complex Matrix-Vector Multiplicaton (soon)
+    ; alpha' = a*alpha + b*beta
+    ; beta'  = c*alpha + d*beta
+
+    ;vmovupd [r15 + rsi], ymm_result
+    ;ret

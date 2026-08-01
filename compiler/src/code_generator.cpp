@@ -76,6 +76,10 @@ void CodeGenerator::generate(const std::string& output_filename, bool is_entry_p
     emitter.extern_sym("printf");
     emitter.extern_sym("strcmp");
 
+    // Qlib extern calls
+    emitter.extern_sym("q_init");
+    emitter.extern_sym("setup");
+
     if (is_entry_point) {
         emitter.global("_start");
     }
@@ -91,6 +95,10 @@ void CodeGenerator::generate(const std::string& output_filename, bool is_entry_p
     // entry point
     if (is_entry_point) {
         emitter.label("_start");
+
+        //emitter.emit("lea", "rdi", "[rel _N_qlib_state]"); // TODO: uncomment after the driver can link against qlib
+        //emitter.emit("call", "setup");
+
         emitter.emit("call", "main");
         emitter.emit("mov", "rdi", "rax");
         emitter.syscall(60);
@@ -101,6 +109,8 @@ void CodeGenerator::generate(const std::string& output_filename, bool is_entry_p
     // print the .data section
     emitter.section(".data");
     std::unordered_set<std::string> emitted_data_labels;
+    constants.push_back({"_N_qlib_state", "times 8192", "db 0"});
+    constants.push_back({"align", "32"});
     for (const auto& c : constants) {
         if (c.label == "align") {
             emitter.emit("align", c.type);
@@ -204,6 +214,9 @@ void CodeGenerator::visit(ASTNode* node) {
             break;
         case ASTNode::NodeType::ENUM_STATEMENT:
             visit(dynamic_cast<EnumStatementNode*>(node));
+            break;
+        case ASTNode::NodeType::QUBIT_DEFINITION:
+            visit(dynamic_cast<QubitDefinitionNode*>(node));
             break;
         default:
             throw std::runtime_error("Code Generation Error: Unknown AST node type.");
@@ -648,6 +661,30 @@ void CodeGenerator::visit(ForStatementNode* node) {
 
     emitter.emit("jmp", condition_label);
     emitter.label(end_label);
+}
+
+void CodeGenerator::visit(QubitDefinitionNode* node) {
+    int offset = node->qubit_index * 32;
+
+    std::string addr_vreg = new_vreg();
+    emitter.emit("mov", addr_vreg, "r15");
+    if (offset != 0) {
+        emitter.emit("add", addr_vreg, std::to_string(offset));
+    }
+
+    if (node->has_custom_amplitudes) {
+        // Handle: qubit q1 { alpha: 1.0+0.0i, beta: 0.0+0.0i }
+        visit(node->alpha.get());
+        // Store to [addr_vreg + 0]
+        emitter.emit("vmovupd", "[" + addr_vreg + " + 0]", last_expr_vreg);
+
+        visit(node->beta.get());
+        // Store to [addr_vreg + 16]
+        emitter.emit("vmovupd", "[" + addr_vreg + " + 16]", last_expr_vreg);
+    } else {
+        emitter.emit("mov", "rdi", addr_vreg);
+        emitter.call_external("q_init");
+    }
 }
 
 void CodeGenerator::visit(FunctionCallNode* node) {

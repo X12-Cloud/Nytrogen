@@ -32,6 +32,9 @@ static const std::unordered_map<std::string, Token::Type> KEYWORD_MAP = {
     {"float", Token::KEYWORD_FLOAT},
     {"double", Token::KEYWORD_DOUBLE},
     {"namespace", Token::KEYWORD_NAMESPACE},
+    {"complex", Token::KEYWORD_COMPLEX},
+    {"matrix", Token::KEYWORD_MATRIX},
+    {"qubit", Token::KEYWORD_QUBIT},
     {"__builtin_", Token::KEYWORD_BUILTIN}};
 
 // Token type to string conversion
@@ -86,24 +89,57 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
         if (std::isdigit(currentChar) != 0) {
             std::string value;
             int startColumn = column;
-            while (currentPos < sourceCode.length() &&
-                   ((std::isdigit(sourceCode[currentPos]) != 0) || sourceCode[currentPos] == '.' ||
-                    sourceCode[currentPos] == 'f' || sourceCode[currentPos] == 'd')) {
+
+            // Helper lambda to scan a numeric part (digits and dots)
+            auto scanNumber = [&](std::string& buffer) {
+                while (currentPos < sourceCode.length() &&
+                       (std::isdigit(sourceCode[currentPos]) || sourceCode[currentPos] == '.')) {
+                    buffer += sourceCode[currentPos++];
+                    column++;
+                }
+            };
+
+            // Scan the first part (The Real part or the start of a pure imaginary)
+            scanNumber(value);
+
+            // Handle optional suffixes for the first part (f, d)
+            if (currentPos < sourceCode.length() && (sourceCode[currentPos] == 'f' || sourceCode[currentPos] == 'd')) {
                 value += sourceCode[currentPos++];
                 column++;
             }
 
-            char suffix = value.back();  // last char of value
+            // COMPLEX CHECK: Look ahead for [+-][number]i
+            bool isComplex = false;
+            if (currentPos < sourceCode.length() && (sourceCode[currentPos] == '+' || sourceCode[currentPos] == '-')) {
+                size_t peekPos = currentPos + 1;
+                while (peekPos < sourceCode.length() && (std::isdigit(sourceCode[peekPos]) || sourceCode[peekPos] == '.')) {
+                    peekPos++;
+                }
 
-            if (value.find('.') != std::string::npos) {
-                switch (suffix) {
-                    case 'f':
-                        tokens.push_back({Token::FLOAT_LITERAL, value, line, startColumn});
-                        break;
-                    case 'd':
-                    default:
-                        tokens.push_back({Token::DOUBLE_LITERAL, value, line, startColumn});
-                        break;
+                if (peekPos < sourceCode.length() && sourceCode[peekPos] == 'i') {
+                    isComplex = true;
+                    value += sourceCode[currentPos++];
+                    column++;
+                    scanNumber(value);
+                    value += sourceCode[currentPos++];
+                    column++;
+                }
+            } 
+            // Handle pure imaginary case: e.g., "2.0i"
+            else if (currentPos < sourceCode.length() && sourceCode[currentPos] == 'i') {
+                isComplex = true;
+                value += sourceCode[currentPos++];
+                column++;
+            }
+
+            // Token Generation
+            if (isComplex) {
+                tokens.push_back({Token::COMPLEX_LITERAL, value, line, startColumn});
+            } else if (value.find('.') != std::string::npos) {
+                if (value.back() == 'f') {
+                    tokens.push_back({Token::FLOAT_LITERAL, value, line, startColumn});
+                } else {
+                    tokens.push_back({Token::DOUBLE_LITERAL, value, line, startColumn});
                 }
             } else {
                 tokens.push_back({Token::INTEGER_LITERAL, value, line, startColumn});

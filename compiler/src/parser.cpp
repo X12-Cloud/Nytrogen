@@ -75,6 +75,9 @@ void Parser::synchronize() {
             case Token::KEYWORD_RETURN:
             case Token::KEYWORD_IF:
             case Token::KEYWORD_WHILE:
+            case Token::KEYWORD_COMPLEX:
+            case Token::KEYWORD_MATRIX:
+            case Token::KEYWORD_QUBIT:
                 return;
             default:
                 consume();
@@ -155,6 +158,34 @@ std::unique_ptr<DoubleLiteralExpressionNode> Parser::parseDoubleLiteralExpressio
     }
     return std::make_unique<DoubleLiteralExpressionNode>(std::stod(valStr), token.line,
                                                          token.column);
+}
+
+std::unique_ptr<ComplexLiteralExpressionNode> Parser::parseComplexLiteralExpression() {
+    const Token& token = consume();
+    std::string s = token.value;
+
+    // Remove the trailing 'i'
+    if (!s.empty() && s.back() == 'i') {
+        s.pop_back();
+    }
+
+    double re = 0.0;
+    double im = 0.0;
+
+    // Find the split point between Real and Imaginary (+ or -)
+    size_t splitPos = s.find_first_of("+-", 1);
+
+    if (splitPos == std::string::npos) {
+        // If no +/- found in the middle, it's a pure imaginary number
+        im = std::stod(s);
+    } else {
+        // If we found a split, parse both halves
+        re = std::stod(s.substr(0, splitPos));
+        im = std::stod(s.substr(splitPos));
+    }
+
+    // Return the node with both parts
+    return std::make_unique<ComplexLiteralExpressionNode>(re, im, token.line, token.column);
 }
 
 std::unique_ptr<ReturnStatementNode> Parser::parseReturnStatement() {
@@ -426,6 +457,8 @@ std::unique_ptr<ASTNode> Parser::parseFactor() {
         node = parseFloatLiteralExpression();
     } else if (current_token.type == Token::DOUBLE_LITERAL) {
         node = parseDoubleLiteralExpression();
+    } else if (current_token.type == Token::COMPLEX_LITERAL) {
+        node = parseComplexLiteralExpression();
     } else if (current_token.type == Token::IDENTIFIER) {
         if (peek(1).type == Token::DOUBLE_COLON) {
             const auto& ns_token = consume();
@@ -641,6 +674,40 @@ std::unique_ptr<StructDefinitionNode> Parser::parseStructDefinition() {
     return struct_node;
 }
 
+std::unique_ptr<QubitDefinitionNode> Parser::parseQubitDefinitionNode() {
+    int qubit_index = next_qubit_index++;
+    const Token& start_token = peek();
+    expect(Token::KEYWORD_QUBIT, "Expected 'qubit' keyword.");
+
+    const Token& qubit_name = peek();
+    expect(Token::IDENTIFIER, "Expected qubit name.");
+
+    auto qubit_node = std::make_unique<QubitDefinitionNode>
+        (qubit_index, qubit_name.value, start_token.line, start_token.column);
+
+    if (match(Token::LBRACE)) {
+        // Parse Alpha
+        if (peek().value != "alpha") throw std::runtime_error("Expected 'alpha' key in qubit definition.");
+        consume();
+        expect(Token::COLON, "Expected ':' after 'alpha'.");
+        qubit_node->alpha = parseComplexLiteralExpression();
+
+        expect(Token::COMMA, "Expected ',' between alpha and beta.");
+
+        // Parse Beta
+        if (peek().value != "beta") throw std::runtime_error("Expected 'beta' key in qubit definition.");
+        consume();
+        expect(Token::COLON, "Expected ':' after 'beta'.");
+        qubit_node->beta = parseComplexLiteralExpression();
+
+        expect(Token::RBRACE, "Expected '}' to close qubit definition.");
+        qubit_node->has_custom_amplitudes = true;
+    }
+
+    expect(Token::SEMICOLON, "Expected ';' after qubit definition.");
+    return qubit_node;
+}
+
 std::unique_ptr<NamespaceDefinition> Parser::parseNamespaceDefinition() {
     const Token& start_token = peek();
     expect(Token::KEYWORD_NAMESPACE, "Expected 'namespace' keyword.");
@@ -820,6 +887,8 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
             return parseNamespaceDefinition();
         case Token::KEYWORD_STRUCT:
             return parseStructDefinition();
+        case Token::KEYWORD_QUBIT:
+            return parseQubitDefinitionNode();
         default:
             Logger::report_error("Parser Error", "Unexpected token in statement: '" + peek().value +
                                                      "' at line " + std::to_string(peek().line) +

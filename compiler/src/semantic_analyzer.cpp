@@ -27,6 +27,12 @@ int SemanticAnalyzer::getTypeSize(const TypeNode* type) {
                     return 8;  // 8 bytes for string (pointer)
                 case Token::KEYWORD_VOID:
                     return 0;  // Void has no size
+                case Token::KEYWORD_COMPLEX:
+                    return 16; // 2 doubles
+                case Token::KEYWORD_MATRIX:
+                    return 64; // 4 complex numbers
+                case Token::KEYWORD_QUBIT:
+                    return 32; // 2 complex numbers
                 default:
                     Logger::report_error("Semantic Error",
                                          "Unknown primitive type for size calculation.");
@@ -242,6 +248,11 @@ void SemanticAnalyzer::visit(ASTNode* node) {
             lit->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_DOUBLE);
             break;
         }
+        case ASTNode::NodeType::COMPLEX_LITERAL_EXPRESSION: {
+            auto* lit = static_cast<ComplexLiteralExpressionNode*>(node);
+            lit->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_COMPLEX);
+            break;
+        }
         case ASTNode::NodeType::INTEGER_LITERAL_EXPRESSION: {
             auto* lit = static_cast<IntegerLiteralExpressionNode*>(node);
             lit->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_INT);
@@ -259,6 +270,9 @@ void SemanticAnalyzer::visit(ASTNode* node) {
             break;
         case ASTNode::NodeType::ENUM_STATEMENT:
             visit(static_cast<EnumStatementNode*>(node));
+            break;
+        case ASTNode::NodeType::QUBIT_DEFINITION:
+            visit(static_cast<QubitDefinitionNode*>(node));
             break;
         default:
             Logger::report_error("Semantic Error",
@@ -813,6 +827,24 @@ void SemanticAnalyzer::visit(StructDefinitionNode* node) {
     symbolTable.addStructDefinition(node->name, node);
 }
 
+void SemanticAnalyzer::visit(QubitDefinitionNode* node) {
+    if (symbolTable.current_scope->lookup(node->qubit_name) != nullptr) {
+        Logger::report_error("Semantic Error", "Redefinition of qubit '" + node->qubit_name + "'.", node->line);
+    }
+
+    if (node->has_custom_amplitudes) {
+        visit(node->alpha.get());
+        visit(node->beta.get());
+    }
+
+    int offset = node->qubit_index * 32;
+    Symbol q_sym(Symbol::SymbolType::VARIABLE, node->qubit_name, 
+                 std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_QUBIT), 
+                 offset, 32); // 32 bytes size
+
+    symbolTable.addSymbol(std::move(q_sym));
+}
+
 void SemanticAnalyzer::visit(UnaryOpExpressionNode* node) {
     std::unique_ptr<TypeNode> operand_type = visitExpression(node->operand.get());
 
@@ -1149,6 +1181,12 @@ std::unique_ptr<TypeNode> SemanticAnalyzer::visitFloatLiteralExpression(
 std::unique_ptr<TypeNode> SemanticAnalyzer::visitDoubleLiteralExpression(
     DoubleLiteralExpressionNode* node) {
     node->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_DOUBLE);
+    return node->resolved_type->clone();
+}
+
+std::unique_ptr<TypeNode> SemanticAnalyzer::visitComplexLiteralExpression(
+    ComplexLiteralExpressionNode* node) {
+    node->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_COMPLEX);
     return node->resolved_type->clone();
 }
 

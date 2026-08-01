@@ -60,6 +60,7 @@ class SemanticAnalyzer {
     void visit(EnumStatementNode* node);
     void visit(SwitchStatementNode* node);
     void visit(ScopeResolutionNode* node);
+    void visit(QubitDefinitionNode* node);
 
     // Expression visitors (return the type of the expression)
     std::unique_ptr<TypeNode> visitExpression(ASTNode* expr);
@@ -69,6 +70,7 @@ class SemanticAnalyzer {
     std::unique_ptr<TypeNode> visitCharacterLiteralExpression(CharacterLiteralExpressionNode* node);
     std::unique_ptr<TypeNode> visitFloatLiteralExpression(FloatLiteralExpressionNode* node);
     std::unique_ptr<TypeNode> visitDoubleLiteralExpression(DoubleLiteralExpressionNode* node);
+    std::unique_ptr<TypeNode> visitComplexLiteralExpression(ComplexLiteralExpressionNode* node);
 };
 
 #endif  // SEMANTIC_ANALYZER_HPP
