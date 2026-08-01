@@ -5,6 +5,9 @@
 - Implemented a centralized type-conversion matrix for explicit casts.
 - 3 new builtin math functions (sqrt, abs, round). and support for negative numbers.
 - Register allocator with stack spilling to further stablise the compiler.
+- Integrated qlib into the compiler with its new types and expressions.
+- Unified the standard library in `runtime/`.
+- The compiler now relies mainly on the stdlib for most functions which makes it much more portable.
 
 ## 0.1315
 ### Added:

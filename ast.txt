@@ -1,40 +1,34 @@
  PROGRAM_ROOT
    FUNCTION_DEF: main
-     QUBIT_DEF: q { alpha: default, beta: default }
-     VAR_DECL
-       INT_LITERAL: (0)
-     VAR_DECL
-       INT_LITERAL: (0)
-     VAR_DECL
-       INT_LITERAL: (0)
-     VAR_DECL
-       INT_LITERAL: (100)
      PRINT_STMT
-       STR_LITERAL: (--- Starting Quantum Statistics Test ---)
+       STR_LITERAL: (--- Testing Custom Qubit Init ---)
+     QUBIT_DEF: q1 { alpha: 0.000000+0.000000i, beta: 1.000000+0.000000i }
+       COMPLEX_LITERAL: (0.000000+0.000000i)
+       COMPLEX_LITERAL: (1.000000+0.000000i)
      PRINT_STMT
-       STR_LITERAL: (Running 100 flips in superposition...)
+       VAR_REF: (q1)
+     VAR_DECL
+       ASTNode
+     PRINT_STMT
+       STR_LITERAL: (Measured |1> state (should be 1): )
+       VAR_REF: (result)
        STR_LITERAL: (\n)
-     ASTNode
      PRINT_STMT
-       STR_LITERAL: (--- Results ---)
+       STR_LITERAL: (--- Testing Complex Literals ---)
+     VAR_DECL
+       COMPLEX_LITERAL: (0.707000+0.707000i)
      PRINT_STMT
-       STR_LITERAL: (Heads (|0>): )
-       VAR_REF: (heads)
+       VAR_REF: (c1)
      PRINT_STMT
-       STR_LITERAL: (Tails (|1>): )
-       VAR_REF: (tails)
+       STR_LITERAL: (Complex literal assigned successfully.)
+       STR_LITERAL: (\n)
      PRINT_STMT
-       STR_LITERAL: (Total:       )
-       VAR_REF: (i)
-     IF_STATEMENT
-       BINARY_OP: 
-         VAR_REF: (heads)
-         INT_LITERAL: (30)
-       IF_STATEMENT
-         BINARY_OP: 
-           VAR_REF: (tails)
-           INT_LITERAL: (30)
-         PRINT_STMT
-           STR_LITERAL: (Status: PASS (Probability distribution is balanced))
+       STR_LITERAL: (--- Testing exit(0) Intrinsic ---)
+     PRINT_STMT
+       STR_LITERAL: (This is the last thing you should see.)
+     FUNC_CALL: exit
+       INT_LITERAL: (0)
+     PRINT_STMT
+       STR_LITERAL: (ERROR: exit() failed! You shouldn't see this.)
      RETURN_STMT:
        INT_LITERAL: (0)

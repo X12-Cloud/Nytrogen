@@ -6,13 +6,19 @@
 void InstructionSet::emit_adv(int size, const TypeNode* type, const std::string& base_vreg,
                               int offset, const std::string& src_vreg) {
     bool is_fp = isAFloatingPoint(type);
-    std::string size_prefix = get_size_prefix(size);
-    std::string addr = size_prefix + " [" + base_vreg + " + " + std::to_string(offset) + "]";
+    auto* prim = dynamic_cast<const PrimitiveTypeNode*>(type);
+    bool is_complex = (prim && prim->primitive_type == Token::KEYWORD_COMPLEX);
 
-    if (is_fp) {
-        emit(size == 4 ? "vmovss" : "vmovsd", addr, src_vreg);
+    std::string addr_raw = "[" + base_vreg + " + " + std::to_string(offset) + "]";
+
+    if (is_complex) {
+        emit("vmovupd", "oword " + addr_raw, src_vreg);
+    } else if (is_fp) {
+        std::string prefix = (size == 4) ? "dword " : "qword ";
+        emit(size == 4 ? "vmovss" : "vmovsd", prefix + addr_raw, src_vreg);
     } else {
-        emit("mov", addr, src_vreg);
+        std::string prefix = get_size_prefix(size) + " ";
+        emit("mov", prefix + addr_raw, src_vreg);
     }
 }
 
@@ -74,6 +80,15 @@ void InstructionSet::emit_print_internal(int size, const std::shared_ptr<TypeNod
         return;
     }
 
+    // Complex literals
+    if (prim && prim->primitive_type == Token::KEYWORD_COMPLEX) {
+        emit("mov", "rdi", src_vreg); 
+        emit("movsd", "xmm0", "[rdi]");
+        emit("movsd", "xmm1", "[rdi + 8]");
+        call_external("ny_print_complex");
+        return;
+    }
+
     if (is_fp) {
         if (size == 4) {
             emit("vcvtss2sd", "xmm0", src_vreg + ", " + src_vreg);
@@ -91,7 +106,7 @@ void InstructionSet::emit_print_internal(int size, const std::shared_ptr<TypeNod
             func = is_raw ? "ny_print_char_raw" : "ny_print_char";
         else if (prim && prim->primitive_type == Token::KEYWORD_BOOL)
             func = is_raw ? "ny_print_bool_raw" : "ny_print_bool";
-        else 
+        else
             func = is_raw ? "ny_print_int_raw" : "ny_print_int";
 
         call_external(func);

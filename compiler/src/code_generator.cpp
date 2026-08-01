@@ -207,6 +207,9 @@ void CodeGenerator::visit(ASTNode* node) {
         case ASTNode::NodeType::GATE_APPLICATION_OPERATION_EXPRESSION:
             visit(dynamic_cast<GateAppOperationExpressionNode*>(node));
             break;
+        case ASTNode::NodeType::COMPLEX_LITERAL_EXPRESSION:
+            visit(dynamic_cast<ComplexLiteralExpressionNode*>(node));
+            break;
         default:
             throw std::runtime_error("Code Generation Error: Unknown AST node type.");
     }
@@ -337,66 +340,58 @@ void CodeGenerator::visit(EnumStatementNode* node) {
 }
 
 void CodeGenerator::visit(VariableDeclarationNode* node) {
-    auto* prim = dynamic_cast<PrimitiveTypeNode*>(node->type.get());
-    bool is_float = (prim != nullptr) && (prim->primitive_type == Token::KEYWORD_FLOAT);
-    bool is_double = (prim != nullptr) && (prim->primitive_type == Token::KEYWORD_DOUBLE);
-    bool is_string = (prim != nullptr) && (prim->primitive_type == Token::KEYWORD_STRING);
     int size = getTypeSize(node->type.get());
-    std::string asm_label;
+    bool is_fp = isFloatingPoint(node->type.get());
+    auto* prim = dynamic_cast<PrimitiveTypeNode*>(node->type.get());
+    bool is_complex_type = (prim && prim->primitive_type == Token::KEYWORD_COMPLEX);
+    bool is_string = (prim && prim->primitive_type == Token::KEYWORD_STRING);
+
     for (auto& decl : node->declarations) {
         Symbol* symbol = decl.resolved_symbol;
         if (symbol == nullptr) {
-            throw std::runtime_error("Code generation error: variable '" + decl.name +
-                                     "' not found in symbol table.");
+            throw std::runtime_error("Code generation error: variable '" + decl.name + "' not found.");
         }
 
-        // Fetch or assign the virtual register for this declared variable
         std::string vreg = vreg_lookup(decl.resolved_symbol);
 
-        std::string final_name = symbol->mangled_name;
+        bool is_actually_global = (symbol->offset == 0);
 
-        if (!final_name.empty() && final_name != decl.name) {
+        if (is_actually_global) {
+            // Add entry to .data section
             std::string init_val = "0";
-            bool has_non_const_init = false;
-
-            if (decl.initial_value) {
-                if (decl.initial_value->is_constant()) {
-                    if (is_string) {
-                        std::string str_data_label =
-                            "_str_var_data_" + std::to_string(string_label_counter++);
-                        constants.push_back(
-                            {str_data_label, "db",
-                             "\"" + unescapeString(decl.initial_value->get_value()) + "\", 0"});
-                        init_val = str_data_label;
-                    } else {
-                        init_val = decl.initial_value->get_value();
-                    }
+            if (decl.initial_value && decl.initial_value->is_constant()) {
+                if (is_string) {
+                    std::string label = "_str_var_" + std::to_string(string_label_counter++);
+                    constants.push_back({label, "db", "\"" + unescapeString(decl.initial_value->get_value()) + "\", 0"});
+                    init_val = label;
                 } else {
-                    has_non_const_init = true;
+                    init_val = decl.initial_value->get_value();
                 }
             }
 
-            std::string nasm_type = (size == 4)                ? "dd"
-                                    : (is_string || size == 8) ? "dq"
-                                    : (size == 1)              ? "db"
-                                                               : "dw";
+            if (is_complex_type) {
+                constants.push_back({symbol->mangled_name, "dq", "0.0, 0.0"});
+            } else {
+                std::string nasm_type = (size == 4) ? "dd" : (size == 8 ? "dq" : "db");
+                constants.push_back({symbol->mangled_name, nasm_type, init_val});
+            }
 
-            constants.push_back({final_name, nasm_type, init_val});
-
-            if (has_non_const_init) {
+            // If it has a non-constant initial value, emit code to set it
+            if (decl.initial_value) {
                 visit(decl.initial_value.get());
-                if (is_float || is_double) {
-                    std::string instr = is_float ? "vmovss" : "vmovsd";
-                    emitter.emit_mem_rel(instr, final_name, last_expr_vreg);
-                } else {
-                    emitter.emit_mem_rel("mov", final_name, last_expr_vreg);
-                }
+                std::string instr = is_complex_type ? "vmovupd" : (is_fp ? (size == 4 ? "vmovss" : "vmovsd") : "mov");
+                emitter.emit_mem_rel(instr, symbol->mangled_name, last_expr_vreg);
             }
         } else {
-            bool is_fp = is_double || is_float;
+            // local variable (stack)
             if (decl.initial_value) {
-                visit(decl.initial_value.get());
-                emitter.emit(is_fp ? "vmovsd" : "mov", vreg, last_expr_vreg);
+                visit(decl.initial_value.get()); // result in last_expr_vreg
+
+                // For complex (16 bytes), we use vmovupd
+                std::string instr = is_complex_type ? "vmovupd" : (is_fp ? (size == 4 ? "vmovss" : "vmovsd") : "mov");
+                emitter.emit(instr, vreg, last_expr_vreg);
+
+                emitter.emit_adv(size, node->type.get(), "rbp", symbol->offset, vreg);
             }
         }
     }
@@ -423,44 +418,40 @@ void CodeGenerator::visit(VariableAssignmentNode* node) {
 
 void CodeGenerator::visit(VariableReferenceNode* node) {
     Symbol* symbol = node->resolved_symbol;
-    if (symbol == nullptr) {
-        throw std::runtime_error("Symbol not found");
-    }
-
-    if (symbol->type == Symbol::SymbolType::CONSTANT) {
-        visit(symbol->value.get());
-        return;
-    }
-
     std::string vreg = vreg_lookup(symbol);
-    bool is_global = !symbol->mangled_name.empty() && symbol->mangled_name != symbol->name;
     int size = getTypeSize(node->resolved_type.get());
-    bool is_complex = (node->resolved_type->category == TypeNode::TypeCategory::STRUCT ||
-                       node->resolved_type->category == TypeNode::TypeCategory::ARRAY);
+    auto* prim = dynamic_cast<PrimitiveTypeNode*>(node->resolved_type.get());
 
-    if (is_global) {
-        std::string prefix = emitter.get_size_prefix(size);
-        if (is_lvalue || is_complex) {
-            emitter.emit("lea", vreg, "[rel " + symbol->mangled_name + "]");
+    bool is_complex_layout = (node->resolved_type->category == TypeNode::TypeCategory::STRUCT ||
+                              node->resolved_type->category == TypeNode::TypeCategory::ARRAY ||
+                              (prim && prim->primitive_type == Token::KEYWORD_COMPLEX));
+
+    bool is_actually_global = (symbol->offset == 0);
+
+    if (is_actually_global) {
+        if (is_lvalue || is_complex_layout) {
+            std::string addr_vreg = new_vreg();
+            emitter.emit("lea", addr_vreg, "[rel " + symbol->mangled_name + "]");
+            last_expr_vreg = addr_vreg;
         } else {
             std::string instr = (size == 1) ? "movsx" : (size == 4 ? "movsxd" : "mov");
-            if (isFloatingPoint(node->resolved_type.get())) {
+            if (isFloatingPoint(node->resolved_type.get()))
                 instr = (size == 4 ? "vmovss" : "vmovsd");
-            }
-            emitter.emit(instr, vreg, prefix + " [rel " + symbol->mangled_name + "]");
+
+            emitter.emit(instr, vreg, "[rel " + symbol->mangled_name + "]");
+            last_expr_vreg = vreg;
         }
     } else {
         // local
-        if (is_lvalue || is_complex) {
-            // the address on the stack for Structs/Arrays/Assignments
-            emitter.emit_lea_stack(vreg, symbol->offset);
+        if (is_lvalue || is_complex_layout) {
+            std::string addr_vreg = new_vreg();
+            emitter.emit_lea_stack(addr_vreg, symbol->offset);
+            last_expr_vreg = addr_vreg;
         } else {
-            // the actual value for Math/Printing
             emitter.load_adv(size, node->resolved_type.get(), vreg, "rbp", symbol->offset);
+            last_expr_vreg = vreg;
         }
     }
-
-    last_expr_vreg = vreg;
 }
 
 void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
@@ -702,6 +693,18 @@ void CodeGenerator::visit(QubitDefinitionNode* node) {
 }
 
 void CodeGenerator::visit(FunctionCallNode* node) {
+    // Intrinsics
+    if (node->function_name == "exit") {
+        if (!node->arguments.empty()) {
+            visit(node->arguments[0].get());
+            emitter.emit("mov", "rdi", last_expr_vreg);
+        } else {
+            emitter.emit("xor", "rdi", "rdi");
+        }
+        emitter.call_external("ny_exit");
+        return;
+    }
+
     const std::vector<std::string> arg_regs = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
     std::vector<std::string> evaluated_vregs;
 
@@ -900,6 +903,27 @@ void CodeGenerator::visit(CharacterLiteralExpressionNode* node) {
     if (!node->resolved_type) {
         node->resolved_type = std::make_shared<PrimitiveTypeNode>(Token::KEYWORD_CHAR);
     }
+}
+
+void CodeGenerator::visit(ComplexLiteralExpressionNode* node) {
+    // Create a unique key for the constant pool
+    std::stringstream ss;
+    ss << std::fixed << std::setprecision(10) << node->real << "_" << node->imaginary;
+    std::string val_key = ss.str();
+
+    if (constants_map.find(val_key) == constants_map.end()) {
+        std::string label = "_complex_lit_" + std::to_string(string_label_counter++);
+        constants_map[val_key] = label;
+
+        // Complex is two 64-bit doubles side-by-side in memory
+        std::string nasm_val = std::to_string(node->real) + ", " + std::to_string(node->imaginary);
+        constants.push_back({label, "dq", nasm_val});
+    }
+
+    std::string vreg = new_vreg();
+    emitter.emit("vmovupd", vreg, "[rel " + constants_map[val_key] + "]");
+
+    last_expr_vreg = vreg;
 }
 
 void CodeGenerator::visit(AsmStatementNode* node) {

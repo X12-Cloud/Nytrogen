@@ -164,7 +164,7 @@ std::unique_ptr<ComplexLiteralExpressionNode> Parser::parseComplexLiteralExpress
     const Token& token = consume();
     std::string s = token.value;
 
-    // Remove the trailing 'i'
+    // Remove trailing 'i'
     if (!s.empty() && s.back() == 'i') {
         s.pop_back();
     }
@@ -172,19 +172,29 @@ std::unique_ptr<ComplexLiteralExpressionNode> Parser::parseComplexLiteralExpress
     double re = 0.0;
     double im = 0.0;
 
-    // Find the split point between Real and Imaginary (+ or -)
+    // Find the operator separating Real and Imaginary (+ or -)
     size_t splitPos = s.find_first_of("+-", 1);
 
-    if (splitPos == std::string::npos) {
-        // If no +/- found in the middle, it's a pure imaginary number
-        im = std::stod(s);
-    } else {
-        // If we found a split, parse both halves
-        re = std::stod(s.substr(0, splitPos));
-        im = std::stod(s.substr(splitPos));
+    try {
+        if (splitPos == std::string::npos) {
+            // Pure imaginary
+            im = std::stod(s);
+        } else {
+            std::string reStr = s.substr(0, splitPos);
+            std::string imStr = s.substr(splitPos);
+
+            // Handle cases like "+i" or "-i" where number is implicit 1.0
+            if (reStr == "+" || reStr == "-") reStr += "1.0";
+            if (imStr == "+" || imStr == "-") imStr += "1.0";
+
+            re = std::stod(reStr);
+            im = std::stod(imStr);
+        }
+    } catch (...) {
+        throw std::runtime_error("Parser Error: Malformed complex literal '" + token.value + "'");
     }
 
-    // Return the node with both parts
+    // Pass all required arguments to the constructor
     return std::make_unique<ComplexLiteralExpressionNode>(re, im, token.line, token.column);
 }
 
@@ -357,7 +367,9 @@ std::unique_ptr<TypeNode> Parser::parseType() {
     if (type_token.type == Token::KEYWORD_INT || type_token.type == Token::KEYWORD_STRING ||
         type_token.type == Token::KEYWORD_FLOAT || type_token.type == Token::KEYWORD_DOUBLE ||
         type_token.type == Token::KEYWORD_BOOL || type_token.type == Token::KEYWORD_CHAR ||
-        type_token.type == Token::KEYWORD_VOID) {
+        type_token.type == Token::KEYWORD_VOID || type_token.type == Token::KEYWORD_COMPLEX ||
+        type_token.type == Token::KEYWORD_MATRIX ||
+        type_token.type == Token::KEYWORD_QUBIT) {
         consume();
         type = std::make_unique<PrimitiveTypeNode>(type_token.type);
     } else if (type_token.type == Token::KEYWORD_AUTO) {
@@ -858,6 +870,8 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
         case Token::KEYWORD_CHAR:
         case Token::KEYWORD_FLOAT:
         case Token::KEYWORD_DOUBLE:
+        case Token::KEYWORD_COMPLEX:
+        case Token::KEYWORD_MATRIX:
         case Token::KEYWORD_AUTO: {
             if (peek(1).type == Token::IDENTIFIER && peek(2).type == Token::LPAREN) {
                 return parseFunctionDefinition();

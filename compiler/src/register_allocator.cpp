@@ -10,52 +10,45 @@ bool RegisterAllocator::is_vreg(const std::string& op) {
 }
 
 bool RegisterAllocator::needs_xmm(const std::string& mnemonic) {
-    if (mnemonic.find("2si") != std::string::npos) {
-        return false;
-    }
+    if (mnemonic.find("lea") == 0 || mnemonic.find("movsx") == 0) return false;
 
-    // Standard AVX instructions starting with 'v' need XMM
+    if (mnemonic.find("2si") != std::string::npos) return false;
+
     return (mnemonic.find("vmov") == 0 || mnemonic.find("vadd") == 0 || 
             mnemonic.find("vsub") == 0 || mnemonic.find("vmul") == 0 || 
-            mnemonic.find("vdiv") == 0 || mnemonic.find("vcvt") == 0 ||
-            mnemonic.find("ucomi") == 0);
+            mnemonic.find("vdiv") == 0 || mnemonic.find("vcvt") == 0);
 }
 
-std::string RegisterAllocator::get_sized_reg(const std::string& phys, const std::string& current_op,
-                                             const InstructionSet::Instruction& instr) {
-    if (phys.empty() || phys.find("xmm") == 0)
-        return phys;
+std::string RegisterAllocator::get_sized_reg(const std::string& phys, const std::string& current_op, const InstructionSet::Instruction& instr) {
+    if (phys.empty() || phys.find("xmm") == 0) return phys;
 
     static std::unordered_map<std::string, std::vector<std::string>> sub_regs = {
-        {"rbx", {"bl", "ebx", "rbx"}},    {"r10", {"r10b", "r10d", "r10"}},
+        {"rbx", {"bl",   "ebx",  "rbx"}}, {"r10", {"r10b", "r10d", "r10"}},
         {"r11", {"r11b", "r11d", "r11"}}, {"r12", {"r12b", "r12d", "r12"}},
         {"r13", {"r13b", "r13d", "r13"}}, {"r14", {"r14b", "r14d", "r14"}},
-        {"r15", {"r15b", "r15d", "r15"}}, {"r8", {"r8b", "r8d", "r8"}},
-        {"r9", {"r9b", "r9d", "r9"}}};
+        {"r15", {"r15b", "r15d", "r15"}}, {"r8",  {"r8b",  "r8d",  "r8"}}, 
+        {"r9",  {"r9b",  "r9d",  "r9"}}
+    };
 
-    if (sub_regs.find(phys) == sub_regs.end())
-        return phys;
-
-    if (current_op.find("[") != std::string::npos)
-        return sub_regs.at(phys)[2];
+    if (current_op.find("[") != std::string::npos || instr.mnemonic == "lea") {
+        return sub_regs.at(phys)[2]; 
+    }
 
     std::string m = instr.mnemonic;
-    if (m.find("movsx") == 0 || m.find("movsxd") == 0 || m.find("lea") == 0)
+    if (m.find("movsx") == 0 || m.find("movsxd") == 0 || 
+        m.find("lea") == 0 || m.find("vcvtt") == 0) {
         return sub_regs.at(phys)[2];
+    }
 
     bool is_dword = false;
     bool is_byte = false;
     for (const auto& op : instr.operands) {
-        if (op.find("dword") != std::string::npos)
-            is_dword = true;
-        if (op.find("byte") != std::string::npos)
-            is_byte = true;
+        if (op.find("dword") != std::string::npos) is_dword = true;
+        if (op.find("byte") != std::string::npos) is_byte = true;
     }
 
-    if (is_byte)
-        return sub_regs.at(phys)[0];
-    if (is_dword)
-        return sub_regs.at(phys)[1];
+    if (is_byte)  return sub_regs.at(phys)[0];
+    if (is_dword) return sub_regs.at(phys)[1];
 
     return sub_regs.at(phys)[2];
 }

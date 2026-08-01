@@ -720,14 +720,24 @@ void SemanticAnalyzer::visit(FunctionCallNode* node) {
     if (node->function_name == "__builtin_sqrt" || node->function_name == "__builtin_abs" ||
         node->function_name == "__builtin_round") {
         if (node->arguments.size() != 1) {
-            Logger::report_error("Semantic Error", "__builtin_sqrt expects only 1 argument.",
+            Logger::report_error("Semantic Error", "__builtin_sqrt/abs/round expect only 1 argument.",
                                  node->line);
         }
 
         std::unique_ptr<TypeNode> arg_type = visitExpression(node->arguments[0].get());
         node->arguments[0]->resolved_type = arg_type->clone();
-
         node->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_DOUBLE);
+        node->resolved_symbol = nullptr;
+        return;
+    } else if (node->function_name == "exit") {
+        if (node->arguments.size() != 1) {
+            Logger::report_error("Semantic Error", "exit expect only 1 argument.",
+                                 node->line);
+        }
+
+        std::unique_ptr<TypeNode> arg_type = visitExpression(node->arguments[0].get());
+        node->arguments[0]->resolved_type = arg_type->clone();
+        node->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_INT);
         node->resolved_symbol = nullptr;
         return;
     }
@@ -1065,6 +1075,11 @@ std::unique_ptr<TypeNode> SemanticAnalyzer::visitExpression(ASTNode* expr) {
                 visitDoubleLiteralExpression(static_cast<DoubleLiteralExpressionNode*>(expr));
             break;
         }
+        case ASTNode::NodeType::COMPLEX_LITERAL_EXPRESSION: {
+            result_type =
+                visitComplexLiteralExpression(static_cast<ComplexLiteralExpressionNode*>(expr));
+            break;
+        }
         case ASTNode::NodeType::VARIABLE_REFERENCE: {
             auto* var_node = static_cast<VariableReferenceNode*>(expr);
             visit(var_node);
@@ -1106,6 +1121,9 @@ std::unique_ptr<TypeNode> SemanticAnalyzer::visitExpression(ASTNode* expr) {
                 func_node->function_name == "__builtin_abs" ||
                 func_node->function_name == "__builtin_round") {
                 expr->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_DOUBLE);
+                return expr->resolved_type->clone();
+            } else if (func_node->function_name == "exit") {
+                expr->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_INT);
                 return expr->resolved_type->clone();
             }
 

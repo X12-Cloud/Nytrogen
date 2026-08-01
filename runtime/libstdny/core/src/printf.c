@@ -15,3 +15,5 @@ void ny_print_char_raw(char val) { printf("%c", val); }
 
 void ny_print_bool(int val) { printf(val ? "true\n" : "false\n"); }
 void ny_print_bool_raw(int val) { printf(val ? "true" : "false"); }
+
+void ny_print_complex(double re, double im) { printf("(%.4f + %.4fi)\n", re, im); }
