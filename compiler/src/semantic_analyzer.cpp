@@ -137,6 +137,8 @@ void SemanticAnalyzer::analyze() {
     for (const auto& name : built_ins) {
         Symbol gate_sym(Symbol::SymbolType::VARIABLE, name, 
                         std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_MATRIX));
+        gate_sym.is_global = true;
+        gate_sym.mangled_name = name;
         symbolTable.addSymbol(std::move(gate_sym));
     }
 
@@ -319,13 +321,15 @@ void SemanticAnalyzer::visit(FunctionDefinitionNode* node) {
     for (int i = 0; i < node->parameters.size(); ++i) {
         const auto& param = node->parameters[i];
         int size = getTypeSize(param->type.get());
+        Symbol param_sym(Symbol::SymbolType::VARIABLE, param->name, param->type->clone(), param_offset, size);
+        param_sym.is_global = false;
+        param_sym.mangled_name = "";
         if (i < arg_registers.size()) {
             register_param_offset -= 8;
             symbolTable.addSymbol(Symbol(Symbol::SymbolType::VARIABLE, param->name,
                                          param->type->clone(), register_param_offset, size));
         } else {
-            symbolTable.addSymbol(Symbol(Symbol::SymbolType::VARIABLE, param->name,
-                                         param->type->clone(), param_offset, size));
+            symbolTable.addSymbol(std::move(param_sym));
             param_offset += size;
         }
     }
@@ -346,6 +350,7 @@ void SemanticAnalyzer::visit(FunctionDefinitionNode* node) {
 
 void SemanticAnalyzer::visit(VariableDeclarationNode* node) {
     bool is_auto = (dynamic_cast<AutoTypeNode*>(node->type.get()) != nullptr);
+    bool global_context = (symbolTable.current_scope->parent == nullptr);
 
     for (auto& decl : node->declarations) {
         if (symbolTable.current_scope->lookup(decl.name) != nullptr) {
@@ -388,10 +393,12 @@ void SemanticAnalyzer::visit(VariableDeclarationNode* node) {
         int offset = symbolTable.current_scope->currentOffset;
 
         std::string unique_label = Mangler::mangleVariable(namespace_stack, decl.name);
-
         Symbol symbol(Symbol::SymbolType::VARIABLE, decl.name, actual_type->clone(), offset,
                       var_size);
+
         symbol.mangled_name = unique_label;
+        symbol.is_global = global_context;
+
         decl.resolved_symbol = symbolTable.addSymbol(std::move(symbol));
     }
 }
@@ -423,6 +430,7 @@ void SemanticAnalyzer::visit(VariableReferenceNode* node) {
     node->resolved_symbol = var_symbol;
     node->resolved_offset = var_symbol->offset;
     node->resolved_type = var_symbol->dataType->clone();
+    std::cout << "SA: " << var_symbol->mangled_name << std::endl;
 }
 
 void SemanticAnalyzer::visit(NamespaceDefinition* node) {
@@ -861,6 +869,7 @@ void SemanticAnalyzer::visit(StructDefinitionNode* node) {
 }
 
 void SemanticAnalyzer::visit(QubitDefinitionNode* node) {
+    bool global_context = (symbolTable.current_scope->parent == nullptr);
     if (symbolTable.current_scope->lookup(node->qubit_name) != nullptr) {
         Logger::report_error("Semantic Error", "Redefinition of qubit '" + node->qubit_name + "'.", node->line);
     }
@@ -876,6 +885,11 @@ void SemanticAnalyzer::visit(QubitDefinitionNode* node) {
     Symbol q_sym(Symbol::SymbolType::VARIABLE, node->qubit_name, 
                  std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_QUBIT), 
                  stack_offset, 8);
+
+    std::string unique_label = Mangler::mangleVariable(namespace_stack, node->qubit_name);
+
+    q_sym.mangled_name = unique_label;
+    q_sym.is_global = global_context;
 
     symbolTable.addSymbol(std::move(q_sym));
 }

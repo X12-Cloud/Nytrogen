@@ -574,7 +574,6 @@ struct VariableReferenceNode : public ASTNode {
     std::string name;
     Symbol* resolved_symbol{nullptr};
     int resolved_offset{0};
-    // std::unique_ptr<TypeNode> resolved_type;
     std::vector<std::string> scopes;
 
     [[nodiscard]] auto type_name() const -> std::string override {

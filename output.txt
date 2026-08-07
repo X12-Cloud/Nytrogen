@@ -1,14 +1,22 @@
+--- Building Nytrogen Standard Library (libstdny) ---
+Building Core...
+  [CC] src/printf.c
+  [CC] src/syscall.c
+Building QLib...
+  [CXX] src/qlib.cpp
+  [AS] asm/g.asm
+  [AS] asm/init.asm
+  [AS] asm/measure.asm
+  [AS] asm/setup.asm
+Aggregating object files...
+Creating archive libstdny.a...
+Build complete. Library located at /home/x12/dev/Nytrogen/runtime/libstdny/out/libstdny.a
 --- Performing an incremental build of Nytrogen ---
 -- Configuring done (0.0s)
 -- Generating done (0.0s)
 -- Build files have been written to: /home/x12/dev/Nytrogen/build
-[ 27%] Built target nytro
-[ 44%] Built target nytro-pre
-[ 55%] Building CXX object compiler/CMakeFiles/nytro-c.dir/src/code_generator.cpp.o
-[ 55%] Building CXX object compiler/CMakeFiles/nytro-c.dir/src/register_allocator.cpp.o
-[ 61%] Building CXX object compiler/CMakeFiles/nytro-c.dir/src/semantic_analyzer.cpp.o
-[ 66%] Building CXX object compiler/CMakeFiles/nytro-c.dir/src/main.cpp.o
-[ 72%] Linking CXX executable ../bin/nytro-c
+[ 27%] Built target nytro-pre
+[ 44%] Built target nytro
 [100%] Built target nytro-c
 CMake Warning:
   No source or binary directory provided.  Both will be assumed to be the
@@ -30,6 +38,11 @@ Nytrogen Compiler Arch Linux
 --- Processing Source File: ./out/stress_test.pre.nyt ---
 
 Debug: Entered new scope. Total scopes in archive: 2
+Debug: Adding symbol 'h' to current scope.
+Debug: Adding symbol 'x' to current scope.
+Debug: Adding symbol 'z' to current scope.
+Debug: Adding symbol 's' to current scope.
+Debug: Adding symbol 't' to current scope.
 Debug: Adding symbol 'calculate_score' to current scope.
 Debug: Adding symbol 'main' to current scope.
 Debug: Adding symbol 'Status' to current scope.
@@ -69,27 +82,33 @@ Successfully generated assembly to './out/stress_test.asm'
 
 --- Assembling stress_test.asm ---
 Running: nasm -f elf64 "./out/stress_test.asm" -o "./out/stress_test.o"
-
---- Linking ---
-Running: ld -o "./out/nytrogen_test" "./out/stress_test.o"  -lc --dynamic-linker /lib64/ld-linux-x86-64.so.2
-
---- Running output program ---
-
-Exit Code: 0
+./out/stress_test.asm:222: error: expression syntax error
+./out/stress_test.asm:325: error: expression syntax error
 --- Printing output assembly file ---
+section .text
+    extern ny_exit
+    extern ny_print_float_raw
+    extern ny_print_int
+    extern ny_print_int_raw
+    extern ny_print_string
+    extern ny_print_string_raw
+    extern setup
+
 
 section .text
-    extern printf
-    extern strcmp
     global _start
     global calculate_score
     global main
 
 _start:
+    lea rdi, [rel _N_qlib_state]
+    call setup
     call main
     mov rdi, rax
-    mov rax, 60
-    syscall
+    call ny_exit
+    vmovss xmm1, [rel _float_0]
+    vmovss xmm2, xmm1
+    vmovss dword [rbp + -4], xmm2
 
 _N15calculate_score:
     push rbp
@@ -100,26 +119,18 @@ _N15calculate_score:
     mov [rbp - 8], rdi
     mov r9, rsi
     mov [rbp - 16], rsi
-    lea r10, [rel _str_0]
-    mov rsi, r10
-    lea rdi, [rel _print_raw_format]
-    xor rax, rax
-    call printf
-    movsxd r8, dword [rbp + -8]
-    mov rsi, r8
-    lea rdi, [rel _print_int_raw_format]
-    xor rax, rax
-    call printf
     lea r10, [rel _str_1]
-    mov rsi, r10
-    lea rdi, [rel _print_raw_format]
-    xor rax, rax
-    call printf
+    mov rdi, r10
+    call ny_print_string_raw
+    movsxd r8, dword [rbp + -8]
+    mov rdi, r8
+    call ny_print_int_raw
+    lea r10, [rel _str_2]
+    mov rdi, r10
+    call ny_print_string_raw
     movsxd r9, dword [rbp + -16]
-    mov rsi, r9
-    lea rdi, [rel _print_int_format]
-    xor rax, rax
-    call printf
+    mov rdi, r9
+    call ny_print_int
     movsxd r8, dword [rbp + -8]
     movsxd r9, dword [rbp + -16]
     cmp r8, r9
@@ -162,16 +173,12 @@ main:
     mov rbp, rsp
     and rsp, -16
     sub rsp, 192
-    lea rbx, [rel _str_2]
-    mov rsi, rbx
-    lea rdi, [rel _print_raw_format]
-    xor rax, rax
-    call printf
     lea rbx, [rel _str_3]
-    mov rsi, rbx
-    lea rdi, [rel _print_str_format]
-    xor rax, rax
-    call printf
+    mov rdi, rbx
+    call ny_print_string_raw
+    lea rbx, [rel _str_4]
+    mov rdi, rbx
+    call ny_print_string
     mov rbx, 2
     mov r9, 0
     lea r8, [rbp - 12]
@@ -220,278 +227,241 @@ main:
     mov r9, r10
     add r9, r8
     mov dword [r9 + 0], ebx
-    lea rbx, [rel _str_4]
-    mov rsi, rbx
-    lea rdi, [rel _print_raw_format]
-    xor rax, rax
-    call printf
-    mov rbx, 0
-    lea r9, [rbp - 12]
-    mov r8, rbx
-    imul r8, 4
-    mov rbx, r9
-    add rbx, r8
-    movsxd r8, dword [rbx + 0]
-    lea rbx, [rbp - 24]
-    mov r9, r8
-    imul r9, 4
-    mov r8, rbx
-    add r8, r9
-    movsxd r9, dword [r8 + 0]
-    mov rsi, r9
-    lea rdi, [rel _print_int_format]
-    xor rax, rax
-    call printf
-    mov r9, 999
-    mov r8, 1
+    lea r9, [rel _str_5]
+    mov rdi, r9
+    call ny_print_string_raw
+    mov r9, 0
     lea rbx, [rbp - 12]
+    mov r8, r9
+    imul r8, 4
+    mov r9, rbx
+    add r9, r8
+    movsxd r8, dword [r9 + 0]
+    lea r9, [rbp - 24]
+    mov rbx, r8
+    imul rbx, 4
+    mov r8, r9
+    add r8, rbx
+    movsxd rbx, dword [r8 + 0]
+    mov rdi, rbx
+    call ny_print_int
+    mov rbx, 999
+    mov r8, 1
+    lea r9, [rbp - 12]
     mov r10, r8
     imul r10, 4
-    mov r8, rbx
+    mov r8, r9
     add r8, r10
     movsxd r10, dword [r8 + 0]
     lea r8, [rbp - 24]
-    mov rbx, r10
-    imul rbx, 4
-    mov r10, r8
-    add r10, rbx
-    mov dword [r10 + 0], r9d
-    lea r9, [rel _str_5]
-    mov rsi, r9
-    lea rdi, [rel _print_raw_format]
-    xor rax, rax
-    call printf
-    mov r9, 0
-    lea r10, [rbp - 24]
-    mov rbx, r9
-    imul rbx, 4
     mov r9, r10
-    add r9, rbx
-    movsxd rbx, dword [r9 + 0]
-    mov rsi, rbx
-    lea rdi, [rel _print_int_raw_format]
-    xor rax, rax
-    call printf
-    lea rbx, [rel _str_3]
-    mov rsi, rbx
-    lea rdi, [rel _print_str_format]
-    xor rax, rax
-    call printf
-    mov rbx, 10
-    lea r9, [rel _N1p]
-    mov r10, r9
-    mov dword [r10 + 0], ebx
-    mov rbx, 20
-    lea r9, [rel _N1p]
-    mov r10, r9
-    add r10, 4
+    imul r9, 4
+    mov r10, r8
+    add r10, r9
     mov dword [r10 + 0], ebx
     lea rbx, [rel _str_6]
-    mov rsi, rbx
-    lea rdi, [rel _print_str_format]
-    xor rax, rax
-    call printf
-    lea rbx, [rel _str_7]
-    mov rsi, rbx
-    lea rdi, [rel _print_str_format]
-    xor rax, rax
-    call printf
-    lea r9, [rel _N1p]
+    mov rdi, rbx
+    call ny_print_string_raw
+    mov rbx, 0
+    lea r10, [rbp - 24]
+    mov r9, rbx
+    imul r9, 4
+    mov rbx, r10
+    add rbx, r9
+    movsxd r9, dword [rbx + 0]
+    mov rdi, r9
+    call ny_print_int_raw
+    lea r9, [rel _str_4]
+    mov rdi, r9
+    call ny_print_string
+    mov r9, 10
+    lea rbx, [rbp - 32]
+    mov r10, rbx
+    mov dword [r10 + 0], r9d
+    mov r9, 20
+    lea r10, [rbp - 32]
+    mov rbx, r10
+    add rbx, 4
+    mov dword [rbx + 0], r9d
+    lea r9, [rel _str_7]
+    mov rdi, r9
+    call ny_print_string
+    lea r9, [rel _str_8]
+    mov rdi, r9
+    call ny_print_string
+    lea r9, [rbp - 32]
     mov rbx, r9
-    movsxd r10, dword [rbx + 0]
-    mov rsi, r10
-    lea rdi, [rel _print_int_raw_format]
-    xor rax, rax
-    call printf
-    lea r10, [rel _str_8]
-    mov rsi, r10
-    lea rdi, [rel _print_raw_format]
-    xor rax, rax
-    call printf
-    lea r9, [rel _N1p]
-    mov r10, r9
-    add r10, 4
-    movsxd rbx, dword [r10 + 0]
-    mov rsi, rbx
-    lea rdi, [rel _print_int_raw_format]
-    xor rax, rax
-    call printf
-    lea rbx, [rel _str_3]
-    mov rsi, rbx
-    lea rdi, [rel _print_str_format]
-    xor rax, rax
-    call printf
-    mov rbx, 1
-    mov [rel _N14current_status], rbx
+    movsxd r9, dword [rbx + 0]
+    mov rdi, r9
+    call ny_print_int_raw
+    lea r9, [rel _str_9]
+    mov rdi, r9
+    call ny_print_string_raw
+    lea r9, [rbp - 32]
+    mov rbx, r9
+    add rbx, 4
+    movsxd r9, dword [rbx + 0]
+    mov rdi, r9
+    call ny_print_int_raw
+    lea r9, [rel _str_4]
+    mov rdi, r9
+    call ny_print_string
+    movsxd r9, [rel ]
+    mov rbx, r9
+    mov dword [rbp + -36], ebx
+    mov r10, 0
+    mov r8, r10
+    mov dword [rbp + -40], r8d
+    mov r10, 0
+    mov r11, r10
+    mov dword [rbp + -44], r11d
 
 _while_start_0:
-    movsxd rbx, dword [rel _N1i]
+    movsxd r11, dword [rbp + -44]
     mov r10, 3
-    cmp rbx, r10
+    cmp r11, r10
     setl al
     movzx r10, al
     cmp r10, 0
     je _while_end_0
-    lea r10, [rel _str_9]
-    mov rsi, r10
-    lea rdi, [rel _print_str_format]
-    xor rax, rax
-    call printf
-    movsxd r10, dword [rel _N5total]
-    movsxd rbx, dword [rel _N1i]
-    lea r8, [rbp - 24]
-    mov r11, rbx
-    imul r11, 4
-    mov r12, r8
-    add r12, r11
-    movsxd r11, dword [r12 + 0]
-    mov r12, r10
-    add r12, r11
-    lea r10, [rel _N5total]
-    mov dword [r10 + 0], r12d
-    movsxd rbx, dword [rel _N1i]
-    mov r12, 1
-    mov r11, rbx
-    add r11, r12
-    lea rbx, [rel _N1i]
-    mov dword [rbx + 0], r11d
+    lea r10, [rel _str_10]
+    mov rdi, r10
+    call ny_print_string
+    movsxd r8, dword [rbp + -40]
+    movsxd r11, dword [rbp + -44]
+    lea r10, [rbp - 24]
+    mov r12, r11
+    imul r12, 4
+    mov r13, r10
+    add r13, r12
+    movsxd r12, dword [r13 + 0]
+    mov r13, r8
+    add r13, r12
+    lea r12, [rbp - 40]
+    mov dword [r12 + 0], r13d
+    movsxd r11, dword [rbp + -44]
+    mov r13, 1
+    mov r12, r11
+    add r12, r13
+    lea r13, [rbp - 44]
+    mov dword [r13 + 0], r12d
     jmp _while_start_0
 
 _while_end_0:
-    lea rbx, [rel _str_9]
-    mov rsi, rbx
-    lea rdi, [rel _print_str_format]
-    xor rax, rax
-    call printf
-    lea rbx, [rel _str_10]
-    mov rsi, rbx
-    lea rdi, [rel _print_raw_format]
-    xor rax, rax
-    call printf
-    movsxd r10, dword [rel _N5total]
-    mov rsi, r10
-    lea rdi, [rel _print_int_format]
-    xor rax, rax
-    call printf
-    vmovss xmm1, dword [rel _N6radius]
-    vmovss xmm1, dword [rel _N6radius]
-    vmulss xmm2, xmm1, xmm1
-    vmovss [rel _N8radiusp2], xmm2
-    vmovss xmm2, dword [rel _N2PI]
-    vmovss xmm1, dword [rel _N8radiusp2]
-    vmulss xmm3, xmm2, xmm1
-    vmovss [rel _N4area], xmm3
-    lea rbx, [rel _str_11]
-    mov rsi, rbx
-    lea rdi, [rel _print_raw_format]
-    xor rax, rax
-    call printf
-    vmovss xmm3, dword [rel _N4area]
-    vcvtss2sd xmm0, xmm3, xmm3
-    lea rdi, [rel _print_float_raw_format]
-    mov rax, 1
-    call printf
-    lea rbx, [rel _str_3]
-    mov rsi, rbx
-    lea rdi, [rel _print_str_format]
-    xor rax, rax
-    call printf
-    movsxd r10, dword [rel _N5total]
-    lea r9, [rel _N1p]
-    mov rbx, r9
-    add rbx, 4
-    movsxd r9, dword [rbx + 0]
-    mov rdi, r10
-    mov rsi, r9
+    lea r12, [rel _str_10]
+    mov rdi, r12
+    call ny_print_string
+    lea r12, [rel _str_11]
+    mov rdi, r12
+    call ny_print_string_raw
+    movsxd r8, dword [rbp + -40]
+    mov rdi, r8
+    call ny_print_int
+    vmovss xmm1, [rel _float_12]
+    vmovss xmm3, xmm1
+    vmovss dword [rbp + -48], xmm3
+    vmovss xmm3, [rbp + -48]
+    vmovss xmm3, [rbp + -48]
+    vmulss xmm1, xmm3, xmm3
+    vmovss xmm3, xmm1
+    vmovss dword [rbp + -52], xmm3
+    vmovss xmm2, [rbp + -4]
+    vmovss xmm3, [rbp + -52]
+    vmulss xmm1, xmm2, xmm3
+    vmovss xmm2, xmm1
+    vmovss dword [rbp + -56], xmm2
+    lea r12, [rel _str_13]
+    mov rdi, r12
+    call ny_print_string_raw
+    vmovss xmm2, [rbp + -56]
+    vcvtss2sd xmm0, xmm2, xmm2
+    call ny_print_float_raw
+    lea r12, [rel _str_4]
+    mov rdi, r12
+    call ny_print_string
+    movsxd r8, dword [rbp + -40]
+    lea r12, [rbp - 32]
+    mov r13, r12
+    add r13, 4
+    movsxd r12, dword [r13 + 0]
+    mov rdi, r8
+    mov rsi, r12
     call _N15calculate_score
-    mov r9, rax
-    mov [rel _N12final_result], r9
-    movsxd r9, dword [rel _N12final_result]
-    mov r10, 0
-    cmp r9, r10
+    mov r12, rax
+    mov r8, r12
+    mov dword [rbp + -60], r8d
+    movsxd r8, dword [rbp + -60]
+    mov r12, 0
+    cmp r8, r12
     setne al
-    movzx r10, al
-    cmp r10, 0
+    movzx r12, al
+    cmp r12, 0
     je _if_false_1
-    lea r10, [rel _str_12]
-    mov rsi, r10
-    lea rdi, [rel _print_raw_format]
-    xor rax, rax
-    call printf
-    movsxd r9, dword [rel _N12final_result]
-    mov rsi, r9
-    lea rdi, [rel _print_int_format]
-    xor rax, rax
-    call printf
+    lea r12, [rel _str_14]
+    mov rdi, r12
+    call ny_print_string_raw
+    movsxd r8, dword [rbp + -60]
+    mov rdi, r8
+    call ny_print_int
     jmp _if_end_1
 
 _if_false_1:
 
 _if_end_1:
-    movsxd r10, dword [rel _N14current_status]
-    mov rbx, 1
-    cmp r10, rbx
+    movsxd rbx, dword [rbp + -36]
+    movsxd r9, [rel ]
+    cmp rbx, r9
     sete al
-    movzx r10, al
-    cmp r10, 0
+    movzx r9, al
+    cmp r9, 0
     je _if_false_2
-    movsxd r9, dword [rel _N12final_result]
-    mov r10, 1000
-    cmp r9, r10
+    movsxd r8, dword [rbp + -60]
+    mov r9, 1000
+    cmp r8, r9
     setg al
-    movzx r10, al
-    cmp r10, 0
+    movzx r9, al
+    cmp r9, 0
     je _if_false_3
-    movsxd r9, dword [rel _N12final_result]
-    mov r10, 3008
-    cmp r9, r10
+    movsxd r8, dword [rbp + -60]
+    mov r9, 3008
+    cmp r8, r9
     sete al
-    movzx r10, al
-    cmp r10, 0
+    movzx r9, al
+    cmp r9, 0
     je _if_false_4
-    lea r10, [rel _str_13]
-    mov rsi, r10
-    lea rdi, [rel _print_str_format]
-    xor rax, rax
-    call printf
+    lea r9, [rel _str_15]
+    mov rdi, r9
+    call ny_print_string
     jmp _if_end_4
 
 _if_false_4:
-    lea r10, [rel _str_14]
-    mov rsi, r10
-    lea rdi, [rel _print_str_format]
-    xor rax, rax
-    call printf
+    lea r9, [rel _str_16]
+    mov rdi, r9
+    call ny_print_string
 
 _if_end_4:
     jmp _if_end_3
 
 _if_false_3:
-    lea r10, [rel _str_15]
-    mov rsi, r10
-    lea rdi, [rel _print_str_format]
-    xor rax, rax
-    call printf
-    movsxd r9, dword [rel _N12final_result]
-    mov r10, 0
-    cmp r9, r10
+    lea r9, [rel _str_17]
+    mov rdi, r9
+    call ny_print_string
+    movsxd r8, dword [rbp + -60]
+    mov r9, 0
+    cmp r8, r9
     sete al
-    movzx r9, al
-    cmp r9, 0
+    movzx r8, al
+    cmp r8, 0
     je _if_false_5
-    lea r9, [rel _str_16]
-    mov rsi, r9
-    lea rdi, [rel _print_str_format]
-    xor rax, rax
-    call printf
+    lea r8, [rel _str_18]
+    mov rdi, r8
+    call ny_print_string
     jmp _if_end_5
 
 _if_false_5:
-    lea r9, [rel _str_17]
-    mov rsi, r9
-    lea rdi, [rel _print_str_format]
-    xor rax, rax
-    call printf
+    lea r8, [rel _str_19]
+    mov rdi, r8
+    call ny_print_string
 
 _if_end_5:
 
@@ -501,8 +471,8 @@ _if_end_3:
 _if_false_2:
 
 _if_end_2:
-    mov r9, 0
-    mov rax, r9
+    mov r8, 0
+    mov rax, r8
     jmp main_epilogue
 
 main_epilogue:
@@ -510,43 +480,29 @@ main_epilogue:
     ret
 
 section .data
-    _print_int_format: db "%d", 10, 0
-    _print_str_format: db "%s", 10, 0
-    _print_char_format: db "%c", 10, 0
-    _print_float_format: db "%f", 10, 0
-    _print_int_raw_format: db "%d", 0
-    _print_raw_format: db "%s", 0
-    _print_char_raw_format: db "%c", 0
-    _print_float_raw_format: db "%f", 0
+    global _N_qlib_state
     align 16
     _abs_mask: dq 0x7FFFFFFFFFFFFFFF
     align 8
-    _N2PI: dd 3.141590
-    _str_0: db "DEBUG calculate_score: a=", 0
-    _str_1: db ", b=", 0
-    _str_2: db "Hello", 0
-    _str_3: db "", 10, "", 0
-    _N3map: dw 0
-    _N4data: dw 0
-    _str_4: db "nested index access (300): ", 0
-    _str_5: db "nested assignment result (999): ", 0
-    _N1p: dq 0
-    _str_6: db "- DEBUG -", 0
-    _str_7: db "p.x | p.y", 0
-    _str_8: db "  |  ", 0
-    _N14current_status: dd 0
-    _N5total: dd 0
-    _N1i: dd 0
-    _str_9: db "processing index...", 0
-    _str_10: db "DEBUG total before calculate_score(): ", 0
-    _N6radius: dd 5.000000
-    _N8radiusp2: dd 0
-    _N4area: dd 0
-    _str_11: db "circle area: ", 0
-    _N12final_result: dd 0
-    _str_12: db "final score (3008): ", 0
-    _str_13: db "status: pass (3008)", 0
-    _str_14: db "status: pass (not 3008)", 0
-    _str_15: db "status: fail", 0
-    _str_16: db "reason: final score = 0", 0
-    _str_17: db "reason: final score < 1000", 0
+    _float_0: dd 3.141590
+    _str_1: db "DEBUG calculate_score: a=", 0
+    _str_2: db ", b=", 0
+    _str_3: db "Hello", 0
+    _str_4: db "", 10, "", 0
+    _str_5: db "nested index access (300): ", 0
+    _str_6: db "nested assignment result (999): ", 0
+    _str_7: db "- DEBUG -", 0
+    _str_8: db "p.x | p.y", 0
+    _str_9: db "  |  ", 0
+    _str_10: db "processing index...", 0
+    _str_11: db "DEBUG total before calculate_score(): ", 0
+    _float_12: dd 5.000000
+    _str_13: db "circle area: ", 0
+    _str_14: db "final score (3008): ", 0
+    _str_15: db "status: pass (3008)", 0
+    _str_16: db "status: pass (not 3008)", 0
+    _str_17: db "status: fail", 0
+    _str_18: db "reason: final score = 0", 0
+    _str_19: db "reason: final score < 1000", 0
+    _N_qlib_state: times 8192 db 0
+    align 32
