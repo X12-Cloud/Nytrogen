@@ -37,7 +37,6 @@ struct Symbol {
     SymbolType type;
     std::string name;
     std::string mangled_name;
-    //std::string is_global; // why was this a string wtf?
     bool is_global = false;
     std::unique_ptr<TypeNode> dataType;
     std::shared_ptr<StructDefinitionNode> structDef;

@@ -704,6 +704,19 @@ void CodeGenerator::visit(FunctionCallNode* node) {
         }
         emitter.call_external("ny_exit");
         return;
+    } if (node->function_name.rfind("__builtin_", 0) == 0) {
+        if (node->arguments.empty()) {
+            throw std::runtime_error("Codegen Error: Function " + node->function_name + " expectes at least 1 argument.");
+        }
+
+        visit(node->arguments[0].get());
+        std::string_view op = std::string_view(node->function_name).substr(10);
+
+        if (op == "sqrt") emitter.emit("sqrtsd", last_expr_vreg, last_expr_vreg);
+        else if (op == "round") emitter.emit("roundsd", last_expr_vreg, last_expr_vreg + ", 0");
+        else if (op == "abs") emitter.emit("vandpd", last_expr_vreg, last_expr_vreg + ", [rel _abs_mask]");
+
+        return;
     }
 
     const std::vector<std::string> arg_regs = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
