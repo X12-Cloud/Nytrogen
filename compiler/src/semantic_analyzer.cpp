@@ -351,6 +351,7 @@ void SemanticAnalyzer::visit(FunctionDefinitionNode* node) {
 void SemanticAnalyzer::visit(VariableDeclarationNode* node) {
     bool is_auto = (dynamic_cast<AutoTypeNode*>(node->type.get()) != nullptr);
     bool global_context = (symbolTable.current_scope->parent == nullptr);
+    bool is_global = (symbolTable.all_scopes.size() <= 2) || global_context;
 
     for (auto& decl : node->declarations) {
         if (symbolTable.current_scope->lookup(decl.name) != nullptr) {
@@ -397,7 +398,7 @@ void SemanticAnalyzer::visit(VariableDeclarationNode* node) {
                       var_size);
 
         symbol.mangled_name = unique_label;
-        symbol.is_global = global_context;
+        symbol.is_global = is_global;
 
         decl.resolved_symbol = symbolTable.addSymbol(std::move(symbol));
     }
@@ -430,7 +431,7 @@ void SemanticAnalyzer::visit(VariableReferenceNode* node) {
     node->resolved_symbol = var_symbol;
     node->resolved_offset = var_symbol->offset;
     node->resolved_type = var_symbol->dataType->clone();
-    std::cout << "SA: " << var_symbol->mangled_name << std::endl;
+    std::cout << "SA: " << var_symbol->mangled_name << " is_global: " << var_symbol->is_global << std::endl;
 }
 
 void SemanticAnalyzer::visit(NamespaceDefinition* node) {
@@ -870,6 +871,7 @@ void SemanticAnalyzer::visit(StructDefinitionNode* node) {
 
 void SemanticAnalyzer::visit(QubitDefinitionNode* node) {
     bool global_context = (symbolTable.current_scope->parent == nullptr);
+    bool is_global = (symbolTable.all_scopes.size() <= 2) || global_context;
     if (symbolTable.current_scope->lookup(node->qubit_name) != nullptr) {
         Logger::report_error("Semantic Error", "Redefinition of qubit '" + node->qubit_name + "'.", node->line);
     }
@@ -879,8 +881,11 @@ void SemanticAnalyzer::visit(QubitDefinitionNode* node) {
         visit(node->beta.get());
     }
 
-    symbolTable.current_scope->currentOffset -= 8;
-    int stack_offset = symbolTable.current_scope->currentOffset;
+    int stack_offset = 0;
+    if (!is_global) {
+        symbolTable.current_scope->currentOffset -= 8;
+        stack_offset = symbolTable.current_scope->currentOffset;
+    }
 
     Symbol q_sym(Symbol::SymbolType::VARIABLE, node->qubit_name, 
                  std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_QUBIT), 
@@ -889,7 +894,7 @@ void SemanticAnalyzer::visit(QubitDefinitionNode* node) {
     std::string unique_label = Mangler::mangleVariable(namespace_stack, node->qubit_name);
 
     q_sym.mangled_name = unique_label;
-    q_sym.is_global = global_context;
+    q_sym.is_global = is_global;
 
     symbolTable.addSymbol(std::move(q_sym));
 }

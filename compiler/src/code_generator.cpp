@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <type_traits>
 #include <unordered_set>
+#include <unitypes.h>
 
 #include "instruction_set.hpp"
 
@@ -680,7 +681,13 @@ void CodeGenerator::visit(QubitDefinitionNode* node) {
 
     std::string imm_vreg = new_vreg();
     emitter.emit("mov", imm_vreg, std::to_string(q_offset));
-    emitter.emit_adv(8, sym->dataType.get(), "rbp", sym->offset, imm_vreg);
+
+    if (sym->is_global) {
+        constants.push_back({sym->mangled_name, "dq", "0"});
+        emitter.emit_mem_rel("mov", sym->mangled_name, imm_vreg);
+    } else {
+        emitter.emit_adv(8, sym->dataType.get(), "rbp", sym->offset, imm_vreg);
+    }
 
     if (node->has_custom_amplitudes) {
         visit(node->alpha.get());
@@ -692,6 +699,35 @@ void CodeGenerator::visit(QubitDefinitionNode* node) {
         emitter.call_external("q_init");
     }
 }
+
+/* constexpr uint32_t intrinsic_hash(std::string_view str) { // TODO: use this to make a centralised intrinsic engine later.
+    uint32_t hash = 2166136261u;
+    for (char c : str) {
+        hash ^= static_cast<uint32_t>(c);
+        hash *= 16777619u;
+    }
+    return hash;
+}
+
+constexpr uint32_t operator"" _intrinsic(const char* str, std::size_t len) {
+    return intrinsic_hash(std::string_view(str, len));
+}
+
+enum class IntrinsicKind {
+    None,
+    Sqrt,
+    Abs,
+    Round
+};
+
+IntrinsicKind check_intrinsic(std::string_view func_name) {
+    switch (intrinsic_hash(func_name)) {
+        case "__builtin_sqrt"_intrinsic: return IntrinsicKind::Sqrt;
+        case "__builtin_abs"_intrinsic:  return IntrinsicKind::Abs;
+        case "__builtin_round"_intrinsic:  return IntrinsicKind::Round;
+        default:                         return IntrinsicKind::None;
+    }
+} */
 
 void CodeGenerator::visit(FunctionCallNode* node) {
     // Intrinsics

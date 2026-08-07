@@ -1,19 +1,40 @@
  PROGRAM_ROOT
    FUNCTION_DEF: main
+     QUBIT_DEF: q { alpha: default, beta: default }
      VAR_DECL
-       FUNC_CALL: __builtin_sqrt
-         DOUBLE_LITERAL: (4.000000)
+       INT_LITERAL: (0)
      VAR_DECL
-       FUNC_CALL: __builtin_abs
-         ASTNode
+       INT_LITERAL: (0)
      VAR_DECL
-       FUNC_CALL: __builtin_round
-         DOUBLE_LITERAL: (3.141590)
+       INT_LITERAL: (0)
+     VAR_DECL
+       INT_LITERAL: (100)
      PRINT_STMT
-       VAR_REF: (x)
+       STR_LITERAL: (--- Starting Quantum Statistics Test ---)
      PRINT_STMT
-       VAR_REF: (y)
+       STR_LITERAL: (Running 100 flips in superposition...)
+       STR_LITERAL: (\n)
+     ASTNode
      PRINT_STMT
-       VAR_REF: (z)
+       STR_LITERAL: (--- Results ---)
+     PRINT_STMT
+       STR_LITERAL: (Heads (|0>): )
+       VAR_REF: (heads)
+     PRINT_STMT
+       STR_LITERAL: (Tails (|1>): )
+       VAR_REF: (tails)
+     PRINT_STMT
+       STR_LITERAL: (Total:       )
+       VAR_REF: (i)
+     IF_STATEMENT
+       BINARY_OP: 
+         VAR_REF: (heads)
+         INT_LITERAL: (30)
+       IF_STATEMENT
+         BINARY_OP: 
+           VAR_REF: (tails)
+           INT_LITERAL: (30)
+         PRINT_STMT
+           STR_LITERAL: (Status: PASS (Probability distribution is balanced))
      RETURN_STMT:
        INT_LITERAL: (0)
