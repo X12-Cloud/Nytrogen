@@ -11,7 +11,7 @@ int factorial(int n) {
     if (n <= 1) {
         return 1;
     }
-    return n * factorial(n - 1);
+    return n * factorial(n - 1); // i do not think recursive functions work yet.
 }
 
 bool is_valid(int val, int mode) {
@@ -26,7 +26,7 @@ bool is_valid(int val, int mode) {
         }
         return false;
     }
-    return true; 
+    return true;
 }
 
 int system_init() {
@@ -39,8 +39,7 @@ void test_void() {
 
 int main() {
     int status = system_init();
-    print "System Status:";
-    print status;
+    print "System Status: ", status;
 
     // Skip the loop for now, just test a single access
     int row_map[3];
@@ -50,20 +49,18 @@ int main() {
 
     int r = 1;
     int c = 1;
-    print "Accessing simulated 2D array (88):";
-    print values[row_map[r] + c];
+    print "Accessing simulated 2D array (88): ",values[row_map[r] + c];
 
     // Testing Recursion
     int fact_result = factorial(5);
-    print "Factorial of 5 (120):";
-    print fact_result;
+    print "Factorial of 5 (120): ", fact_result;
 
     // Testing Floats
     float velocity = 10.5f;
     float time = 2.0f;
+    // 21 + 19.62 = 40.62
     float distance = (velocity * time) + (0.5f * GRAVITY * (time * time));
-    print "Calculated Distance:";
-    print distance;
+    print "Calculated Distance: ", distance;
 
     // Testing Logic
     int my_val = 250;
@@ -71,7 +68,7 @@ int main() {
 
     if (is_valid(my_val, current_mode)) {
         if (fact_result > 100) {
-            print "Validation Logic: SUCCESS";
+            print "Validation Logic: SUCCESS"; // doesnt work cuz factorial() is broken.
         }
     }
 
