@@ -95,8 +95,11 @@ void CodeGenerator::generate(const std::string& output_filename, bool is_entry_p
     // print the .data section
     emitter.section(".data");
     std::unordered_set<std::string> emitted_data_labels;
+
     emitter.emit("global _N_qlib_state");
+    constants.push_back({"align", "64"});
     constants.push_back({"_N_qlib_state", "times 8192", "db 0"});
+
     constants.push_back({"align", "32"});
     for (const auto& c : constants) {
         if (c.label == "align") {
@@ -363,7 +366,6 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
                     std::string label = "_str_var_" + std::to_string(string_label_counter++);
                     constants.push_back({label, "db", "\"" + unescapeString(decl.initial_value->get_value()) + "\", 0"});
                     init_val = label;
-                    std::cout << "Debug mangled name = " << symbol->mangled_name << std::endl;
                 } else {
                     init_val = decl.initial_value->get_value();
                 }
@@ -381,7 +383,6 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
                 visit(decl.initial_value.get());
                 std::string instr = is_complex_type ? "vmovupd" : (is_fp ? (size == 4 ? "vmovss" : "vmovsd") : "mov");
                 emitter.emit_mem_rel(instr, symbol->mangled_name, last_expr_vreg);
-                std::cout << "Debug mangled name = " << symbol->mangled_name << std::endl;
             }
         } else {
             // local variable (stack)
@@ -406,7 +407,7 @@ void CodeGenerator::visit(VariableAssignmentNode* node) {
 
     bool old_lvalue = is_lvalue;
     is_lvalue = true;
-    visit(node->left.get()); 
+    visit(node->left.get());
     std::string lhs_addr_vreg = last_expr_vreg; // memory address
     is_lvalue = old_lvalue;
 
@@ -443,7 +444,6 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
                 instr = (size == 4 ? "vmovss" : "vmovsd");
 
             emitter.emit(instr, vreg, prefix + " [rel " + symbol->mangled_name + "]");
-            std::cout << "Mangled name for " << symbol->name << " = " << symbol->mangled_name << std::endl;
         }
     } else {
         // local

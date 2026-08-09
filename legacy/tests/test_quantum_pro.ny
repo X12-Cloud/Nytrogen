@@ -9,7 +9,7 @@ int main() {
     };
 
     // Print raw amplitudes to see if vmovupd worked
-    print q1; 
+    print q1;
 
     // Test Measurement of the manual state
     // Since it is 100% |1>, result MUST be 1.
@@ -17,7 +17,6 @@ int main() {
     print "Measured |1> state (should be 1): ", result, "\n";
 
     // Test Complex Literal Storage
-    // This tests if the CodeGen puts these in .data correctly
     print "--- Testing Complex Literals ---";
     complex c1 = 0.707+0.707i;
 

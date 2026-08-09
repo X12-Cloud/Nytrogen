@@ -431,7 +431,6 @@ void SemanticAnalyzer::visit(VariableReferenceNode* node) {
     node->resolved_symbol = var_symbol;
     node->resolved_offset = var_symbol->offset;
     node->resolved_type = var_symbol->dataType->clone();
-    std::cout << "SA: " << var_symbol->mangled_name << " is_global: " << var_symbol->is_global << std::endl;
 }
 
 void SemanticAnalyzer::visit(NamespaceDefinition* node) {

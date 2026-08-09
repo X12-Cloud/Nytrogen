@@ -4,6 +4,7 @@ int main() {
     int tails = 0;
     int i = 0;
     int total_flips = 100;
+    int result = 0;
 
     print "--- Starting Quantum Statistics Test ---";
     print "Running 100 flips in superposition...", "\n";
@@ -17,7 +18,7 @@ int main() {
         h -> q; // Put into 50/50 superposition
 
         // 2. Measure the qubit by casting to int
-        int result = (int)q;
+        result = (int)q;
 
         if (result == 1) {
             tails = tails + 1;

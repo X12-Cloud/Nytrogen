@@ -35,6 +35,7 @@ fi
 
 # Run the compiler
 "$SCRIPT_DIR/build/bin/nytro" "${NYTRO_ARGS[@]}"
+EXIT_CODE=$?
 
 # Viewer if requested
 if [ "$enable_fviewer" = true ]; then
@@ -42,3 +43,4 @@ if [ "$enable_fviewer" = true ]; then
     $file_viewer "$SCRIPT_DIR/out/"*.asm
 fi
 
+exit $EXIT_CODE
