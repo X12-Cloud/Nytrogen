@@ -7,6 +7,7 @@ SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 file_viewer="bat"
 clean_build=false
 build=false
+test=false
 enable_fviewer=false
 ARGS=()
 
@@ -15,6 +16,7 @@ while [[ "$#" -gt 0 ]]; do
     case $1 in
         -cclean|--compiler-cleanbuild) clean_build=true ;;
         -cbuild|--compiler-build) build=true ;;
+        -test|--test) test=true ;;
         -vf|--view-outputfile) enable_fviewer=true ;;
 	*) NYTRO_ARGS+=("$1") ;;
     esac
@@ -31,6 +33,12 @@ fi
 if [ "$build" = true ]; then
     cd $SCRIPT_DIR/runtime/libstdny/ && ./build.sh -install && cd ../..
     "$SCRIPT_DIR/run_scripts/build.sh"
+fi
+
+if [ "$test" = true ]; then
+    "/$SCRIPT_DIR/tests/test.fish"
+    EXIT_CODE=$?
+    exit $EXIT_CODE
 fi
 
 # Run the compiler

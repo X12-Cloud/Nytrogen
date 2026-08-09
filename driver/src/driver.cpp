@@ -231,7 +231,8 @@ int main(int argc, char* argv[]) {
         link_cmd = lua_config.linker_cmd;
     } else {
         link_cmd = lua_config.linker_bin + " -o \"" + final_exe + "\" " + all_objs +
-                           lib_flags + " -lstdny -lc --dynamic-linker /lib64/ld-linux-x86-64.so.2"; // -Lruntime/libstdny/out/       // link_cmd = "gcc -no-pie -o \"" + final_exe + "\" " + all_objs + lib_flags;
+                           lib_flags + " -lstdny -lc --dynamic-linker /lib64/ld-linux-x86-64.so.2";
+        // link_cmd = "gcc -no-pie -o \"" + final_exe + "\" " + all_objs + lib_flags;
     }
 
     if (cfg.verbose) std::cout << "Running: " << link_cmd << std::endl;
