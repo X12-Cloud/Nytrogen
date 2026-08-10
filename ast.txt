@@ -125,6 +125,8 @@
              STR_LITERAL: (reason: final score = 0)
            PRINT_STMT
              STR_LITERAL: (reason: final score < 1000)
+     PRINT_STMT
+       FORMAT_EXPR: { x y }
      RETURN_STMT:
        INT_LITERAL: (0)
    STRUCT_DEF: Point { x y }

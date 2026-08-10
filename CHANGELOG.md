@@ -8,11 +8,12 @@
 - Integrated qlib into the compiler with its new types and expressions.
 - Unified the standard library in `runtime/`.
 - The compiler now relies mainly on the stdlib for most functions which makes it much more portable.
+- Format expressions (e.g. `format(x = {}, y = {} :x:y)`). only syntax analysis for now tho.
 
 ## 0.1315
 ### Added:
 - Namespace support.
-- Casting types (e.g. string x = "hi"; print((int)x);).
+- Casting types (e.g. `string x = "hi"; print((int)x);`).
 
 ### Reworked:
 - Remade the preprocessor into a more modular and abstract archeticure.

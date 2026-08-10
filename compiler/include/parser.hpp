@@ -66,9 +66,10 @@ class Parser {
     parseFactor();  // Handles literals, variables, and parentheses (highest precedence)
     std::unique_ptr<ASTNode> parseAdditiveExpression();
     std::unique_ptr<ASTNode> parseUnaryExpression();
+    std::unique_ptr<FormatExpressionNode> parseFormatExpressionNode();
 
     std::unique_ptr<IntegerLiteralExpressionNode>
-    parseIntegerLiteralExpression();  // Specific helper for int literals
+    parseIntegerLiteralExpression();
     std::unique_ptr<FloatLiteralExpressionNode> parseFloatLiteralExpression();
     std::unique_ptr<DoubleLiteralExpressionNode> parseDoubleLiteralExpression();
     std::unique_ptr<StringLiteralExpressionNode> parseStringLiteralExpression();

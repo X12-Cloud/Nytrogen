@@ -35,6 +35,7 @@ static const std::unordered_map<std::string, Token::Type> KEYWORD_MAP = {
     {"complex", Token::KEYWORD_COMPLEX},
     {"matrix", Token::KEYWORD_MATRIX},
     {"qubit", Token::KEYWORD_QUBIT},
+    {"format", Token::KEYWORD_FORMAT},
     {"__builtin_", Token::KEYWORD_BUILTIN}};
 
 // Token type to string conversion

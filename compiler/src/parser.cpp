@@ -207,6 +207,31 @@ std::unique_ptr<ReturnStatementNode> Parser::parseReturnStatement() {
                                                  return_token.column);
 }
 
+std::unique_ptr<FormatExpressionNode> Parser::parseFormatExpressionNode() {
+    const Token format_token = peek();
+    expect(Token::KEYWORD_FORMAT, "Expected 'format' keyword.");
+    expect(Token::LPAREN, "Expected '(' after format keyword.");
+
+    auto string_lit = parseStringLiteralExpression();
+
+    std::vector<std::unique_ptr<ASTNode>> ids;
+    int id_count = 0;
+
+    if (peek().type == Token::COLON) {
+        consume();
+        ids.push_back(parseExpression());
+        while (peek().type == Token::COLON) {
+            consume();
+            ids.push_back(parseExpression());
+            id_count++;
+        }
+    }
+
+    expect(Token::RPAREN, "Expected ')' to close format expression");
+    return std::make_unique<FormatExpressionNode>(std::move(string_lit), std::move(ids), std::move(id_count),
+                                                  format_token.line, format_token.column);
+}
+
 std::unique_ptr<PrintStatementNode> Parser::parsePrintStatement() {
     const Token& print_token = peek();
     expect(Token::KEYWORD_PRINT, "Expected 'print' keyword.");
@@ -510,6 +535,8 @@ std::unique_ptr<ASTNode> Parser::parseFactor() {
         node = parseBooleanLiteralExpression();
     } else if (current_token.type == Token::CHARACTER_LITERAL) {
         node = parseCharacterLiteralExpression();
+    } else if (current_token.type == Token::KEYWORD_FORMAT) {
+        node = parseFormatExpressionNode();
     } else {
         throw std::runtime_error(
             "Parser Error: Expected an integer literal, identifier, or '(' for an expression "
@@ -693,6 +720,7 @@ std::unique_ptr<StructDefinitionNode> Parser::parseStructDefinition() {
 
     struct_node->size = current_offset;
     expect(Token::RBRACE, "Expected '}' after struct definition.");
+    expect(Token::SEMICOLON, "Expected ';' after struct definition.");
     return struct_node;
 }
 
@@ -813,6 +841,7 @@ std::unique_ptr<EnumStatementNode> Parser::parseEnumStatement() {
         }
     }
     expect(Token::RBRACE, "Expected '}' to close enum declaration.");
+    expect(Token::SEMICOLON, "Expected ';' to close enum declaration.");
 
     return std::make_unique<EnumStatementNode>(name_token_val.value, std::move(members),
                                                enum_start_token.line, enum_start_token.column);

@@ -7,6 +7,9 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <algorithm>
+#include <sstream>
+#include <iterator>
 
 #include "lexer.hpp"
 #include "utils/utils.hpp"
@@ -54,6 +57,7 @@ struct ASTNode {
         COMPLEX_LITERAL_EXPRESSION = 30,
         QUBIT_DEFINITION = 31,
         GATE_APPLICATION_OPERATION_EXPRESSION = 32,
+        FORMAT_EXPRESSION = 33,
     };
 
     NodeType node_type;
@@ -289,6 +293,31 @@ struct ReturnStatementNode : public ASTNode {
 
     ReturnStatementNode(std::unique_ptr<ASTNode> expr, int line = -1, int column = -1)
         : ASTNode(NodeType::RETURN_STATEMENT, line, column), expression(std::move(expr)) {}
+};
+
+struct PrimitiveTypeNode;
+
+// Node representing format expressions (e.g. (format "x = {}" x))
+struct FormatExpressionNode : public ASTNode {
+    std::vector<std::unique_ptr<ASTNode>> expressions;
+    int var_count;
+    int var_index;
+
+    [[nodiscard]] auto type_name() const -> std::string override {
+        std::ostringstream ss;
+        std::string info = "FORMAT_EXPR: { ";
+        for (size_t i = 0; i < expressions.size(); ++i) {
+            info += expressions[i]->get_value() + " ";
+        }
+        info += "}";
+        return info;
+    }
+    [[nodiscard]] auto get_children() const -> std::vector<ASTNode*> override {
+        return {};
+    }
+
+    FormatExpressionNode(std::unique_ptr<ASTNode> string, std::vector<std::unique_ptr<ASTNode>> ids, int id_count, int line = -1, int column = -1)
+        : ASTNode(NodeType::FORMAT_EXPRESSION, line, column), expressions(std::move(ids)), var_count(std::move(id_count)) {}
 };
 
 // Base class for type representations
@@ -713,7 +742,6 @@ struct BinaryOperationExpressionNode : public ASTNode {
     std::unique_ptr<ASTNode> left;
     Token::Type op_type;
     std::unique_ptr<ASTNode> right;
-    // std::unique_ptr<TypeNode> resolved_type;
 
     [[nodiscard]] auto type_name() const -> std::string override {
         return "BINARY_OP: ";

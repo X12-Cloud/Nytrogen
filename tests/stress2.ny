@@ -2,7 +2,7 @@ enum Config {
     MODE_FAST,
     MODE_SECURE,
     MODE_DEBUG
-}
+};
 
 const float GRAVITY = 9.81f;
 const int MAX_RETRIES = 5;

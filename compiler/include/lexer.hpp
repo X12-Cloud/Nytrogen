@@ -37,6 +37,7 @@
     X(KEYWORD_COMPLEX, "complex")                                                   \
     X(KEYWORD_MATRIX, "matrix")                                                     \
     X(KEYWORD_QUBIT, "qubit")                                                       \
+    X(KEYWORD_FORMAT, "format")                                                     \
                                                                                     \
     /* Identifiers and Literals */                                                  \
     X(IDENTIFIER, "ID")                                                             \

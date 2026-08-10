@@ -1,5 +1,5 @@
 int main() {
-    int a = 15; int b = 5;
+    int: a = 15, b = 5;
     print "Add: ", a + b; // 20
     print "Sub: ", a - b; // 10
     print "Mul: ", a * b; // 75

@@ -2,7 +2,7 @@ enum Status {
     OFF,
     ON,
     PENDING
-}
+};
 
 struct Point {
     int x;
@@ -91,6 +91,9 @@ int main() {
             }
         }
     }
+
+    // TODO:
+    //print format("x = {}, y = {}" :x:y);
 
     return 0;
 }
