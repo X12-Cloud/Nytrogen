@@ -84,12 +84,12 @@ class InstructionSet {
                   bool is_string_compare);
 
     // Printing
-    void emit_print(int size, const std::shared_ptr<TypeNode>& type, const std::string& src_vreg);
+    void emit_print(int size, const std::shared_ptr<TypeNode>& type, const std::string& src_vreg, OutputStream outs);
     void emit_print_int(const std::string& src_vreg);
     void emit_print_raw(int size, const std::shared_ptr<TypeNode>& type,
-                        const std::string& src_vreg);
+                        const std::string& src_vreg, OutputStream outs);
     void emit_print_internal(int size, const std::shared_ptr<TypeNode>& type,
-                                         const std::string& src_vreg, bool is_raw);
+                                         const std::string& src_vreg, bool is_raw, OutputStream outs);
 };
 
 #endif

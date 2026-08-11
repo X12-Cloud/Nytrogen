@@ -65,6 +65,8 @@ void CodeGenerator::generate(const std::string& output_filename, bool is_entry_p
     constants.push_back({"align", "8"});
 
     emitter.section(".text");
+    emitter.extern_sym("stdout");
+    emitter.extern_sym("stderr");
 
     if (is_entry_point) {
         emitter.global("_start");
@@ -99,6 +101,8 @@ void CodeGenerator::generate(const std::string& output_filename, bool is_entry_p
     emitter.emit("global _N_qlib_state");
     constants.push_back({"align", "64"});
     constants.push_back({"_N_qlib_state", "times 8192", "db 0"});
+    //constants.push_back({"stdout", "db", "\"stdout\", 0"});
+    //constants.push_back({"stderr", "db", "\"stderr\", 0"});
 
     constants.push_back({"align", "32"});
     for (const auto& c : constants) {
@@ -561,6 +565,7 @@ void CodeGenerator::visit(GateAppOperationExpressionNode* node) {
 }
 
 void CodeGenerator::visit(PrintStatementNode* node) {
+    OutputStream outs = node->outstream;
     for (size_t i = 0; i < node->expressions.size(); ++i) {
         visit(node->expressions[i].get());
 
@@ -568,9 +573,9 @@ void CodeGenerator::visit(PrintStatementNode* node) {
         int size = getTypeSize(expr_type.get());
 
         if (i == node->expressions.size() - 1) {
-            emitter.emit_print(size, expr_type, last_expr_vreg);
+            emitter.emit_print(size, expr_type, last_expr_vreg, outs);
         } else {
-            emitter.emit_print_raw(size, expr_type, last_expr_vreg);
+            emitter.emit_print_raw(size, expr_type, last_expr_vreg, outs);
         }
     }
 }

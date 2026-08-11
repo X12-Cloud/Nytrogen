@@ -38,6 +38,8 @@
     X(KEYWORD_MATRIX, "matrix")                                                     \
     X(KEYWORD_QUBIT, "qubit")                                                       \
     X(KEYWORD_FORMAT, "format")                                                     \
+    X(KEYWORD_STDOUT, "stdout")                                                     \
+    X(KEYWORD_STDERR, "stderr")                                                     \
                                                                                     \
     /* Identifiers and Literals */                                                  \
     X(IDENTIFIER, "ID")                                                             \

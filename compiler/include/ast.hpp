@@ -780,9 +780,12 @@ struct GateAppOperationExpressionNode : public ASTNode {
       qubit(std::move(right_expr)) {}
 };
 
+enum OutputStream { STDOUT, STDERR };
+
 // Node for print statements (e.g., 'print x, "hello";')
 struct PrintStatementNode : public ASTNode {
     std::vector<std::unique_ptr<ASTNode>> expressions;
+    OutputStream outstream;
 
     [[nodiscard]] auto type_name() const -> std::string override {
         return "PRINT_STMT";
@@ -795,8 +798,8 @@ struct PrintStatementNode : public ASTNode {
         return refs;
     }
 
-    PrintStatementNode(std::vector<std::unique_ptr<ASTNode>> exprs, int line = -1, int column = -1)
-        : ASTNode(NodeType::PRINT_STATEMENT, line, column), expressions(std::move(exprs)) {}
+    PrintStatementNode(std::vector<std::unique_ptr<ASTNode>> exprs, OutputStream outs, int line = -1, int column = -1)
+        : ASTNode(NodeType::PRINT_STATEMENT, line, column), expressions(std::move(exprs)), outstream(std::move(outs)) {}
 };
 
 // Node for if statements.

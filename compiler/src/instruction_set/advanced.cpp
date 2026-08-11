@@ -1,7 +1,17 @@
 #include <sstream>
 #include <stdexcept>
+#include <cstring>
+#include <cstdint>
+#include <algorithm>
 
 #include "instruction_set.hpp"
+
+uint64_t string_to_imm64(std::string_view sv) {
+    uint64_t val = 0;
+    size_t bytes_to_copy = std::min(sv.size(), sizeof(uint64_t));
+    std::memcpy(&val, sv.data(), bytes_to_copy);
+    return val;
+}
 
 void InstructionSet::emit_adv(int size, const TypeNode* type, const std::string& base_vreg,
                               int offset, const std::string& src_vreg) {
@@ -58,20 +68,24 @@ void InstructionSet::load_from_address(int size, const TypeNode* type, const std
 }
 
 void InstructionSet::emit_print(int size, const std::shared_ptr<TypeNode>& type,
-                                const std::string& src_vreg) {
-    emit_print_internal(size, type, src_vreg, false);
+                                const std::string& src_vreg, OutputStream outs) {
+    emit_print_internal(size, type, src_vreg, false, outs);
 }
 
 void InstructionSet::emit_print_raw(int size, const std::shared_ptr<TypeNode>& type,
-                                    const std::string& src_vreg) {
-    emit_print_internal(size, type, src_vreg, true);
+                                    const std::string& src_vreg, OutputStream outs) {
+    emit_print_internal(size, type, src_vreg, true, outs);
 }
+
+std::string outs_to_string(OutputStream outs);
 
 // Helper to consolidate logic
 void InstructionSet::emit_print_internal(int size, const std::shared_ptr<TypeNode>& type,
-                                         const std::string& src_vreg, bool is_raw) {
+                                         const std::string& src_vreg, bool is_raw, OutputStream outs) {
     auto prim = dynamic_cast<PrimitiveTypeNode*>(type.get());
     bool is_fp = isAFloatingPoint(type.get());
+
+    std::string out_stream = outs_to_string(outs);
 
     // Qubits use the specialized qlib printer
     if (prim && prim->primitive_type == Token::KEYWORD_QUBIT) {
@@ -82,7 +96,7 @@ void InstructionSet::emit_print_internal(int size, const std::shared_ptr<TypeNod
 
     // Complex literals
     if (prim && prim->primitive_type == Token::KEYWORD_COMPLEX) {
-        emit("mov", "rdi", src_vreg); 
+        emit("mov", "rdi", src_vreg);
         emit("movsd", "xmm0", "[rdi]");
         emit("movsd", "xmm1", "[rdi + 8]");
         call_external("ny_print_complex");
@@ -90,6 +104,7 @@ void InstructionSet::emit_print_internal(int size, const std::shared_ptr<TypeNod
     }
 
     if (is_fp) {
+        emit("mov", "rdi", "[rel " + out_stream + "]");
         if (size == 4) {
             emit("vcvtss2sd", "xmm0", src_vreg + ", " + src_vreg);
         } else {
@@ -97,19 +112,31 @@ void InstructionSet::emit_print_internal(int size, const std::shared_ptr<TypeNod
         }
         call_external(is_raw ? "ny_print_float_raw" : "ny_print_float");
     } else {
-        emit("mov", "rdi", src_vreg);
+        emit("mov", "rdi", "[rel " + out_stream + "]");
+        emit("mov", "rsi", src_vreg);
 
         std::string func;
-        if (prim && prim->primitive_type == Token::KEYWORD_STRING) 
-            func = is_raw ? "ny_print_string_raw" : "ny_print_string";
-        else if (prim && prim->primitive_type == Token::KEYWORD_CHAR)
-            func = is_raw ? "ny_print_char_raw" : "ny_print_char";
-        else if (prim && prim->primitive_type == Token::KEYWORD_BOOL)
-            func = is_raw ? "ny_print_bool_raw" : "ny_print_bool";
-        else
-            func = is_raw ? "ny_print_int_raw" : "ny_print_int";
+        if (prim && prim->primitive_type == Token::KEYWORD_STRING) {
+            func = "ny_print_string";
+        } else if (prim && prim->primitive_type == Token::KEYWORD_CHAR) {
+            func = "ny_print_char";
+        } else if (prim && prim->primitive_type == Token::KEYWORD_BOOL) {
+            func = "ny_print_bool";
+        } else {
+            func = "ny_print_int";
+        }
+        std::string_view func_type = std::string_view(func).substr(9);
+        std::stringstream type;
+        type << std::hex << "0x" << string_to_imm64(func_type);
 
-        call_external(func);
+        std::string type_vreg = "rax";
+        emit("mov", type_vreg, type.str());
+        push(type_vreg);
+        push(type_vreg);
+        emit("mov", "rdx", "rsp");
+        emit("mov", "rcx", std::to_string((int)is_raw));
+
+        call_external("ny_print");
     }
 }
 
@@ -118,4 +145,12 @@ void InstructionSet::emit_print_int(const std::string& src_vreg) {
     emit("lea", "rdi", "[rel _print_int_format]");
     emit("xor", "rax", "rax");
     call_external("printf");
+}
+
+std::string outs_to_string(OutputStream outs) {
+    switch (outs) {
+        case STDOUT: return "stdout";
+        case STDERR: return "stderr";
+        default: return "stderr";
+    }
 }
