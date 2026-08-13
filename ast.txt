@@ -1,32 +1,52 @@
  PROGRAM_ROOT
+   NAMESPACE_DEF: std
+     FUNCTION_DEF: println
+     FUNCTION_DEF: put
+     FUNCTION_DEF: sys_write
+     FUNCTION_DEF: sys_read
+     FUNCTION_DEF: sys_open
+     FUNCTION_DEF: sys_close
    FUNCTION_DEF: main
      VAR_DECL
-       COMPLEX_LITERAL: (1.000000+2.000000i)
+       STR_LITERAL: (this is a string.)
+     SCOPE_RESOLUTION: std::
+       FUNC_CALL: println
+         STR_LITERAL: (println working!)
+     SCOPE_RESOLUTION: std::
+       FUNC_CALL: put
+         VAR_REF: (str)
+     SCOPE_RESOLUTION: std::
+       FUNC_CALL: sys_write
+         INT_LITERAL: (2)
+         STR_LITERAL: (stderr\n)
+         INT_LITERAL: (7)
      VAR_DECL
-       COMPLEX_LITERAL: (3.000000+4.000000i)
      VAR_DECL
-       BINARY_OP: 
-         VAR_REF: (a)
-         VAR_REF: (b)
+       STR_LITERAL: (stress_test.ny)
      VAR_DECL
-       DOUBLE_LITERAL: (0.707106)
+       SCOPE_RESOLUTION: std::
+         FUNC_CALL: sys_open
+           VAR_REF: (file)
+           INT_LITERAL: (2)
      VAR_DECL
-       BINARY_OP: 
-         VAR_REF: (norm)
-         COMPLEX_LITERAL: (0.000000+0.000000i)
+       SCOPE_RESOLUTION: std::
+         FUNC_CALL: sys_read
+           VAR_REF: (fd)
+           VAR_REF: (buf)
+           INT_LITERAL: (5000)
      PRINT_STMT
-       STR_LITERAL: (Complex Add (4+6i): )
-       VAR_REF: (c)
-     PRINT_STMT
-       STR_LITERAL: (State: )
-       VAR_REF: (h_state)
+       STR_LITERAL: (bytes read from ')
+       VAR_REF: (file)
+       STR_LITERAL: (': )
+       VAR_REF: (bytes_read)
      IF_STATEMENT
        BINARY_OP: 
-         VAR_REF: (c)
-         COMPLEX_LITERAL: (4.000000+6.000000i)
-       PRINT_STMT
-         STR_LITERAL: (Failsafe: Complex math incorrect!)
+         VAR_REF: (bytes_read)
+         INT_LITERAL: (0)
        RETURN_STMT:
          INT_LITERAL: (1)
+     SCOPE_RESOLUTION: std::
+       FUNC_CALL: sys_close
+         VAR_REF: (fd)
      RETURN_STMT:
        INT_LITERAL: (0)

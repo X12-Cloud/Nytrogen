@@ -16,8 +16,8 @@ bool RegisterAllocator::needs_xmm(const std::string& mnemonic) {
 
     return (mnemonic.find("vmov") == 0 || mnemonic.find("vadd") == 0 || 
             mnemonic.find("vsub") == 0 || mnemonic.find("vmul") == 0 || 
-            mnemonic.find("vdiv") == 0 || mnemonic.find("vcvt") == 0 ||
-            mnemonic.find("vand") == 0);
+            mnemonic.find("vdiv") == 0 || mnemonic.find("vcvt") == 0 || 
+            mnemonic.find("vand") == 0 || mnemonic.find("sqrt") == 0);
 }
 
 std::string RegisterAllocator::get_sized_reg(const std::string& phys, const std::string& current_op, const InstructionSet::Instruction& instr) {

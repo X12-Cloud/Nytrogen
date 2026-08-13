@@ -150,7 +150,12 @@ void SemanticAnalyzer::analyze() {
             param_types.push_back(param->type->clone());
         }
 
-        std::string mangled = Mangler::mangleFunction(namespace_stack, func_node->name);
+        std::string mangled;
+        if (func_node->is_extern) {
+         mangled = func_node->mangled_name;
+        } else {
+            mangled = Mangler::mangleFunction(namespace_stack, func_node->name);
+        }
 
         Symbol func_symbol(Symbol::SymbolType::FUNCTION, std::string(func_node->name),
                            std::move(return_type), std::move(param_types));
@@ -287,6 +292,9 @@ void SemanticAnalyzer::visit(ASTNode* node) {
         case ASTNode::NodeType::GATE_APPLICATION_OPERATION_EXPRESSION:
             visit(static_cast<GateAppOperationExpressionNode*>(node));
             break;
+        case ASTNode::NodeType::FORMAT_EXPRESSION:
+            visit(static_cast<FormatExpressionNode*>(node));
+            break;
         default:
             Logger::report_error("Semantic Error",
                                  "Unknown AST node type encountered during analysis.");
@@ -304,7 +312,12 @@ void SemanticAnalyzer::visit(FunctionDefinitionNode* node) {
     Symbol func_symbol(Symbol::SymbolType::FUNCTION, node->name, node->return_type->clone(),
                        std::move(paramTypes));
 
-    func_symbol.mangled_name = Mangler::mangleFunction(namespace_stack, node->name);
+    if (node->is_extern) {
+        func_symbol.mangled_name = node->name;
+    } else {
+        func_symbol.mangled_name = Mangler::mangleFunction(namespace_stack, node->name);
+    }
+
     node->mangled_name = func_symbol.mangled_name;
 
     symbolTable.addSymbol(std::move(func_symbol));
@@ -570,6 +583,14 @@ void SemanticAnalyzer::visit(GateAppOperationExpressionNode* node) {
     }
 }
 
+void SemanticAnalyzer::visit(FormatExpressionNode* node) {
+    visit(node->template_str.get());
+    for (const auto& expr : node->expressions) {
+        expr->resolved_type = std::move(visitExpression(expr.get()));
+    }
+    // Some checks would go here
+}
+
 void SemanticAnalyzer::visit(PrintStatementNode* node) {
     for (const auto& expr : node->expressions) {
         expr->resolved_type = std::move(visitExpression(expr.get()));
@@ -739,7 +760,7 @@ void SemanticAnalyzer::visit(FunctionCallNode* node) {
         return;
     } else if (node->function_name == "exit") {
         if (node->arguments.size() != 1) {
-            Logger::report_error("Semantic Error", "exit expect only 1 argument.",
+            Logger::report_error("Semantic Error", "Exit expects only 1 argument.",
                                  node->line);
         }
 
@@ -1206,6 +1227,12 @@ std::unique_ptr<TypeNode> SemanticAnalyzer::visitExpression(ASTNode* expr) {
                                      scope_node->line);
             }
             result_type = scope_node->resolved_type->clone();
+            break;
+        }
+        case ASTNode::NodeType::FORMAT_EXPRESSION: {
+            auto* format_node = static_cast<FormatExpressionNode*>(expr);
+            visit(format_node);
+            result_type = format_node->resolved_type->clone();
             break;
         }
         default:

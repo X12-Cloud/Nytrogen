@@ -21,10 +21,10 @@ void ny_print_bool(FILE* stream, int val, bool raw) {
 }
 
 // Extra types
-void ny_print_float(FILE* stream, double val) { printf("%f\n", val); }
-void ny_print_float_raw(FILE* stream, double val) { printf("%f", val); }
+void ny_print_float(FILE* stream, double val) { fprintf(stream, "%f\n", val); }
+void ny_print_float_raw(FILE* stream, double val) { fprintf(stream, "%f", val); }
 
-void ny_print_complex(FILE* stream, double re, double im) { printf("(%.4f + %.4fi)\n", re, im); }
+void ny_print_complex(FILE* stream, double re, double im) { fprintf(stream, "(%.4f + %.4fi)\n", re, im); }
 
 // Dispatcher
 void ny_print(FILE* stream, void* val, const char* type, bool is_raw) {

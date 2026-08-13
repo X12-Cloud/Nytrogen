@@ -903,6 +903,8 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
             expect(Token::SEMICOLON, "Expected ';' after constant declaration.");
             return decl_node;
         }
+        case Token::KEYWORD_EXTERN:
+            return parseFunctionDefinition();
         case Token::KEYWORD_RETURN:
             return parseReturnStatement();
         case Token::KEYWORD_INT:
@@ -1006,7 +1008,7 @@ std::unique_ptr<FunctionDefinitionNode> Parser::parseFunctionDefinition() {
 
     if (is_extern_func) {
         expect(Token::SEMICOLON, "Expected ';' after extern function declaration.");
-    } else {
+    } if (peek().type == Token::LBRACE) {
         expect(Token::LBRACE, "Expected '{' to begin function body.");
 
         while (peek().type != Token::RBRACE && peek().type != Token::END_OF_FILE) {

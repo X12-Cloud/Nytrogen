@@ -1,4 +1,4 @@
-#include <math/builtin.nyt>
+#include <math.nyt>
 
 int main() {
     double val = -16.0;

@@ -1,0 +1,10 @@
+namespace std {
+
+extern int println(string x);
+extern int put(string x);
+extern int sys_write(int fd, string buf, int n);
+extern int sys_read(int fd, char* buf, int n);
+extern int sys_open(string filename, int oflag);
+extern int sys_close(int fd);
+
+} // namespace std

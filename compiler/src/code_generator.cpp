@@ -218,6 +218,9 @@ void CodeGenerator::visit(ASTNode* node) {
         case ASTNode::NodeType::COMPLEX_LITERAL_EXPRESSION:
             visit(dynamic_cast<ComplexLiteralExpressionNode*>(node));
             break;
+        case ASTNode::NodeType::FORMAT_EXPRESSION:
+            visit(dynamic_cast<FormatExpressionNode*>(node));
+            break;
         default:
             throw std::runtime_error("Code Generation Error: Unknown AST node type.");
     }
@@ -562,6 +565,14 @@ void CodeGenerator::visit(GateAppOperationExpressionNode* node) {
     emitter.emit("mov", "rdi", matrix_addr_vreg);
     emitter.emit("mov", "rsi", qubit_offset_vreg);
     emitter.emit("call", "q_apply_matrix");
+}
+
+void CodeGenerator::visit(FormatExpressionNode* node) {
+    visit(node->template_str.get());
+    std::string label = "_str_" + std::to_string(string_label_counter);
+    emitter.emit("mov", "rdi", "[rel " + label + "]");
+    emitter.call_external("ny_format");
+    emitter.emit("mov", label, "rax");
 }
 
 void CodeGenerator::visit(PrintStatementNode* node) {

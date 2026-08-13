@@ -62,6 +62,7 @@ class SemanticAnalyzer {
     void visit(ScopeResolutionNode* node);
     void visit(QubitDefinitionNode* node);
     void visit(GateAppOperationExpressionNode* node);
+    void visit(FormatExpressionNode* node);
 
     // Expression visitors (return the type of the expression)
     std::unique_ptr<TypeNode> visitExpression(ASTNode* expr);

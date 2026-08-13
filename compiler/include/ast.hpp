@@ -299,9 +299,10 @@ struct PrimitiveTypeNode;
 
 // Node representing format expressions (e.g. (format "x = {}" x))
 struct FormatExpressionNode : public ASTNode {
+    std::unique_ptr<ASTNode> template_str;
     std::vector<std::unique_ptr<ASTNode>> expressions;
     int var_count;
-    int var_index;
+    int placeholder_count;
 
     [[nodiscard]] auto type_name() const -> std::string override {
         std::ostringstream ss;

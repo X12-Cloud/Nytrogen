@@ -3,7 +3,7 @@ namespace math {
 namespace constants {
     double E = 2.718281828459045d;
     double PI = 3.141592653589793d;
-} // constants
+} // namespace constants
 
 double sqrt(double x) {
     return __builtin_sqrt(x);
@@ -15,4 +15,8 @@ double round(double x) {
     return __builtin_round(x);
 }
 
-} // math
+double sin(double x);
+double cos(double x);
+double tan(double x);
+
+} // namespace math

@@ -6,7 +6,7 @@ struct Color {
     string yellow;
     string blue;
     string reset;
-}
+};
 
 int dbg(string message, string color) {
     Color c;
