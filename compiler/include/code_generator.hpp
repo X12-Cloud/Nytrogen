@@ -99,6 +99,15 @@ class CodeGenerator {
     auto getTypeSize(const TypeNode* type) -> int;
     static auto getRegisterName(const std::string& reg64, int size) -> std::string;
     void emit_cast(const TypeNode* from, const TypeNode* to, const std::string& src_vreg, const std::string& dest_vreg);
+    std::string emit_string_literal(const std::string& value) {
+        if (constants_map.count(value)) {
+            return constants_map[value];
+        }
+        std::string label = "_str_" + std::to_string(string_label_counter++);
+        constants.push_back({label, "db", "\"" + value + "\", 0"});
+        constants_map[value] = label;
+        return label;
+    }
 };
 
 #endif  // CODE_GENERATOR_HPP

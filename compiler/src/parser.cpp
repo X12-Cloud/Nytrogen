@@ -210,7 +210,8 @@ std::unique_ptr<ReturnStatementNode> Parser::parseReturnStatement() {
 std::unique_ptr<FormatExpressionNode> Parser::parseFormatExpressionNode() {
     const Token format_token = peek();
     expect(Token::KEYWORD_FORMAT, "Expected 'format' keyword.");
-    expect(Token::LPAREN, "Expected '(' after format keyword.");
+    bool needs_paren = false;
+    if (peek().type == Token::LPAREN) { consume(); needs_paren = true; }
 
     auto string_lit = parseStringLiteralExpression();
 
@@ -227,7 +228,7 @@ std::unique_ptr<FormatExpressionNode> Parser::parseFormatExpressionNode() {
         }
     }
 
-    expect(Token::RPAREN, "Expected ')' to close format expression");
+    if (needs_paren) expect(Token::RPAREN, "Expected ')' to close format expression");
     return std::make_unique<FormatExpressionNode>(std::move(string_lit), std::move(ids), std::move(id_count),
                                                   format_token.line, format_token.column);
 }

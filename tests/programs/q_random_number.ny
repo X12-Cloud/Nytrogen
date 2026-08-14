@@ -1,10 +1,9 @@
 int main() {
     qubit q;
-    int i = 0;
     int total_goes = 8;
     int byte[8];
 
-    for (int i; i < total_goes; i = i + 1) {
+    for (int i = 0; i < total_goes; i = i + 1) {
         h -> q;
         int result = (int)q;
         print result;
@@ -13,7 +12,7 @@ int main() {
             x -> q;
         }
     }
-    //print byte[1];
-
+    //print byte[1], byte[2];
     return 0;
 }
+

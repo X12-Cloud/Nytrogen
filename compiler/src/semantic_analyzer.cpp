@@ -534,7 +534,8 @@ void SemanticAnalyzer::visit(BinaryOperationExpressionNode* node) {
     node->left->resolved_type = left_type->clone();
     node->right->resolved_type = right_type->clone();
 
-    if (left_type->category != right_type->category) {
+    if (left_type->category == TypeNode::TypeCategory::POINTER || right_type->category == TypeNode::TypeCategory::POINTER) {
+    } else if (left_type->category != right_type->category) {
         Logger::report_error("Semantic Error",
                              "Type mismatch in binary operation (cannot operate on " +
                                  typeToString(left_type.get()) + " and " +
@@ -584,11 +585,15 @@ void SemanticAnalyzer::visit(GateAppOperationExpressionNode* node) {
 }
 
 void SemanticAnalyzer::visit(FormatExpressionNode* node) {
-    visit(node->template_str.get());
-    for (const auto& expr : node->expressions) {
-        expr->resolved_type = std::move(visitExpression(expr.get()));
+    if (node->template_str) {
+        visit(node->template_str.get());
     }
-    // Some checks would go here
+
+    for (const auto& expr : node->expressions) {
+        visit(expr.get());
+    }
+
+    node->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_STRING);
 }
 
 void SemanticAnalyzer::visit(PrintStatementNode* node) {

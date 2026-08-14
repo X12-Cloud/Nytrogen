@@ -101,8 +101,6 @@ void CodeGenerator::generate(const std::string& output_filename, bool is_entry_p
     emitter.emit("global _N_qlib_state");
     constants.push_back({"align", "64"});
     constants.push_back({"_N_qlib_state", "times 8192", "db 0"});
-    //constants.push_back({"stdout", "db", "\"stdout\", 0"});
-    //constants.push_back({"stderr", "db", "\"stderr\", 0"});
 
     constants.push_back({"align", "32"});
     for (const auto& c : constants) {
@@ -567,12 +565,63 @@ void CodeGenerator::visit(GateAppOperationExpressionNode* node) {
     emitter.emit("call", "q_apply_matrix");
 }
 
+bool isA(const TypeNode* type, Token::Type target) {
+    if (auto* prim = dynamic_cast<const PrimitiveTypeNode*>(type)) {
+        return prim->primitive_type == target;
+    }
+    return false;
+}
+
 void CodeGenerator::visit(FormatExpressionNode* node) {
+    std::vector<std::string> arg_vregs;
+    std::string type_hints = "";
+    for (const auto& expr : node->expressions) {
+        visit(expr.get());
+        arg_vregs.push_back(last_expr_vreg);
+
+        auto t = expr->resolved_type.get();
+        if (auto* prim = dynamic_cast<const PrimitiveTypeNode*>(t)) {
+            auto pt = prim->primitive_type;
+            if (pt == Token::KEYWORD_STRING) type_hints += "s";
+            else if (pt == Token::KEYWORD_INT) type_hints += "i";
+            else if (pt == Token::KEYWORD_BOOL) type_hints += "b";
+            else if (pt == Token::KEYWORD_CHAR) type_hints += "c";
+        } else if (isFloatingPoint(t)) {
+            type_hints += "f";
+        }
+    }
+
     visit(node->template_str.get());
-    std::string label = "_str_" + std::to_string(string_label_counter);
-    emitter.emit("mov", "rdi", "[rel " + label + "]");
+    std::string template_vreg = last_expr_vreg;
+    std::string hints_label = "_str_" + std::to_string(string_label_counter++);
+    constants.push_back({hints_label, "db", "\"" + type_hints + "\", 0"});
+
+    int total_to_push = 1 + arg_vregs.size();
+    bool padded = (total_to_push % 2 != 0);
+    if (padded) emitter.push("rax"); // Align to 16 bytes
+    emitter.push(template_vreg);
+    for (const auto& v : arg_vregs) {
+        emitter.push(v);
+    }
+
+    std::vector<std::string> phys_regs = {"rdx", "rcx", "r8", "r9"};
+    int num_args = arg_vregs.size();
+    for (int i = num_args - 1; i >= 0; i--) {
+        if (i < 4) {
+            emitter.pop(phys_regs[i]);
+        } else {
+            emitter.emit("add", "rsp", "8"); 
+        }
+    }
+    emitter.pop("rdi");
+    emitter.emit("lea", "rsi", "[rel " + hints_label + "]");
+    emitter.emit("xor", "rax", "rax");
     emitter.call_external("ny_format");
-    emitter.emit("mov", label, "rax");
+
+    if (padded) emitter.emit("add", "rsp", "8");
+    std::string res = new_vreg();
+    emitter.emit("mov", res, "rax");
+    last_expr_vreg = res;
 }
 
 void CodeGenerator::visit(PrintStatementNode* node) {

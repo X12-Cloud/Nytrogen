@@ -317,8 +317,13 @@ struct FormatExpressionNode : public ASTNode {
         return {};
     }
 
-    FormatExpressionNode(std::unique_ptr<ASTNode> string, std::vector<std::unique_ptr<ASTNode>> ids, int id_count, int line = -1, int column = -1)
-        : ASTNode(NodeType::FORMAT_EXPRESSION, line, column), expressions(std::move(ids)), var_count(std::move(id_count)) {}
+    FormatExpressionNode(std::unique_ptr<ASTNode> str, 
+                     std::vector<std::unique_ptr<ASTNode>> ids, 
+                     int id_count, int line = -1, int column = -1)
+    : ASTNode(NodeType::FORMAT_EXPRESSION, line, column), 
+      template_str(std::move(str)),
+      expressions(std::move(ids)),
+      var_count(id_count) {}
 };
 
 // Base class for type representations

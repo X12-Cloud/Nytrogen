@@ -1,4 +1,5 @@
 #include <sys.nyt>
+#include <io.nyt>
 
 int main() {
     string str = "this is a string.";

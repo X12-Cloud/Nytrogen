@@ -1,52 +1,12 @@
  PROGRAM_ROOT
-   NAMESPACE_DEF: std
-     FUNCTION_DEF: println
-     FUNCTION_DEF: put
-     FUNCTION_DEF: sys_write
-     FUNCTION_DEF: sys_read
-     FUNCTION_DEF: sys_open
-     FUNCTION_DEF: sys_close
    FUNCTION_DEF: main
      VAR_DECL
-       STR_LITERAL: (this is a string.)
-     SCOPE_RESOLUTION: std::
-       FUNC_CALL: println
-         STR_LITERAL: (println working!)
-     SCOPE_RESOLUTION: std::
-       FUNC_CALL: put
-         VAR_REF: (str)
-     SCOPE_RESOLUTION: std::
-       FUNC_CALL: sys_write
-         INT_LITERAL: (2)
-         STR_LITERAL: (stderr\n)
-         INT_LITERAL: (7)
+       STR_LITERAL: (x12)
      VAR_DECL
+       INT_LITERAL: (21)
      VAR_DECL
-       STR_LITERAL: (stress_test.ny)
-     VAR_DECL
-       SCOPE_RESOLUTION: std::
-         FUNC_CALL: sys_open
-           VAR_REF: (file)
-           INT_LITERAL: (2)
-     VAR_DECL
-       SCOPE_RESOLUTION: std::
-         FUNC_CALL: sys_read
-           VAR_REF: (fd)
-           VAR_REF: (buf)
-           INT_LITERAL: (5000)
+       FORMAT_EXPR: { name n }
      PRINT_STMT
-       STR_LITERAL: (bytes read from ')
-       VAR_REF: (file)
-       STR_LITERAL: (': )
-       VAR_REF: (bytes_read)
-     IF_STATEMENT
-       BINARY_OP: 
-         VAR_REF: (bytes_read)
-         INT_LITERAL: (0)
-       RETURN_STMT:
-         INT_LITERAL: (1)
-     SCOPE_RESOLUTION: std::
-       FUNC_CALL: sys_close
-         VAR_REF: (fd)
+       VAR_REF: (msg)
      RETURN_STMT:
        INT_LITERAL: (0)

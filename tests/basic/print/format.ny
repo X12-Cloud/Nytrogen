@@ -1,7 +1,7 @@
 int main() {
     string name = "x12";
-    string msg = format("hello {}!" :name);
+    int n = 21;
+    string msg = format "Hello {}, the number is {}!" : name : n;
     print msg;
-
     return 0;
 }
