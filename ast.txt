@@ -1,12 +1,47 @@
  PROGRAM_ROOT
    FUNCTION_DEF: main
      VAR_DECL
-       STR_LITERAL: (x12)
+       COMPLEX_LITERAL: (1.000000+2.000000i)
      VAR_DECL
-       INT_LITERAL: (21)
+       COMPLEX_LITERAL: (3.000000+4.000000i)
      VAR_DECL
-       FORMAT_EXPR: { name n }
+       BINARY_OP: 
+         VAR_REF: (a)
+         VAR_REF: (b)
+     VAR_DECL
+       BINARY_OP: 
+         VAR_REF: (a)
+         VAR_REF: (b)
+     VAR_DECL
+       DOUBLE_LITERAL: (0.707106)
+     VAR_DECL
+       BINARY_OP: 
+         ASTNode
+         COMPLEX_LITERAL: (0.000000+0.000000i)
      PRINT_STMT
-       VAR_REF: (msg)
+       STR_LITERAL: (Complex Add (4+6i): )
+       VAR_REF: (c)
+     PRINT_STMT
+       STR_LITERAL: (Complex Sub (-2-2i): )
+       VAR_REF: (d)
+     PRINT_STMT
+       STR_LITERAL: (State: )
+       VAR_REF: (h_state)
+     IF_STATEMENT
+       BINARY_OP: 
+         VAR_REF: (c)
+         COMPLEX_LITERAL: (4.000000+6.000000i)
+       PRINT_STMT
+         STR_LITERAL: (Failsafe: Complex math incorrect!)
+       RETURN_STMT:
+         INT_LITERAL: (1)
+     IF_STATEMENT
+       BINARY_OP: 
+         VAR_REF: (d)
+         COMPLEX_LITERAL: (-2.000000-2.000000i)
+       PRINT_STMT
+         STR_LITERAL: (Failsafe: Complex subtraction incorrect!)
+       RETURN_STMT:
+         INT_LITERAL: (1)
      RETURN_STMT:
        INT_LITERAL: (0)

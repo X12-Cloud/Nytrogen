@@ -97,6 +97,7 @@ class CodeGenerator {
     void visit(FormatExpressionNode* node);
 
     auto getTypeSize(const TypeNode* type) -> int;
+    auto isComplex(const TypeNode* type) -> bool;
     static auto getRegisterName(const std::string& reg64, int size) -> std::string;
     void emit_cast(const TypeNode* from, const TypeNode* to, const std::string& src_vreg, const std::string& dest_vreg);
     std::string emit_string_literal(const std::string& value) {

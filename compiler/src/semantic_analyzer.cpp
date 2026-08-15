@@ -534,23 +534,27 @@ void SemanticAnalyzer::visit(BinaryOperationExpressionNode* node) {
     node->left->resolved_type = left_type->clone();
     node->right->resolved_type = right_type->clone();
 
-    if (left_type->category == TypeNode::TypeCategory::POINTER || right_type->category == TypeNode::TypeCategory::POINTER) {
-    } else if (left_type->category != right_type->category) {
-        Logger::report_error("Semantic Error",
-                             "Type mismatch in binary operation (cannot operate on " +
-                                 typeToString(left_type.get()) + " and " +
-                                 typeToString(right_type.get()) + ")",
-                             node->line);
-    }
+    if (left_type->category == TypeNode::TypeCategory::POINTER || 
+        right_type->category == TypeNode::TypeCategory::POINTER) {
+        // Fall through to result type logic
+    } else if (left_type->category == TypeNode::TypeCategory::PRIMITIVE && 
+             right_type->category == TypeNode::TypeCategory::PRIMITIVE) {
 
-    if (left_type->category == TypeNode::TypeCategory::PRIMITIVE) {
-        auto p1 = static_cast<PrimitiveTypeNode*>(left_type.get());
-        auto p2 = static_cast<PrimitiveTypeNode*>(right_type.get());
-        if (p1->primitive_type != p2->primitive_type) {
-            Logger::report_error(
-                "Semantic Error",
-                "Mixed math. Adding different primitive types is not yet supported.", node->line);
+        auto t1 = static_cast<PrimitiveTypeNode*>(left_type.get())->primitive_type;
+        auto t2 = static_cast<PrimitiveTypeNode*>(right_type.get())->primitive_type;
+
+        auto is_comp = [](Token::Type t) { return t == Token::KEYWORD_COMPLEX || t == Token::COMPLEX_LITERAL; };
+        auto is_num  = [](Token::Type t) { return t == Token::KEYWORD_INT || t == Token::INTEGER_LITERAL || 
+                                                  t == Token::KEYWORD_FLOAT || t == Token::KEYWORD_DOUBLE || t == Token::DOUBLE_LITERAL; };
+
+        if (t1 != t2) {
+            bool valid_mix = (is_comp(t1) && is_num(t2)) || (is_num(t1) && is_comp(t2));
+            if (!valid_mix) {
+                Logger::report_error("Semantic Error", "Unsupported mixed math operations.", node->line);
+            }
         }
+    } else if (left_type->category != right_type->category) {
+        Logger::report_error("Semantic Error", "Type category mismatch.", node->line);
     }
 
     switch (node->op_type) {

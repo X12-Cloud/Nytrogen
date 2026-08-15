@@ -48,6 +48,8 @@ static bool isTypeKeyword(Token::Type type) {
         case Token::KEYWORD_DOUBLE:
         case Token::KEYWORD_BOOL:
         case Token::KEYWORD_STRING:
+        case Token::KEYWORD_COMPLEX:
+        case Token::KEYWORD_QUBIT:
             return true;
         default:
             return false;

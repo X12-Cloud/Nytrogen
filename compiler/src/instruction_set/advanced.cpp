@@ -87,7 +87,7 @@ void InstructionSet::emit_print_internal(int size, const std::shared_ptr<TypeNod
 
     std::string out_stream = outs_to_string(outs);
 
-    // Qubits use the specialized qlib printer
+    // Qubits
     if (prim && prim->primitive_type == Token::KEYWORD_QUBIT) {
         emit("mov", "rdi", src_vreg);
         call_external("print_q");
@@ -96,9 +96,12 @@ void InstructionSet::emit_print_internal(int size, const std::shared_ptr<TypeNod
 
     // Complex literals
     if (prim && prim->primitive_type == Token::KEYWORD_COMPLEX) {
-        emit("mov", "rdi", src_vreg);
-        emit("movsd", "xmm0", "[rdi]");
-        emit("movsd", "xmm1", "[rdi + 8]");
+        emit("mov", "rax", src_vreg);
+        emit("vmovsd", "xmm0", "[rax]");
+        emit("vmovsd", "xmm1", "[rax + 8]");
+
+        emit("mov", "rdi", "[rel " + out_stream + "]");
+
         call_external("ny_print_complex");
         return;
     }

@@ -89,65 +89,76 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
         }
 
         // Any digit literal
-        if (std::isdigit(currentChar) != 0) {
-            std::string value;
-            int startColumn = column;
+        bool isLeadingSign = (currentChar == '-' || currentChar == '+');
+        if (std::isdigit(currentChar) != 0 || (isLeadingSign && currentPos + 1 < sourceCode.length() && std::isdigit(sourceCode[currentPos + 1]))) {
 
-            // Helper lambda to scan a numeric part (digits and dots)
-            auto scanNumber = [&](std::string& buffer) {
-                while (currentPos < sourceCode.length() &&
-                       (std::isdigit(sourceCode[currentPos]) || sourceCode[currentPos] == '.')) {
-                    buffer += sourceCode[currentPos++];
-                    column++;
-                }
-            };
-
-            // Scan the first part (The Real part or the start of a pure imaginary)
-            scanNumber(value);
-
-            // Handle optional suffixes for the first part (f, d)
-            if (currentPos < sourceCode.length() && (sourceCode[currentPos] == 'f' || sourceCode[currentPos] == 'd')) {
-                value += sourceCode[currentPos++];
-                column++;
+            bool looksComplex = false;
+            size_t peek = currentPos;
+            if (isLeadingSign) peek++;
+            while (peek < sourceCode.length() && !std::isspace(sourceCode[peek]) && 
+                   sourceCode[peek] != ';' && sourceCode[peek] != ')' && sourceCode[peek] != ',') {
+                if (sourceCode[peek] == 'i') { looksComplex = true; break; }
+                if (!std::isdigit(sourceCode[peek]) && sourceCode[peek] != '.' && 
+                    sourceCode[peek] != '+' && sourceCode[peek] != '-') break;
+                peek++;
             }
 
-            // COMPLEX CHECK: Look ahead for [+-][number]i
-            bool isComplex = false;
-            if (currentPos < sourceCode.length() && (sourceCode[currentPos] == '+' || sourceCode[currentPos] == '-')) {
-                size_t peekPos = currentPos + 1;
-                while (peekPos < sourceCode.length() && (std::isdigit(sourceCode[peekPos]) || sourceCode[peekPos] == '.')) {
-                    peekPos++;
+            if (isLeadingSign && !looksComplex) {
+                // Do nothing, fall through to the '+' and '-' blocks
+            } else {
+                std::string value;
+                int startColumn = column;
+
+                auto scanNumber = [&](std::string& buffer) {
+                    // Allow leading sign in sub-calls
+                    if (currentPos < sourceCode.length() && (sourceCode[currentPos] == '-' || sourceCode[currentPos] == '+')) {
+                        buffer += sourceCode[currentPos++];
+                        column++;
+                    }
+                    while (currentPos < sourceCode.length() &&
+                           (std::isdigit(sourceCode[currentPos]) || sourceCode[currentPos] == '.')) {
+                        buffer += sourceCode[currentPos++];
+                        column++;
+                    }
+                };
+
+                // Scan the first part (Real part)
+                scanNumber(value);
+
+                // Suffixes (f, d)
+                if (currentPos < sourceCode.length() && (sourceCode[currentPos] == 'f' || sourceCode[currentPos] == 'd')) {
+                    value += sourceCode[currentPos++];
+                    column++;
                 }
 
-                if (peekPos < sourceCode.length() && sourceCode[peekPos] == 'i') {
+                // Internal Complex Check (e.g., 2.0+3.0i)
+                bool isComplex = (value.back() == 'i'); 
+                if (!isComplex && currentPos < sourceCode.length() && (sourceCode[currentPos] == '+' || sourceCode[currentPos] == '-')) {
+                    size_t peekPos = currentPos + 1;
+                    while (peekPos < sourceCode.length() && (std::isdigit(sourceCode[peekPos]) || sourceCode[peekPos] == '.')) peekPos++;
+
+                    if (peekPos < sourceCode.length() && sourceCode[peekPos] == 'i') {
+                        isComplex = true;
+                        scanNumber(value);
+                        value += sourceCode[currentPos++];
+                        column++;
+                    }
+                } else if (currentPos < sourceCode.length() && sourceCode[currentPos] == 'i') {
                     isComplex = true;
                     value += sourceCode[currentPos++];
                     column++;
-                    scanNumber(value);
-                    value += sourceCode[currentPos++];
-                    column++;
                 }
-            } 
-            // Handle pure imaginary case: e.g., "2.0i"
-            else if (currentPos < sourceCode.length() && sourceCode[currentPos] == 'i') {
-                isComplex = true;
-                value += sourceCode[currentPos++];
-                column++;
-            }
 
-            // Token Generation
-            if (isComplex) {
-                tokens.push_back({Token::COMPLEX_LITERAL, value, line, startColumn});
-            } else if (value.find('.') != std::string::npos) {
-                if (value.back() == 'f') {
-                    tokens.push_back({Token::FLOAT_LITERAL, value, line, startColumn});
+                if (isComplex) {
+                    tokens.push_back({Token::COMPLEX_LITERAL, value, line, startColumn});
+                } else if (value.find('.') != std::string::npos) {
+                    if (value.back() == 'f') tokens.push_back({Token::FLOAT_LITERAL, value, line, startColumn});
+                    else tokens.push_back({Token::DOUBLE_LITERAL, value, line, startColumn});
                 } else {
-                    tokens.push_back({Token::DOUBLE_LITERAL, value, line, startColumn});
+                    tokens.push_back({Token::INTEGER_LITERAL, value, line, startColumn});
                 }
-            } else {
-                tokens.push_back({Token::INTEGER_LITERAL, value, line, startColumn});
+                continue;
             }
-            continue;
         }
 
         // Character literal

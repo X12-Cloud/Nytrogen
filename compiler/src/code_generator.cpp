@@ -80,19 +80,40 @@ void CodeGenerator::generate(const std::string& output_filename, bool is_entry_p
         }
     }
 
-    // entry point
     if (is_entry_point) {
         emitter.label("_start");
+        // Setup a stack frame for the entry point
+        emitter.emit("push", "rbp");
+        emitter.emit("mov", "rbp", "rsp");
+        emitter.emit("and", "rsp", "-16");
+        emitter.emit("sub", "rsp", "4096");
 
         emitter.emit("lea", "rdi", "[rel _N_qlib_state]");
         emitter.call_external("setup");
 
+        for (const auto& stmt : program_ast->statements) {
+            if (stmt->node_type == ASTNode::NodeType::VARIABLE_DECLARATION) {
+                visit(stmt.get());
+            }
+        }
+
         emitter.emit("call", "main");
         emitter.emit("mov", "rdi", "rax");
         emitter.call_external("ny_exit");
+
+        emitter.emit("leave");
+        emitter.emit("ret");
     }
 
-    visit(program_ast.get());
+    //visit(program_ast.get());
+    for (const auto& func : program_ast->functions) {
+        visit(func.get());
+    }
+    for (const auto& stmt : program_ast->statements) {
+        if (stmt->node_type == ASTNode::NodeType::NAMESPACE_DEFINITION) {
+            visit(stmt.get());
+        }
+    }
 
     // print the .data section
     emitter.section(".data");
@@ -227,12 +248,12 @@ void CodeGenerator::visit(ASTNode* node) {
 bool is_lvalue;
 
 void CodeGenerator::visit(ProgramNode* node) {
-    for (const auto& stmt : node->statements) {
+    /* for (const auto& stmt : node->statements) {
         visit(stmt.get());
     }
     for (const auto& func : node->functions) {
         visit(func.get());
-    }
+    } */
 }
 
 void CodeGenerator::visit(FunctionDefinitionNode* node) {
@@ -282,19 +303,26 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
     emitter.emit("sub", "rsp", std::to_string(aligned_space));
 
     // Bridge: Map physical args to the correct scope symbols
-    const std::vector<std::string> arg_registers = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
-    for (size_t i = 0; i < node->parameters.size() && i < arg_registers.size(); ++i) {
+    const std::vector<std::string> int_registers = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+    int int_idx = 0;
+    int xmm_idx = 0;
+
+    for (size_t i = 0; i < node->parameters.size(); ++i) {
         std::string p_name = node->parameters[i]->name;
-
         Symbol* sym = symbolTable.lookup(p_name);
+        if (sym == nullptr) continue;
 
-        if (sym != nullptr) {
-            std::string param_vreg = vreg_lookup(sym);
-            emitter.emit("mov", param_vreg, arg_registers[i]);
-            emitter.mov_indirect("rbp", sym->offset, arg_registers[i]);
-        } else {
-            std::cerr << "BRIDGE ERROR: Parameter '" << p_name << "' not found in scope."
-                      << std::endl;
+        bool is_fp = isFloatingPoint(node->parameters[i]->type.get());
+        std::string param_vreg = vreg_lookup(sym);
+
+        if (is_fp && xmm_idx < 8) {
+            std::string src_reg = "xmm" + std::to_string(xmm_idx++);
+            emitter.emit("vmovsd", param_vreg, src_reg);
+            emitter.emit("vmovsd", "qword [rbp + " + std::to_string(sym->offset) + "]", src_reg);
+        } else if (!is_fp && int_idx < 6) {
+            std::string src_reg = int_registers[int_idx++];
+            emitter.emit("mov", param_vreg, src_reg);
+            emitter.mov_indirect("rbp", sym->offset, src_reg);
         }
     }
 
@@ -392,11 +420,12 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
         } else {
             // local variable (stack)
             if (decl.initial_value) {
-                visit(decl.initial_value.get()); // result in last_expr_vreg
+                visit(decl.initial_value.get());
 
-                // For complex (16 bytes), we use vmovupd
-                std::string instr = is_complex_type ? "vmovupd" : (is_fp ? (size == 4 ? "vmovss" : "vmovsd") : "mov");
-                emitter.emit(instr, vreg, last_expr_vreg);
+                if (vreg != last_expr_vreg) {
+                    std::string instr = is_complex_type ? "vmovupd" : (is_fp ? (size == 4 ? "vmovss" : "vmovsd") : "mov");
+                    emitter.emit(instr, vreg, last_expr_vreg);
+                }
 
                 emitter.emit_adv(size, node->type.get(), "rbp", symbol->offset, vreg);
             }
@@ -431,19 +460,25 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
         return;
     }
 
-    std::string vreg = vreg_lookup(symbol);
-    int size = getTypeSize(node->resolved_type.get());
-
     auto* prim = dynamic_cast<PrimitiveTypeNode*>(node->resolved_type.get());
     bool is_complex_layout = (node->resolved_type->category == TypeNode::TypeCategory::STRUCT ||
                               node->resolved_type->category == TypeNode::TypeCategory::ARRAY ||
                               (prim && prim->primitive_type == Token::KEYWORD_COMPLEX));
 
+    std::string vreg;
+    if (is_lvalue || is_complex_layout) {
+        vreg = new_vreg(); 
+    } else {
+        vreg = vreg_lookup(symbol);
+    }
+
+    int size = getTypeSize(node->resolved_type.get());
+
     if (symbol->is_global) {
-        std::string prefix = emitter.get_size_prefix(size);
         if (is_lvalue || is_complex_layout) {
             emitter.emit("lea", vreg, "[rel " + symbol->mangled_name + "]");
         } else {
+            std::string prefix = emitter.get_size_prefix(size);
             std::string instr = (size == 1) ? "movsx" : (size == 4 ? "movsxd" : "mov");
             if (isFloatingPoint(node->resolved_type.get()))
                 instr = (size == 4 ? "vmovss" : "vmovsd");
@@ -451,88 +486,133 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
             emitter.emit(instr, vreg, prefix + " [rel " + symbol->mangled_name + "]");
         }
     } else {
-        // local
+        // Local variable (stack)
         if (is_lvalue || is_complex_layout) {
             emitter.emit_lea_stack(vreg, symbol->offset);
         } else {
             emitter.load_adv(size, node->resolved_type.get(), vreg, "rbp", symbol->offset);
         }
     }
+
     last_expr_vreg = vreg;
 }
 
 void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
-    bool is_fp = isFloatingPoint(node->resolved_type.get());
-    bool is_double = false;
-    if (is_fp) {
-        auto prim = std::static_pointer_cast<PrimitiveTypeNode>(node->resolved_type);
-        is_double = (prim->primitive_type == Token::KEYWORD_DOUBLE ||
-                     prim->primitive_type == Token::DOUBLE_LITERAL);
-    }
+    auto is_address_node = [](ASTNode* n) {
+        return n->node_type == ASTNode::NodeType::VARIABLE_REFERENCE ||
+               n->node_type == ASTNode::NodeType::MEMBER_ACCESS_EXPRESSION ||
+               n->node_type == ASTNode::NodeType::ARRAY_ACCESS_EXPRESSION;
+    };
 
     visit(node->left.get());
-    std::string left_vreg = last_expr_vreg;
+    std::string left_loc = last_expr_vreg;
 
     visit(node->right.get());
-    std::string right_vreg = last_expr_vreg;
+    std::string right_loc = last_expr_vreg;
+
+    bool is_fp = isFloatingPoint(node->resolved_type.get());
+    bool is_left_complex = isComplex(node->left->resolved_type.get());
+    bool is_right_complex = isComplex(node->right->resolved_type.get());
+    bool result_is_complex = isComplex(node->resolved_type.get());
 
     std::string result_vreg = new_vreg();
 
-    switch (node->op_type) {
-        case Token::PLUS:
-            if (is_fp) {
-                emitter.emit(is_double ? "vaddsd" : "vaddss", result_vreg,
-                             left_vreg + ", " + right_vreg);
-            } else {
-                emitter.emit("mov", result_vreg, left_vreg);
-                emitter.emit("add", result_vreg, right_vreg);
-            }
-            break;
-        case Token::MINUS:
-            if (is_fp) {
-                emitter.emit(is_double ? "vsubsd" : "vsubss", result_vreg,
-                             left_vreg + ", " + right_vreg);
-            } else {
-                emitter.emit("mov", result_vreg, left_vreg);
-                emitter.emit("sub", result_vreg, right_vreg);
-            }
-            break;
-        case Token::STAR:
-            if (is_fp) {
-                emitter.emit(is_double ? "vmulsd" : "vmulss", result_vreg,
-                             left_vreg + ", " + right_vreg);
-            } else {
-                emitter.emit("mov", result_vreg, left_vreg);
-                emitter.emit("imul", result_vreg, right_vreg);
-            }
-            break;
-        case Token::SLASH:
-            if (is_fp) {
-                emitter.emit(is_double ? "vdivsd" : "vdivss", result_vreg,
-                             left_vreg + ", " + right_vreg);
-            } else {
-                emitter.emit("mov", "rax", left_vreg);
-                emitter.emit("cqo");
-                emitter.emit("idiv", right_vreg);
-                emitter.emit("mov", result_vreg, "rax");
-            }
-            break;
-        default:
-            emitter.emit("cmp", left_vreg, right_vreg);
-            std::string set_instr;
-            if (node->op_type == Token::EQUAL_EQUAL) {
-                set_instr = "sete";
-            } else if (node->op_type == Token::BANG_EQUAL) {
-                set_instr = "setne";
-            } else if (node->op_type == Token::LESS) {
-                set_instr = "setl";
-            } else if (node->op_type == Token::GREATER) {
-                set_instr = "setg";
-            }
+    // Complex math
+    if (result_is_complex || is_left_complex || is_right_complex) {
+        std::string left_val = new_vreg();
+        std::string right_val = new_vreg();
 
-            emitter.emit(set_instr, "al");
-            emitter.emit("movzx", result_vreg, "al");
-            break;
+        if (is_left_complex && is_address_node(node->left.get())) {
+            emitter.emit("vmovupd", left_val, "[" + left_loc + "]");
+        } else {
+            emitter.emit("vmovupd", left_val, left_loc);
+        }
+
+        if (is_right_complex && is_address_node(node->right.get())) {
+            emitter.emit("vmovupd", right_val, "[" + right_loc + "]");
+        } else {
+            emitter.emit("vmovupd", right_val, right_loc);
+        }
+
+        switch (node->op_type) {
+            case Token::PLUS:
+                emitter.emit("vaddpd", result_vreg, left_val + ", " + right_val);
+                break;
+            case Token::MINUS:
+                emitter.emit("vsubpd", result_vreg, left_val + ", " + right_val);
+                break;
+            case Token::EQUAL_EQUAL:
+            case Token::BANG_EQUAL: {
+                std::string mask_xmm = new_vreg(); 
+                emitter.emit("vcmppd", mask_xmm, left_val + ", " + right_val + ", 0");
+                emitter.emit("vmovmskpd", "eax", mask_xmm);
+                emitter.emit("cmp", "eax", "3"); 
+
+                if (node->op_type == Token::EQUAL_EQUAL) emitter.emit("sete", "al");
+                else emitter.emit("setne", "al");
+
+                emitter.emit("movzx", result_vreg, "al");
+                break;
+            }
+            default:
+                throw std::runtime_error("Complex op not implemented");
+        }
+    } 
+    // Scalar / integer math
+    else {
+        bool is_double = false;
+        if (is_fp) {
+            auto prim = std::static_pointer_cast<PrimitiveTypeNode>(node->resolved_type);
+            is_double = (prim->primitive_type == Token::KEYWORD_DOUBLE);
+        }
+
+        switch (node->op_type) {
+            case Token::PLUS:
+                if (is_fp) emitter.emit(is_double ? "vaddsd" : "vaddss", result_vreg, left_loc + ", " + right_loc);
+                else { 
+                    emitter.emit("mov", result_vreg, left_loc); 
+                    emitter.emit("add", result_vreg, right_loc); 
+                }
+                break;
+            case Token::MINUS:
+                if (is_fp) emitter.emit(is_double ? "vsubsd" : "vsubss", result_vreg, left_loc + ", " + right_loc);
+                else { 
+                    emitter.emit("mov", result_vreg, left_loc); 
+                    emitter.emit("sub", result_vreg, right_loc); 
+                }
+                break;
+            case Token::STAR:
+                if (is_fp) emitter.emit(is_double ? "vmulsd" : "vmulss", result_vreg, left_loc + ", " + right_loc);
+                else { 
+                    emitter.emit("mov", result_vreg, left_loc); 
+                    emitter.emit("imul", result_vreg, right_loc); 
+                }
+                break;
+            case Token::SLASH:
+                if (is_fp) emitter.emit(is_double ? "vdivsd" : "vdivss", result_vreg, left_loc + ", " + right_loc);
+                else {
+                    emitter.emit("mov", "rax", left_loc);
+                    emitter.emit("cqo");
+                    emitter.emit("idiv", right_loc);
+                    emitter.emit("mov", result_vreg, "rax");
+                }
+                break;
+            default:
+                // Comparisons (Scalar/Int)
+                bool operands_are_fp = isFloatingPoint(node->left->resolved_type.get());
+                if (operands_are_fp) emitter.emit("ucomisd", left_loc, right_loc);
+                else emitter.emit("cmp", left_loc, right_loc);
+
+                std::string set_instr;
+                if (node->op_type == Token::EQUAL_EQUAL) set_instr = "sete";
+                else if (node->op_type == Token::BANG_EQUAL) set_instr = "setne";
+                else if (node->op_type == Token::LESS) set_instr = "setl";
+                else if (node->op_type == Token::GREATER) set_instr = "setg";
+
+                emitter.emit(set_instr, "al");
+                emitter.emit("movzx", result_vreg, "al");
+                break;
+        }
     }
 
     last_expr_vreg = result_vreg;
@@ -1125,6 +1205,12 @@ auto CodeGenerator::isFloatingPoint(const TypeNode* type) -> bool {
                                  prim->primitive_type == Token::KEYWORD_DOUBLE);
 }
 
+auto CodeGenerator::isComplex(const TypeNode* type) -> bool {
+    if (type == nullptr) return false;
+    const auto* prim = dynamic_cast<const PrimitiveTypeNode*>(type);
+    return (prim != nullptr) && (prim->primitive_type == Token::KEYWORD_COMPLEX);
+}
+
 auto CodeGenerator::getRegisterName(const std::string& reg64, int size) -> std::string {
     if (size == 8) {
         return reg64;
@@ -1145,12 +1231,20 @@ void CodeGenerator::emit_cast(const TypeNode* from, const TypeNode* to, const st
     int src_size = getTypeSize(from);
     int dest_size = getTypeSize(to);
     auto* prim_from = dynamic_cast<const PrimitiveTypeNode*>(from);
+    bool from_double = (getTypeSize(from) == 8 && isFloatingPoint(from));
+    bool to_complex = isComplex(to);
 
     // Qubit -> Int (measuring qubits)
     if (prim_from && prim_from->primitive_type == Token::KEYWORD_QUBIT && !dest_fp) {
         emitter.emit("mov", "rdi", src_vreg);
         emitter.call_external("q_measure");
         emitter.emit("mov", dest_vreg, "rax");
+        return;
+    }
+
+    // Double -> Complex
+    if (from_double && to_complex) {
+        emitter.emit("vmovsd", dest_vreg, src_vreg); 
         return;
     }
 
