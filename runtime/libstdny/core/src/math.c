@@ -1,9 +1,9 @@
 #include <math.h>
 #include <immintrin.h>
 
-double nsin(double x) { return sin(x); }
+/* double nsin(double x) { return sin(x); }
 double ncos(double x) { return cos(x); }
-double ntan(double x) { return tan(x); }
+double ntan(double x) { return tan(x); } */
 
 __m128d ny_complex_mul(__m128d a, __m128d b) {
     // a = [imag_a, real_a], b = [imag_b, real_b]

@@ -14,11 +14,11 @@
 
 class InstructionSet {
     std::ofstream& out;
-    int current_stack_depth = 0;
     std::set<std::string> needed_externs;
 
    public:
     InstructionSet(std::ofstream& o) : out(o) {}
+    int current_stack_depth = 0;
 
     struct Instruction {
         std::string mnemonic;

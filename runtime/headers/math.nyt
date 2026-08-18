@@ -1,3 +1,6 @@
+#ifndef IO_NYT
+#define IO_NYT
+
 namespace math {
 
 namespace constants {
@@ -20,3 +23,5 @@ double cos(double x);
 double tan(double x);
 
 } // namespace math
+
+#endif

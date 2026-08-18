@@ -86,7 +86,9 @@ void CodeGenerator::generate(const std::string& output_filename, bool is_entry_p
         emitter.emit("push", "rbp");
         emitter.emit("mov", "rbp", "rsp");
         emitter.emit("and", "rsp", "-16");
+        emitter.current_stack_depth = 0;
         emitter.emit("sub", "rsp", "4096");
+        emitter.current_stack_depth += 4096;
 
         emitter.emit("lea", "rdi", "[rel _N_qlib_state]");
         emitter.call_external("setup");
@@ -267,6 +269,7 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
     emitter.emit("push", "rbp");
     emitter.emit("mov", "rbp", "rsp");
     emitter.emit("and", "rsp", "-16");
+    emitter.current_stack_depth = 0;
 
     auto* original_scope = symbolTable.current_scope;
     bool found = false;
@@ -301,6 +304,7 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
     }
     int aligned_space = (local_var_space + 128 + 15) & ~15;
     emitter.emit("sub", "rsp", std::to_string(aligned_space));
+    emitter.current_stack_depth += aligned_space;
 
     // Bridge: Map physical args to the correct scope symbols
     const std::vector<std::string> int_registers = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
@@ -504,42 +508,80 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
                n->node_type == ASTNode::NodeType::ARRAY_ACCESS_EXPRESSION;
     };
 
+    // Visit Children
     visit(node->left.get());
     std::string left_loc = last_expr_vreg;
 
     visit(node->right.get());
     std::string right_loc = last_expr_vreg;
 
-    bool is_fp = isFloatingPoint(node->resolved_type.get());
-    bool is_left_complex = isComplex(node->left->resolved_type.get());
-    bool is_right_complex = isComplex(node->right->resolved_type.get());
-    bool result_is_complex = isComplex(node->resolved_type.get());
+    // Identify Types based on Operands
+    auto* left_type = node->left->resolved_type.get();
+    auto* right_type = node->right->resolved_type.get();
+    auto* res_type = node->resolved_type.get();
+
+    bool operands_are_strings = (left_type->category == TypeNode::TypeCategory::PRIMITIVE && 
+                                 dynamic_cast<PrimitiveTypeNode*>(left_type)->primitive_type == Token::KEYWORD_STRING);
+
+    bool is_complex = isComplex(res_type) || isComplex(left_type) || isComplex(right_type);
+    bool is_fp = isFloatingPoint(res_type);
 
     std::string result_vreg = new_vreg();
 
-    // Complex math
-    if (result_is_complex || is_left_complex || is_right_complex) {
+    // String logic
+    if (operands_are_strings) {
+        std::string saved_left = new_vreg();
+        std::string saved_right = new_vreg();
+        emitter.emit("mov", saved_left, left_loc);
+        emitter.emit("mov", saved_right, right_loc);
+        switch (node->op_type) {
+            case Token::EQUAL_EQUAL:
+            case Token::BANG_EQUAL: {
+                std::string arg1 = new_vreg();
+                std::string arg2 = new_vreg();
+                emitter.emit("mov", arg1, left_loc);
+                emitter.emit("mov", arg2, right_loc);
+
+                emitter.emit("mov", "rdi", arg1);
+                emitter.emit("mov", "rsi", arg2);
+                emitter.call_external("strcmp");
+
+                emitter.emit("test", "eax", "eax");
+                if (node->op_type == Token::EQUAL_EQUAL) emitter.emit("setz", "al");
+                else emitter.emit("setnz", "al");
+
+                emitter.emit("movzx", result_vreg, "al");
+                break;
+            }
+            default: throw std::runtime_error("String op not supported");
+        }
+        last_expr_vreg = result_vreg;
+        return; 
+    }
+
+    // Complex logic
+    if (is_complex) {
         std::string left_val = new_vreg();
         std::string right_val = new_vreg();
 
-        if (is_left_complex && is_address_node(node->left.get())) {
+        if (isComplex(left_type) && is_address_node(node->left.get())) 
             emitter.emit("vmovupd", left_val, "[" + left_loc + "]");
-        } else {
+        else 
             emitter.emit("vmovupd", left_val, left_loc);
-        }
 
-        if (is_right_complex && is_address_node(node->right.get())) {
+        if (isComplex(right_type) && is_address_node(node->right.get())) 
             emitter.emit("vmovupd", right_val, "[" + right_loc + "]");
-        } else {
+        else 
             emitter.emit("vmovupd", right_val, right_loc);
-        }
 
         switch (node->op_type) {
-            case Token::PLUS:
-                emitter.emit("vaddpd", result_vreg, left_val + ", " + right_val);
-                break;
-            case Token::MINUS:
-                emitter.emit("vsubpd", result_vreg, left_val + ", " + right_val);
+            case Token::PLUS:  emitter.emit("vaddpd", result_vreg, left_val + ", " + right_val); break;
+            case Token::MINUS: emitter.emit("vsubpd", result_vreg, left_val + ", " + right_val); break;
+            case Token::STAR:
+                emitter.emit("vmovupd", "xmm0", left_val);
+                emitter.emit("vmovupd", "xmm1", right_val);
+                emitter.call_external("ny_complex_mul");
+                emitter.emit("vmovupd", result_vreg, "xmm0");
                 break;
             case Token::EQUAL_EQUAL:
             case Token::BANG_EQUAL: {
@@ -547,46 +589,35 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
                 emitter.emit("vcmppd", mask_xmm, left_val + ", " + right_val + ", 0");
                 emitter.emit("vmovmskpd", "eax", mask_xmm);
                 emitter.emit("cmp", "eax", "3"); 
-
                 if (node->op_type == Token::EQUAL_EQUAL) emitter.emit("sete", "al");
                 else emitter.emit("setne", "al");
-
                 emitter.emit("movzx", result_vreg, "al");
                 break;
             }
-            default:
-                throw std::runtime_error("Complex op not implemented");
+            default: throw std::runtime_error("Complex op not implemented");
         }
+        // Spill result to scratch for printer
+        std::string addr_vreg = new_vreg();
+        emitter.emit("vmovupd", "oword [rbp - 128]", result_vreg);
+        emitter.emit("lea", addr_vreg, "[rbp - 128]");
+        result_vreg = addr_vreg;
     } 
-    // Scalar / integer math
+    // Scalar / integer logic
     else {
-        bool is_double = false;
-        if (is_fp) {
-            auto prim = std::static_pointer_cast<PrimitiveTypeNode>(node->resolved_type);
-            is_double = (prim->primitive_type == Token::KEYWORD_DOUBLE);
-        }
+        bool is_double = (is_fp && dynamic_cast<PrimitiveTypeNode*>(res_type)->primitive_type == Token::KEYWORD_DOUBLE);
 
         switch (node->op_type) {
             case Token::PLUS:
                 if (is_fp) emitter.emit(is_double ? "vaddsd" : "vaddss", result_vreg, left_loc + ", " + right_loc);
-                else { 
-                    emitter.emit("mov", result_vreg, left_loc); 
-                    emitter.emit("add", result_vreg, right_loc); 
-                }
+                else { emitter.emit("mov", result_vreg, left_loc); emitter.emit("add", result_vreg, right_loc); }
                 break;
             case Token::MINUS:
                 if (is_fp) emitter.emit(is_double ? "vsubsd" : "vsubss", result_vreg, left_loc + ", " + right_loc);
-                else { 
-                    emitter.emit("mov", result_vreg, left_loc); 
-                    emitter.emit("sub", result_vreg, right_loc); 
-                }
+                else { emitter.emit("mov", result_vreg, left_loc); emitter.emit("sub", result_vreg, right_loc); }
                 break;
             case Token::STAR:
                 if (is_fp) emitter.emit(is_double ? "vmulsd" : "vmulss", result_vreg, left_loc + ", " + right_loc);
-                else { 
-                    emitter.emit("mov", result_vreg, left_loc); 
-                    emitter.emit("imul", result_vreg, right_loc); 
-                }
+                else { emitter.emit("mov", result_vreg, left_loc); emitter.emit("imul", result_vreg, right_loc); }
                 break;
             case Token::SLASH:
                 if (is_fp) emitter.emit(is_double ? "vdivsd" : "vdivss", result_vreg, left_loc + ", " + right_loc);
@@ -598,8 +629,7 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
                 }
                 break;
             default:
-                // Comparisons (Scalar/Int)
-                bool operands_are_fp = isFloatingPoint(node->left->resolved_type.get());
+                bool operands_are_fp = isFloatingPoint(left_type);
                 if (operands_are_fp) emitter.emit("ucomisd", left_loc, right_loc);
                 else emitter.emit("cmp", left_loc, right_loc);
 
@@ -608,6 +638,8 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
                 else if (node->op_type == Token::BANG_EQUAL) set_instr = "setne";
                 else if (node->op_type == Token::LESS) set_instr = "setl";
                 else if (node->op_type == Token::GREATER) set_instr = "setg";
+                else if (node->op_type == Token::LESS_EQUAL) set_instr = "setle";
+                else if (node->op_type == Token::GREATER_EQUAL) set_instr = "setge";
 
                 emitter.emit(set_instr, "al");
                 emitter.emit("movzx", result_vreg, "al");
@@ -690,7 +722,8 @@ void CodeGenerator::visit(FormatExpressionNode* node) {
         if (i < 4) {
             emitter.pop(phys_regs[i]);
         } else {
-            emitter.emit("add", "rsp", "8"); 
+            emitter.emit("add", "rsp", "8");
+            emitter.current_stack_depth -= 8;
         }
     }
     emitter.pop("rdi");
@@ -698,7 +731,7 @@ void CodeGenerator::visit(FormatExpressionNode* node) {
     emitter.emit("xor", "rax", "rax");
     emitter.call_external("ny_format");
 
-    if (padded) emitter.emit("add", "rsp", "8");
+    if (padded) { emitter.emit("add", "rsp", "8"); emitter.current_stack_depth -= 8; }
     std::string res = new_vreg();
     emitter.emit("mov", res, "rax");
     last_expr_vreg = res;

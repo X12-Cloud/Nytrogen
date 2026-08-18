@@ -140,6 +140,8 @@ void InstructionSet::emit_print_internal(int size, const std::shared_ptr<TypeNod
         emit("mov", "rcx", std::to_string((int)is_raw));
 
         call_external("ny_print");
+        emit("add", "rsp", "16");
+        current_stack_depth -= 16; 
     }
 }
 

@@ -6,8 +6,9 @@
 - **Implement Codegen for Switch Statements:** Currently only lexical, syntactic and semantic analysis is implemented.
 - **Optimise the Compiler Core and Remake the Driver:** Make it more modular and abstract.
 - **New Types:** Long as 64 bit integers, signed/unsigned qualifiers.
-- **Fix Recursive Functions** Functions should be able to be called inside themselves.
-- **Low Level** Implement a lot of low level stuff ig.
+- **Fix Recursive Functions:** Functions should be able to be called inside themselves.
+- **Low Level:** Implement a lot of low level stuff ig.
+- **String concatenation** Implement string concatenation and substr with `+` and `-`.
 
 ### Done
 - **Make the Backend more Abstract** Make a new InsructionSet/InstructionEmitter class for the CG to use.
