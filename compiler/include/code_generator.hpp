@@ -49,6 +49,7 @@ class CodeGenerator {
    private:
     int vreg_counter = 0;
     std::string last_expr_vreg;
+    bool last_expr_is_address = false;
     RegisterAllocator allocator;
 
     std::vector<GlobalConstant> constants;

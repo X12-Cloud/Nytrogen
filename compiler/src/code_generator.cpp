@@ -10,7 +10,7 @@
 #include "instruction_set.hpp"
 
 CodeGenerator::CodeGenerator(std::unique_ptr<ProgramNode>& ast, SymbolTable& symTable)
-    : program_ast(ast), symbolTable(symTable), emitter(out) {}
+    : program_ast(ast), symbolTable(symTable), emitter(out), last_expr_is_address(false) {}
 
 auto unescapeString(const std::string& input) -> std::string {
     std::string result;
@@ -415,11 +415,17 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
                 constants.push_back({symbol->mangled_name, nasm_type, init_val});
             }
 
-            // If it has a non-constant initial value, emit code to set it
             if (decl.initial_value) {
                 visit(decl.initial_value.get());
-                std::string instr = is_complex_type ? "vmovupd" : (is_fp ? (size == 4 ? "vmovss" : "vmovsd") : "mov");
-                emitter.emit_mem_rel(instr, symbol->mangled_name, last_expr_vreg);
+                if (vreg != last_expr_vreg) {
+                    std::string src = last_expr_vreg;
+                    if (is_complex_type && last_expr_is_address) {
+                        src = "[" + src + "]";
+                    }
+                    std::string instr = is_complex_type ? "vmovupd" : (is_fp ? (size == 4 ? "vmovss" : "vmovsd") : "mov");
+                    emitter.emit(instr, vreg, src);
+                }
+                emitter.emit_adv(size, node->type.get(), "rbp", symbol->offset, vreg);
             }
         } else {
             // local variable (stack)
@@ -427,8 +433,12 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
                 visit(decl.initial_value.get());
 
                 if (vreg != last_expr_vreg) {
+                    std::string src = last_expr_vreg;
+                    if (is_complex_type && last_expr_is_address) {
+                        src = "[" + src + "]";
+                    }
                     std::string instr = is_complex_type ? "vmovupd" : (is_fp ? (size == 4 ? "vmovss" : "vmovsd") : "mov");
-                    emitter.emit(instr, vreg, last_expr_vreg);
+                    emitter.emit(instr, vreg, src);
                 }
 
                 emitter.emit_adv(size, node->type.get(), "rbp", symbol->offset, vreg);
@@ -442,6 +452,13 @@ void CodeGenerator::visit(VariableAssignmentNode* node) {
 
     visit(node->right.get());
     std::string rhs_val_vreg = last_expr_vreg;
+
+    if (isComplex(type.get()) && last_expr_is_address) {
+        std::string temp_xmm = new_vreg();
+        emitter.emit("vmovupd", temp_xmm, "[" + rhs_val_vreg + "]");
+        rhs_val_vreg = temp_xmm;
+        last_expr_is_address = false;
+    }
 
     bool old_lvalue = is_lvalue;
     is_lvalue = true;
@@ -471,7 +488,7 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
 
     std::string vreg;
     if (is_lvalue || is_complex_layout) {
-        vreg = new_vreg(); 
+        vreg = new_vreg();
     } else {
         vreg = vreg_lookup(symbol);
     }
@@ -481,6 +498,7 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
     if (symbol->is_global) {
         if (is_lvalue || is_complex_layout) {
             emitter.emit("lea", vreg, "[rel " + symbol->mangled_name + "]");
+            last_expr_is_address = true;
         } else {
             std::string prefix = emitter.get_size_prefix(size);
             std::string instr = (size == 1) ? "movsx" : (size == 4 ? "movsxd" : "mov");
@@ -488,13 +506,16 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
                 instr = (size == 4 ? "vmovss" : "vmovsd");
 
             emitter.emit(instr, vreg, prefix + " [rel " + symbol->mangled_name + "]");
+            last_expr_is_address = false;
         }
     } else {
         // Local variable (stack)
         if (is_lvalue || is_complex_layout) {
             emitter.emit_lea_stack(vreg, symbol->offset);
+            last_expr_is_address = true;
         } else {
             emitter.load_adv(size, node->resolved_type.get(), vreg, "rbp", symbol->offset);
+            last_expr_is_address = false;
         }
     }
 
@@ -564,6 +585,7 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
         std::string left_val = new_vreg();
         std::string right_val = new_vreg();
 
+        // Ensure we load the actual values into XMM registers
         if (isComplex(left_type) && is_address_node(node->left.get())) 
             emitter.emit("vmovupd", left_val, "[" + left_loc + "]");
         else 
@@ -592,15 +614,18 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
                 if (node->op_type == Token::EQUAL_EQUAL) emitter.emit("sete", "al");
                 else emitter.emit("setne", "al");
                 emitter.emit("movzx", result_vreg, "al");
-                break;
+                last_expr_vreg = result_vreg;
+                return; 
             }
             default: throw std::runtime_error("Complex op not implemented");
         }
-        // Spill result to scratch for printer
         std::string addr_vreg = new_vreg();
         emitter.emit("vmovupd", "oword [rbp - 128]", result_vreg);
         emitter.emit("lea", addr_vreg, "[rbp - 128]");
-        result_vreg = addr_vreg;
+
+        last_expr_vreg = addr_vreg;
+        last_expr_is_address = true;
+        return;
     } 
     // Scalar / integer logic
     else {
@@ -1074,6 +1099,7 @@ void CodeGenerator::visit(IntegerLiteralExpressionNode* node) {
     std::string vreg = new_vreg();
     emitter.emit("mov", vreg, std::to_string(node->value));
     last_expr_vreg = vreg;
+    last_expr_is_address = false;
 }
 
 void CodeGenerator::visit(FloatLiteralExpressionNode* node) {
@@ -1087,6 +1113,7 @@ void CodeGenerator::visit(FloatLiteralExpressionNode* node) {
     std::string vreg = new_vreg();
     emitter.emit("vmovss", vreg, "[rel " + constants_map[val_str] + "]");
     last_expr_vreg = vreg;
+    last_expr_is_address = false;
 }
 
 void CodeGenerator::visit(DoubleLiteralExpressionNode* node) {
@@ -1103,6 +1130,7 @@ void CodeGenerator::visit(DoubleLiteralExpressionNode* node) {
     std::string vreg = new_vreg();
     emitter.emit("vmovsd", vreg, "[rel " + constants_map[val_str] + "]");
     last_expr_vreg = vreg;
+    last_expr_is_address = false;
 }
 
 void CodeGenerator::visit(StringLiteralExpressionNode* node) {
@@ -1152,6 +1180,7 @@ void CodeGenerator::visit(ComplexLiteralExpressionNode* node) {
     emitter.emit("vmovupd", vreg, "[rel " + constants_map[val_key] + "]");
 
     last_expr_vreg = vreg;
+    last_expr_is_address = false;
 }
 
 void CodeGenerator::visit(AsmStatementNode* node) {
