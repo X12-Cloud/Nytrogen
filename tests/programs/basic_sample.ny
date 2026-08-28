@@ -2,7 +2,14 @@
 #include <fs.nyt>
 #include <sys.nyt>
 
+void hello(int n) {
+    for (int i = 1; i <= n; i = i+1) {
+        print "hello world";
+    }
+}
+
 int main() {
+    hello(2);
     std::println("Enter file name: ");
     string file = std::readln();
 

@@ -1,47 +1,93 @@
  PROGRAM_ROOT
+   NAMESPACE_DEF: std
+     FUNCTION_DEF: ny_strcat
+     FUNCTION_DEF: ny_str_take
+   NAMESPACE_DEF: std
+     FUNCTION_DEF: sys_open
+     FUNCTION_DEF: sys_close
+     FUNCTION_DEF: sys_read
+     FUNCTION_DEF: sys_write
+     FUNCTION_DEF: sys_fork
+     FUNCTION_DEF: sys_execve
+     FUNCTION_DEF: sys_execv
+     FUNCTION_DEF: sys_exec
+     FUNCTION_DEF: sys_waitpid
+     FUNCTION_DEF: sys_getpid
+     FUNCTION_DEF: sys_fsize
+     FUNCTION_DEF: sys_last_error
+     FUNCTION_DEF: sys_get_nanos
+     FUNCTION_DEF: sys_mmap
+     FUNCTION_DEF: sys_socket
+     FUNCTION_DEF: sys_bind
+     FUNCTION_DEF: sys_yield
    FUNCTION_DEF: main
+     QUBIT_DEF: q1 { alpha: default, beta: default }
+     QUBIT_DEF: q2 { alpha: default, beta: default }
+     QUBIT_DEF: q3 { alpha: default, beta: default }
+     QUBIT_DEF: q4 { alpha: default, beta: default }
+     QUBIT_DEF: q5 { alpha: default, beta: default }
+     QUBIT_DEF: q6 { alpha: default, beta: default }
+     QUBIT_DEF: q7 { alpha: default, beta: default }
+     QUBIT_DEF: q8 { alpha: default, beta: default }
      VAR_DECL
-       COMPLEX_LITERAL: (1.000000+2.000000i)
+     GATE_APPLICATION_OP: 
+       VAR_REF: (h)
+       VAR_REF: (q1)
+     ASTNode
+     GATE_APPLICATION_OP: 
+       VAR_REF: (h)
+       VAR_REF: (q2)
+     ASTNode
+     GATE_APPLICATION_OP: 
+       VAR_REF: (h)
+       VAR_REF: (q3)
+     ASTNode
+     GATE_APPLICATION_OP: 
+       VAR_REF: (h)
+       VAR_REF: (q4)
+     ASTNode
+     GATE_APPLICATION_OP: 
+       VAR_REF: (h)
+       VAR_REF: (q5)
+     ASTNode
+     GATE_APPLICATION_OP: 
+       VAR_REF: (h)
+       VAR_REF: (q6)
+     ASTNode
+     GATE_APPLICATION_OP: 
+       VAR_REF: (h)
+       VAR_REF: (q7)
+     ASTNode
+     GATE_APPLICATION_OP: 
+       VAR_REF: (h)
+       VAR_REF: (q8)
+     ASTNode
      VAR_DECL
-       COMPLEX_LITERAL: (3.000000+4.000000i)
+       FORMAT_EXPR: {     }
      VAR_DECL
-       BINARY_OP: 
-         VAR_REF: (a)
-         VAR_REF: (b)
+       FORMAT_EXPR: {     }
      VAR_DECL
-       BINARY_OP: 
-         VAR_REF: (a)
-         VAR_REF: (b)
+       SCOPE_RESOLUTION: std::
+         FUNC_CALL: ny_str_take
+           VAR_REF: (f)
+           INT_LITERAL: (4)
      VAR_DECL
-       DOUBLE_LITERAL: (0.707106)
+       SCOPE_RESOLUTION: std::
+         FUNC_CALL: ny_str_take
+           VAR_REF: (s)
+           INT_LITERAL: (4)
      VAR_DECL
-       BINARY_OP: 
-         ASTNode
-         COMPLEX_LITERAL: (0.000000+0.000000i)
+       SCOPE_RESOLUTION: std::
+         FUNC_CALL: ny_strcat
+           VAR_REF: (first)
+           VAR_REF: (second)
      PRINT_STMT
-       STR_LITERAL: (Complex Add (4+6i): )
-       VAR_REF: (c)
-     PRINT_STMT
-       STR_LITERAL: (Complex Sub (-2-2i): )
-       VAR_REF: (d)
-     PRINT_STMT
-       STR_LITERAL: (State: )
-       VAR_REF: (h_state)
-     IF_STATEMENT
-       BINARY_OP: 
-         VAR_REF: (c)
-         COMPLEX_LITERAL: (4.000000+6.000000i)
-       PRINT_STMT
-         STR_LITERAL: (Failsafe: Complex math incorrect!)
-       RETURN_STMT:
-         INT_LITERAL: (1)
-     IF_STATEMENT
-       BINARY_OP: 
-         VAR_REF: (d)
-         COMPLEX_LITERAL: (-2.000000-2.000000i)
-       PRINT_STMT
-         STR_LITERAL: (Failsafe: Complex subtraction incorrect!)
-       RETURN_STMT:
-         INT_LITERAL: (1)
+       STR_LITERAL: (byte: )
+       VAR_REF: (final)
+     VAR_DECL
+       FORMAT_EXPR: { final }
+     SCOPE_RESOLUTION: std::
+       FUNC_CALL: sys_exec
+         VAR_REF: (cmd)
      RETURN_STMT:
        INT_LITERAL: (0)

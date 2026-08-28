@@ -12,6 +12,7 @@
     X(KEYWORD_BUILTIN, "__builtin_")                                                \
     X(KEYWORD_PRINT, "print")                                                       \
     X(KEYWORD_INT, "int")                                                           \
+    X(KEYWORD_LONG, "long")                                                         \
     X(KEYWORD_STRING, "string")                                                     \
     X(KEYWORD_IF, "if")                                                             \
     X(KEYWORD_ELSE, "else")                                                         \

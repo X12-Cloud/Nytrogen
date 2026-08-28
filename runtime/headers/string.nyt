@@ -1,0 +1,6 @@
+namespace std {
+
+extern char* ny_strcat(string s1, string s2);
+extern char* ny_str_take(string s, int n);
+
+} // namespace std

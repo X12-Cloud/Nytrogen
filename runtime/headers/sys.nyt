@@ -12,6 +12,8 @@ extern int sys_write(int fd, string buf, int n);
 // Process Management
 extern int sys_fork();
 extern int sys_execve(string filename, char** argv, char** envp);
+extern int sys_execv(char* pathname, char** argv);
+extern int sys_exec(string cmd);
 extern int sys_waitpid(int pid, char* status, int options);
 extern int sys_getpid();
 

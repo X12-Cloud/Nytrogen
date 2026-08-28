@@ -37,6 +37,19 @@ int sys_execve(const char* filename, char* const argv[], char* const envp[]) {
     return execve(filename, argv, envp);
 }
 
+int sys_execv(const char* pathname, char* const argv[]) {
+    return execv(pathname, argv);
+}
+
+int sys_exec(const char* cmd) {
+    char* argv[4];
+    argv[0] = "/bin/sh";
+    argv[1] = "-c";
+    argv[2] = (char*)cmd;
+    argv[3] = NULL;
+    return execv("/bin/sh", argv);
+}
+
 int sys_waitpid(int pid, int* status, int options) {
     return waitpid(pid, status, options);
 }

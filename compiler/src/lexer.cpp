@@ -7,6 +7,7 @@
 static const std::unordered_map<std::string, Token::Type> KEYWORD_MAP = {
     {"return", Token::KEYWORD_RETURN},
     {"int", Token::KEYWORD_INT},
+    {"long", Token::KEYWORD_LONG},
     {"string", Token::KEYWORD_STRING},
     {"print", Token::KEYWORD_PRINT},
     {"if", Token::KEYWORD_IF},
@@ -132,7 +133,7 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
                 }
 
                 // Internal Complex Check (e.g., 2.0+3.0i)
-                bool isComplex = (value.back() == 'i'); 
+                bool isComplex = (value.back() == 'i');
                 if (!isComplex && currentPos < sourceCode.length() && (sourceCode[currentPos] == '+' || sourceCode[currentPos] == '-')) {
                     size_t peekPos = currentPos + 1;
                     while (peekPos < sourceCode.length() && (std::isdigit(sourceCode[peekPos]) || sourceCode[peekPos] == '.')) peekPos++;
