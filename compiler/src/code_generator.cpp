@@ -259,6 +259,10 @@ void CodeGenerator::visit(ProgramNode* node) {
 }
 
 void CodeGenerator::visit(FunctionDefinitionNode* node) {
+    if (emitted_functions.count(node->mangled_name)) {
+        return;
+    }
+    emitted_functions.insert(node->mangled_name);
     current_function_name = node->mangled_name;
     if (node->is_extern) {
         emitter.extern_sym(node->mangled_name);

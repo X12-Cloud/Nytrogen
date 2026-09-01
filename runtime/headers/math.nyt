@@ -1,5 +1,5 @@
-#ifndef IO_NYT
-#define IO_NYT
+#ifndef MATH_NYT
+#define MATH_NYT
 
 namespace math {
 

@@ -19,7 +19,7 @@ int main() {
     }
 
     if (fs::exists(file) == 1) {
-        int size = std::sys_fsize(file);
+        int size = sys::file_size(file);
         print format "Reading file: {} ({} bytes)\n" : file : size;
         string data = fs::read_all(file);
         print "------------ File data ------------";

@@ -2,10 +2,11 @@
 #define FS_NYT
 
 #include <sys.nyt>
+#include <string.nyt>
+#include <io.nyt>
 
 namespace fs {
 
-// Constants
 const int RDONLY = 0;
 const int WRONLY = 1;
 const int RDWR   = 2;
@@ -13,48 +14,55 @@ const int APPEND = 1024;
 const int CREATE = 64;
 
 int open(string path, int flags) {
-    return std::sys_open(path, flags);
+    return sys::open(path, flags);
 }
 
 int close(int fd) {
-    return std::sys_close(fd);
+    return sys::close(fd);
 }
 
 int exists(string path) {
-    if (std::sys_fsize(path) == -1) {
+    if (sys::file_size(path) == -1) {
         return 0;
     }
     return 1;
 }
 
 int size(string path) {
-    return std::sys_fsize(path);
+    return sys::file_size(path);
 }
+
+int write(int fd, string content) {
+    int len = std::strlen(content);
+    return sys::write(fd, content, len);
+}
+
 
 string read(int fd, int length) {
     // Prot: PROT_READ|PROT_WRITE (3), Flags: MAP_ANONYMOUS|MAP_PRIVATE (34)
     char* addr = "x";
-    char* buffer = std::sys_mmap(addr, length + 1, 3, 34, -1, 0);
-    std::sys_read(fd, buffer, length);
+    char* buffer = sys::mmap(addr, length + 1, 3, 34, -1, 0);
+    sys::read(fd, buffer, length);
     return (string)buffer;
 }
 
 int write(int fd, string content) {
-    int len = std::ny_strlen(content);
-    return std::sys_write(fd, content, len);
+    int len = std::strlen(content);
+    return sys::write(fd, content, len);
 }
 
 string read_all(string path) {
-    int size = std::sys_fsize(path);
+    int size = sys::file_size(path);
     if (size <= 0) { return ""; }
 
-    int fd = std::sys_open(path, 0);
-    char* buf = std::ny_malloc(size + 1);
-    std::sys_read(fd, buf, size);
-    std::sys_close(fd);
+    int fd = sys::open(path, 0);
+    char* buf = std::malloc(size + 1);
+    sys::read(fd, buf, size);
+    sys::close(fd);
 
     return (string)buf;
 }
+
 
 } // namespace fs
 

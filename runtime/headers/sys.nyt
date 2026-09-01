@@ -1,39 +1,36 @@
 #ifndef SYS_NYT
 #define SYS_NYT
 
-namespace std {
+namespace sys {
 
 // I/O (flags: O_RDONLY=0, O_WRONLY=1, O_RDWR=2, O_CREAT=64)
-extern int sys_open(string filename, int flags);
-extern int sys_close(int fd);
-extern int sys_read(int fd, char* buf, int n);
-extern int sys_write(int fd, string buf, int n);
+extern int open(string filename, int flags);
+extern int close(int fd);
+extern int read(int fd, char* buf, int n);
+extern int write(int fd, string buf, int n);
 
 // Process Management
-extern int sys_fork();
-extern int sys_execve(string filename, char** argv, char** envp);
-extern int sys_execv(char* pathname, char** argv);
-extern int sys_exec(string cmd);
-extern int sys_waitpid(int pid, char* status, int options);
-extern int sys_getpid();
-
-// Filesystem & Errors
-extern int sys_fsize(string path);
-extern int sys_last_error();
-
-// Time
-extern int sys_get_nanos();
+extern int fork();
+extern int execve(string filename, char** argv, char** envp);
+extern int execv(char* pathname, char** argv);
+extern int waitpid(int pid, char* status, int options);
+extern int getpid();
 
 // Memory (addr: usually pass 0)
-extern char* sys_mmap(char* addr, int len, int prot, int flags, int fd, int offset);
+extern char* mmap(char* addr, int len, int prot, int flags, int fd, int offset);
 
 // Networking
-extern int sys_socket(int domain, int type, int protocol);
-extern int sys_bind(int sockfd, char* addr_struct, int addrlen);
+extern int socket(int domain, int type, int protocol);
+extern int bind(int sockfd, char* addr_struct, int addrlen);
 
-// Misc
-extern int sys_yield();
+// Extra higer levell stuff
+// Suffix Naming Convention: _ext (Extended) or _util (Utility)
+extern int exec_cmd(string cmd);
+extern int file_size(string path);
+extern int last_error();
+extern int get_nanos();
+extern int yield_cpu();
 
-} // namespace std
+} // namespace sys
 
 #endif

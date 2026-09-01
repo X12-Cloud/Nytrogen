@@ -1,12 +1,10 @@
 #include <string.h>
 #include <stdlib.h>
 
-int ny_strlen(const char* s) {
-    return (int)strlen(s);
-}
+// size_t strlen(const char* s)
 
 // string - int (Remove n characters from the end)
-char* ny_str_sub_int(const char* s, int n) {
+char* str_sub_int(const char* s, int n) {
     int len = strlen(s);
     int new_len = (n >= len) ? 0 : len - n;
     char* res = malloc(new_len + 1);
@@ -16,7 +14,7 @@ char* ny_str_sub_int(const char* s, int n) {
 }
 
 // string - string (Remove first occurrence of sub from s)
-char* ny_str_sub_str(const char* s, const char* sub) {
+char* str_sub_str(const char* s, const char* sub) {
     const char* p = strstr(s, sub);
     if (!p) return strdup(s);
 
@@ -32,7 +30,7 @@ char* ny_str_sub_str(const char* s, const char* sub) {
 }
 
 // string + string (Concatenate two strings)
-char* ny_strcat(const char* s1, const char* s2) {
+char* strcat_new(const char* s1, const char* s2) {
     int len1 = strlen(s1);
     int len2 = strlen(s2);
     char* res = malloc(len1 + len2 + 1);
@@ -42,7 +40,7 @@ char* ny_strcat(const char* s1, const char* s2) {
 }
 
 // Take the first N characters of a string
-char* ny_str_take(const char* s, int n) {
+char* strtake_new(const char* s, int n) {
     int len = strlen(s);
     int take_len = (n < 0) ? 0 : (n > len ? len : n);
     char* res = malloc(take_len + 1);

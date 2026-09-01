@@ -1,93 +1,191 @@
  PROGRAM_ROOT
    NAMESPACE_DEF: std
-     FUNCTION_DEF: ny_strcat
-     FUNCTION_DEF: ny_str_take
+     FUNCTION_DEF: println
+     FUNCTION_DEF: puts
+     FUNCTION_DEF: putchar
+     FUNCTION_DEF: readln
+     FUNCTION_DEF: getchar
+     FUNCTION_DEF: err
+     FUNCTION_DEF: malloc
+     FUNCTION_DEF: free
+   NAMESPACE_DEF: sys
+     FUNCTION_DEF: open
+     FUNCTION_DEF: close
+     FUNCTION_DEF: read
+     FUNCTION_DEF: write
+     FUNCTION_DEF: fork
+     FUNCTION_DEF: execve
+     FUNCTION_DEF: execv
+     FUNCTION_DEF: waitpid
+     FUNCTION_DEF: getpid
+     FUNCTION_DEF: mmap
+     FUNCTION_DEF: socket
+     FUNCTION_DEF: bind
+     FUNCTION_DEF: exec_cmd
+     FUNCTION_DEF: file_size
+     FUNCTION_DEF: last_error
+     FUNCTION_DEF: get_nanos
+     FUNCTION_DEF: yield_cpu
    NAMESPACE_DEF: std
-     FUNCTION_DEF: sys_open
-     FUNCTION_DEF: sys_close
-     FUNCTION_DEF: sys_read
-     FUNCTION_DEF: sys_write
-     FUNCTION_DEF: sys_fork
-     FUNCTION_DEF: sys_execve
-     FUNCTION_DEF: sys_execv
-     FUNCTION_DEF: sys_exec
-     FUNCTION_DEF: sys_waitpid
-     FUNCTION_DEF: sys_getpid
-     FUNCTION_DEF: sys_fsize
-     FUNCTION_DEF: sys_last_error
-     FUNCTION_DEF: sys_get_nanos
-     FUNCTION_DEF: sys_mmap
-     FUNCTION_DEF: sys_socket
-     FUNCTION_DEF: sys_bind
-     FUNCTION_DEF: sys_yield
+     FUNCTION_DEF: strlen
+     FUNCTION_DEF: strcat_new
+     FUNCTION_DEF: strtake_new
+   NAMESPACE_DEF: fs
+     FUNCTION_DEF: open
+       RETURN_STMT:
+         SCOPE_RESOLUTION: sys::
+           FUNC_CALL: open
+             VAR_REF: (path)
+             VAR_REF: (flags)
+     FUNCTION_DEF: close
+       RETURN_STMT:
+         SCOPE_RESOLUTION: sys::
+           FUNC_CALL: close
+             VAR_REF: (fd)
+     FUNCTION_DEF: exists
+       IF_STATEMENT
+         BINARY_OP: 
+           SCOPE_RESOLUTION: sys::
+             FUNC_CALL: file_size
+               VAR_REF: (path)
+           ASTNode
+         RETURN_STMT:
+           INT_LITERAL: (0)
+       RETURN_STMT:
+         INT_LITERAL: (1)
+     FUNCTION_DEF: size
+       RETURN_STMT:
+         SCOPE_RESOLUTION: sys::
+           FUNC_CALL: file_size
+             VAR_REF: (path)
+     FUNCTION_DEF: write
+       VAR_DECL
+         SCOPE_RESOLUTION: std::
+           FUNC_CALL: strlen
+             VAR_REF: (content)
+       RETURN_STMT:
+         SCOPE_RESOLUTION: sys::
+           FUNC_CALL: write
+             VAR_REF: (fd)
+             VAR_REF: (content)
+             VAR_REF: (len)
+     FUNCTION_DEF: read
+       VAR_DECL
+         STR_LITERAL: (x)
+       VAR_DECL
+         SCOPE_RESOLUTION: sys::
+           FUNC_CALL: mmap
+             VAR_REF: (addr)
+             BINARY_OP: 
+               VAR_REF: (length)
+               INT_LITERAL: (1)
+             INT_LITERAL: (3)
+             INT_LITERAL: (34)
+             ASTNode
+             INT_LITERAL: (0)
+       SCOPE_RESOLUTION: sys::
+         FUNC_CALL: read
+           VAR_REF: (fd)
+           VAR_REF: (buffer)
+           VAR_REF: (length)
+       RETURN_STMT:
+         ASTNode
+     FUNCTION_DEF: write
+       VAR_DECL
+         SCOPE_RESOLUTION: std::
+           FUNC_CALL: strlen
+             VAR_REF: (content)
+       RETURN_STMT:
+         SCOPE_RESOLUTION: sys::
+           FUNC_CALL: write
+             VAR_REF: (fd)
+             VAR_REF: (content)
+             VAR_REF: (len)
+     FUNCTION_DEF: read_all
+       VAR_DECL
+         SCOPE_RESOLUTION: sys::
+           FUNC_CALL: file_size
+             VAR_REF: (path)
+       IF_STATEMENT
+         BINARY_OP: 
+           VAR_REF: (size)
+           INT_LITERAL: (0)
+         RETURN_STMT:
+           STR_LITERAL:
+       VAR_DECL
+         SCOPE_RESOLUTION: sys::
+           FUNC_CALL: open
+             VAR_REF: (path)
+             INT_LITERAL: (0)
+       VAR_DECL
+         SCOPE_RESOLUTION: std::
+           FUNC_CALL: malloc
+             BINARY_OP: 
+               VAR_REF: (size)
+               INT_LITERAL: (1)
+       SCOPE_RESOLUTION: sys::
+         FUNC_CALL: read
+           VAR_REF: (fd)
+           VAR_REF: (buf)
+           VAR_REF: (size)
+       SCOPE_RESOLUTION: sys::
+         FUNC_CALL: close
+           VAR_REF: (fd)
+       RETURN_STMT:
+         ASTNode
+   FUNCTION_DEF: hello
+     ASTNode
    FUNCTION_DEF: main
-     QUBIT_DEF: q1 { alpha: default, beta: default }
-     QUBIT_DEF: q2 { alpha: default, beta: default }
-     QUBIT_DEF: q3 { alpha: default, beta: default }
-     QUBIT_DEF: q4 { alpha: default, beta: default }
-     QUBIT_DEF: q5 { alpha: default, beta: default }
-     QUBIT_DEF: q6 { alpha: default, beta: default }
-     QUBIT_DEF: q7 { alpha: default, beta: default }
-     QUBIT_DEF: q8 { alpha: default, beta: default }
-     VAR_DECL
-     GATE_APPLICATION_OP: 
-       VAR_REF: (h)
-       VAR_REF: (q1)
-     ASTNode
-     GATE_APPLICATION_OP: 
-       VAR_REF: (h)
-       VAR_REF: (q2)
-     ASTNode
-     GATE_APPLICATION_OP: 
-       VAR_REF: (h)
-       VAR_REF: (q3)
-     ASTNode
-     GATE_APPLICATION_OP: 
-       VAR_REF: (h)
-       VAR_REF: (q4)
-     ASTNode
-     GATE_APPLICATION_OP: 
-       VAR_REF: (h)
-       VAR_REF: (q5)
-     ASTNode
-     GATE_APPLICATION_OP: 
-       VAR_REF: (h)
-       VAR_REF: (q6)
-     ASTNode
-     GATE_APPLICATION_OP: 
-       VAR_REF: (h)
-       VAR_REF: (q7)
-     ASTNode
-     GATE_APPLICATION_OP: 
-       VAR_REF: (h)
-       VAR_REF: (q8)
-     ASTNode
-     VAR_DECL
-       FORMAT_EXPR: {     }
-     VAR_DECL
-       FORMAT_EXPR: {     }
-     VAR_DECL
-       SCOPE_RESOLUTION: std::
-         FUNC_CALL: ny_str_take
-           VAR_REF: (f)
-           INT_LITERAL: (4)
-     VAR_DECL
-       SCOPE_RESOLUTION: std::
-         FUNC_CALL: ny_str_take
-           VAR_REF: (s)
-           INT_LITERAL: (4)
-     VAR_DECL
-       SCOPE_RESOLUTION: std::
-         FUNC_CALL: ny_strcat
-           VAR_REF: (first)
-           VAR_REF: (second)
-     PRINT_STMT
-       STR_LITERAL: (byte: )
-       VAR_REF: (final)
-     VAR_DECL
-       FORMAT_EXPR: { final }
+     FUNC_CALL: hello
+       INT_LITERAL: (2)
      SCOPE_RESOLUTION: std::
-       FUNC_CALL: sys_exec
-         VAR_REF: (cmd)
+       FUNC_CALL: println
+         STR_LITERAL: (Enter file name: )
+     VAR_DECL
+       SCOPE_RESOLUTION: std::
+         FUNC_CALL: readln
+     IF_STATEMENT
+       BINARY_OP: 
+         VAR_REF: (file)
+         STR_LITERAL:
+       ASTNode
+       PRINT_STMT
+         FORMAT_EXPR: { file }
+     IF_STATEMENT
+       BINARY_OP: 
+         SCOPE_RESOLUTION: fs::
+           FUNC_CALL: exists
+             VAR_REF: (file)
+         INT_LITERAL: (1)
+       VAR_DECL
+         SCOPE_RESOLUTION: sys::
+           FUNC_CALL: file_size
+             VAR_REF: (file)
+       PRINT_STMT
+         FORMAT_EXPR: { file size }
+       VAR_DECL
+         SCOPE_RESOLUTION: fs::
+           FUNC_CALL: read_all
+             VAR_REF: (file)
+       PRINT_STMT
+         STR_LITERAL: (------------ File data ------------)
+       PRINT_STMT
+         VAR_REF: (data)
+         STR_LITERAL: (-----------------------------------\n)
+     VAR_DECL
+       COMPLEX_LITERAL: (1.000000+1.000000i)
+       COMPLEX_LITERAL: (1.000000+2.000000i)
+     PRINT_STMT
+       STR_LITERAL: (Phase Rotation (2+3i): )
+       BINARY_OP: 
+         VAR_REF: (a)
+         VAR_REF: (b)
+     QUBIT_DEF: q { alpha: default, beta: default }
+     GATE_APPLICATION_OP: 
+       VAR_REF: (h)
+       VAR_REF: (q)
+     PRINT_STMT
+       STR_LITERAL: (Quantum State (Superposition):\n)
+       VAR_REF: (q)
      RETURN_STMT:
        INT_LITERAL: (0)

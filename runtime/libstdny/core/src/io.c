@@ -10,8 +10,8 @@ int println(const char* x) {
     return 0;
 }
 
-int putst(const char* x) { puts(x); return 0; }
-int putch(char c) { putchar(c); return 0; }
+// int putchar(int c)
+// int puts(const char* s)
 
 char* readln() {
     static char buffer[1024];
@@ -22,13 +22,8 @@ char* readln() {
     return "";
 }
 
-char getch() { return (char)getchar(); }
+// int getchar()
 
 // Memory management
-void* ny_malloc(int size) {
-    return malloc(size);
-}
-
-void ny_free(void* ptr) {
-    free(ptr);
-}
+// void* malloc(size_t size)
+// void free(void* ptr);

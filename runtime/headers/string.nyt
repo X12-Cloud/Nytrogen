@@ -1,6 +1,12 @@
+#ifndef STRING_NYT
+#define STRING_NYT
+
 namespace std {
 
-extern char* ny_strcat(string s1, string s2);
-extern char* ny_str_take(string s, int n);
+extern int strlen(string s);
+extern char* strcat_new(string s1, string s2);
+extern char* strtake_new(string s, int n);
 
 } // namespace std
+
+#endif

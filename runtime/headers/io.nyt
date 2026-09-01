@@ -3,22 +3,26 @@
 
 namespace std {
 
+// Constants
+const int cout = 0;
+const int cerr = 1;
+const int cin = 2;
+
 // Output
 extern int println(string x);
-extern int putst(string x);
-extern int putch(char c);
+extern int puts(string x);
+extern int putchar(char c);
 
 // Input
 extern string readln();
-extern char getch();
+extern int getchar();
 
 // Error output
 extern int err(string x);
 
 // Memory
-extern int ny_strlen(string s);
-extern char* ny_malloc(int size);
-extern void ny_free(char* ptr);
+extern char* malloc(int size);
+extern void free(char* ptr);
 
 } // namespace std
 

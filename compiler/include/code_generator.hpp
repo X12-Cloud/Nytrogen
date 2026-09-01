@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <unordered_set>
 
 #include "ast.hpp"
 #include "instruction_set.hpp"
@@ -52,6 +53,7 @@ class CodeGenerator {
     bool last_expr_is_address = false;
     RegisterAllocator allocator;
 
+    std::unordered_set<std::string> emitted_functions;
     std::vector<GlobalConstant> constants;
     std::map<std::string, std::string> constants_map;
     int string_label_counter{0};
