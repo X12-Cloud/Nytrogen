@@ -237,18 +237,6 @@ std::unique_ptr<PrintStatementNode> Parser::parsePrintStatement() {
     const Token& print_token = peek();
     expect(Token::KEYWORD_PRINT, "Expected 'print' keyword.");
 
-    // Check whether the output stream type was provided.
-    OutputStream outs = OutputStream::STDOUT;
-    if (peek().type == Token::KEYWORD_STDERR) {
-        consume();
-        outs = OutputStream::STDERR;
-        expect(Token::COMMA, "Expected ',' after 'stderr'.");
-    } else if (peek().type == Token::KEYWORD_STDOUT) {
-        consume();
-        outs = OutputStream::STDOUT;
-        expect(Token::COMMA, "Expected ',' after 'stdout'.");
-    }
-
     std::vector<std::unique_ptr<ASTNode>> expressions;
     expressions.push_back(parseExpression());
 
@@ -257,8 +245,16 @@ std::unique_ptr<PrintStatementNode> Parser::parsePrintStatement() {
         expressions.push_back(parseExpression());
     }
 
+    std::unique_ptr<ASTNode> stream_expr = nullptr;
+    if (peek().type == Token::COLON) {
+        consume();
+        stream_expr = parseExpression();
+    } else {
+        stream_expr = std::make_unique<IntegerLiteralExpressionNode>(1, print_token.line, print_token.column);
+    }
+
     expect(Token::SEMICOLON, "Expected ';' after print statement.");
-    return std::make_unique<PrintStatementNode>(std::move(expressions), std::move(outs),
+    return std::make_unique<PrintStatementNode>(std::move(expressions), std::move(stream_expr),
                                                 print_token.line, print_token.column);
 }
 

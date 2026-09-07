@@ -249,14 +249,7 @@ void CodeGenerator::visit(ASTNode* node) {
 
 bool is_lvalue;
 
-void CodeGenerator::visit(ProgramNode* node) {
-    /* for (const auto& stmt : node->statements) {
-        visit(stmt.get());
-    }
-    for (const auto& func : node->functions) {
-        visit(func.get());
-    } */
-}
+void CodeGenerator::visit(ProgramNode* node) {}
 
 void CodeGenerator::visit(FunctionDefinitionNode* node) {
     if (emitted_functions.count(node->mangled_name)) {
@@ -767,7 +760,12 @@ void CodeGenerator::visit(FormatExpressionNode* node) {
 }
 
 void CodeGenerator::visit(PrintStatementNode* node) {
-    OutputStream outs = node->outstream;
+    visit(node->outstream.get());
+    std::string stream_fd_vreg = last_expr_vreg;
+
+    std::string saved_stream = new_vreg();
+    emitter.emit("mov", saved_stream, stream_fd_vreg);
+
     for (size_t i = 0; i < node->expressions.size(); ++i) {
         visit(node->expressions[i].get());
 
@@ -775,9 +773,9 @@ void CodeGenerator::visit(PrintStatementNode* node) {
         int size = getTypeSize(expr_type.get());
 
         if (i == node->expressions.size() - 1) {
-            emitter.emit_print(size, expr_type, last_expr_vreg, outs);
+            emitter.emit_print(size, expr_type, last_expr_vreg, saved_stream);
         } else {
-            emitter.emit_print_raw(size, expr_type, last_expr_vreg, outs);
+            emitter.emit_print_raw(size, expr_type, last_expr_vreg, saved_stream);
         }
     }
 }

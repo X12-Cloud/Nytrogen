@@ -791,7 +791,7 @@ enum OutputStream { STDOUT, STDERR };
 // Node for print statements (e.g., 'print x, "hello";')
 struct PrintStatementNode : public ASTNode {
     std::vector<std::unique_ptr<ASTNode>> expressions;
-    OutputStream outstream;
+    std::unique_ptr<ASTNode> outstream;
 
     [[nodiscard]] auto type_name() const -> std::string override {
         return "PRINT_STMT";
@@ -804,8 +804,8 @@ struct PrintStatementNode : public ASTNode {
         return refs;
     }
 
-    PrintStatementNode(std::vector<std::unique_ptr<ASTNode>> exprs, OutputStream outs, int line = -1, int column = -1)
-        : ASTNode(NodeType::PRINT_STATEMENT, line, column), expressions(std::move(exprs)), outstream(std::move(outs)) {}
+    PrintStatementNode(std::vector<std::unique_ptr<ASTNode>> exprs, std::unique_ptr<ASTNode> stream, int line = -1, int column = -1)
+        : ASTNode(NodeType::PRINT_STATEMENT, line, column), expressions(std::move(exprs)), outstream(std::move(stream)) {}
 };
 
 // Node for if statements.

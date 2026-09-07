@@ -68,28 +68,26 @@ void InstructionSet::load_from_address(int size, const TypeNode* type, const std
 }
 
 void InstructionSet::emit_print(int size, const std::shared_ptr<TypeNode>& type,
-                                const std::string& src_vreg, OutputStream outs) {
+                                const std::string& src_vreg, const std::string& outs) {
     emit_print_internal(size, type, src_vreg, false, outs);
 }
 
 void InstructionSet::emit_print_raw(int size, const std::shared_ptr<TypeNode>& type,
-                                    const std::string& src_vreg, OutputStream outs) {
+                                    const std::string& src_vreg, const std::string& outs) {
     emit_print_internal(size, type, src_vreg, true, outs);
 }
 
-std::string outs_to_string(OutputStream outs);
-
 // Helper to consolidate logic
 void InstructionSet::emit_print_internal(int size, const std::shared_ptr<TypeNode>& type,
-                                         const std::string& src_vreg, bool is_raw, OutputStream outs) {
+                                         const std::string& src_vreg, bool is_raw, 
+                                         const std::string& outs_vreg) {
     auto prim = dynamic_cast<PrimitiveTypeNode*>(type.get());
     bool is_fp = isAFloatingPoint(type.get());
 
-    std::string out_stream = outs_to_string(outs);
-
     // Qubits
     if (prim && prim->primitive_type == Token::KEYWORD_QUBIT) {
-        emit("mov", "rdi", src_vreg);
+        emit("mov", "rdi", outs_vreg);
+        emit("mov", "rsi", src_vreg);
         call_external("print_q");
         return;
     }
@@ -99,15 +97,13 @@ void InstructionSet::emit_print_internal(int size, const std::shared_ptr<TypeNod
         emit("mov", "rax", src_vreg);
         emit("vmovsd", "xmm0", "[rax]");
         emit("vmovsd", "xmm1", "[rax + 8]");
-
-        emit("mov", "rdi", "[rel " + out_stream + "]");
-
+        emit("mov", "rdi", outs_vreg);
         call_external("ny_print_complex");
         return;
     }
 
     if (is_fp) {
-        emit("mov", "rdi", "[rel " + out_stream + "]");
+        emit("mov", "rdi", outs_vreg);
         if (size == 4) {
             emit("vcvtss2sd", "xmm0", src_vreg + ", " + src_vreg);
         } else {
@@ -115,7 +111,7 @@ void InstructionSet::emit_print_internal(int size, const std::shared_ptr<TypeNod
         }
         call_external(is_raw ? "ny_print_float_raw" : "ny_print_float");
     } else {
-        emit("mov", "rdi", "[rel " + out_stream + "]");
+        emit("mov", "rdi", outs_vreg);
         emit("mov", "rsi", src_vreg);
 
         std::string func;
@@ -132,16 +128,14 @@ void InstructionSet::emit_print_internal(int size, const std::shared_ptr<TypeNod
         std::stringstream type;
         type << std::hex << "0x" << string_to_imm64(func_type);
 
-        std::string type_vreg = "rax";
-        emit("mov", type_vreg, type.str());
-        push(type_vreg);
-        push(type_vreg);
+        emit("mov", "rax", type.str());
+        push("rax");
+        push("rax");
         emit("mov", "rdx", "rsp");
         emit("mov", "rcx", std::to_string((int)is_raw));
 
         call_external("ny_print");
         emit("add", "rsp", "16");
-        current_stack_depth -= 16; 
     }
 }
 
@@ -150,12 +144,4 @@ void InstructionSet::emit_print_int(const std::string& src_vreg) {
     emit("lea", "rdi", "[rel _print_int_format]");
     emit("xor", "rax", "rax");
     call_external("printf");
-}
-
-std::string outs_to_string(OutputStream outs) {
-    switch (outs) {
-        case STDOUT: return "stdout";
-        case STDERR: return "stderr";
-        default: return "stderr";
-    }
 }
