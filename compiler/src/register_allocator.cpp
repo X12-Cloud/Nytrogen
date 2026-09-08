@@ -84,6 +84,25 @@ void RegisterAllocator::allocate_registers(std::vector<InstructionSet::Instructi
     for (int i = 0; i < (int)instructions.size(); ++i) {
         auto& instr = instructions[i];
 
+        if (instr.mnemonic == "call") {
+            for (auto it = vreg_to_phys.begin(); it != vreg_to_phys.end(); ) {
+                std::string vreg = it->first;
+                std::string phys = it->second;
+
+                std::string slot = "[rbp - " + std::to_string(next_spill_offset) + "]";
+                next_spill_offset += 8;
+                spill_slots[vreg] = slot;
+
+                std::string spill_instr = (phys.find("xmm") == 0) ? "vmovupd" : "mov";
+                physical_instrs.push_back({spill_instr, {slot, phys}});
+
+                if (phys.find("xmm") == 0) xmm_pool.push_back(phys);
+                else int_pool.push_back(phys);
+
+                it = vreg_to_phys.erase(it);
+            }
+        }
+
         // Expire intervals
         for (auto it = vreg_to_phys.begin(); it != vreg_to_phys.end();) {
             if (intervals[it->first].end < i) {

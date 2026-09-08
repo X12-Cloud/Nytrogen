@@ -22,15 +22,39 @@
         .icon-btn:hover { border-color: var(--accent); }
 
         .main { display: flex; flex: 1; overflow: hidden; }
-        .editor-container { flex: 1.2; display: flex; flex-direction: column; border-right: 1px solid var(--border); }
-        .right-panels { flex: 1; display: flex; flex-direction: column; background: #000; }
-        .panel-label { font-size: 10px; color: #666; padding: 6px 15px; text-transform: uppercase; background: #111; border-bottom: 1px solid var(--border); font-weight: bold; }
 
-        .CodeMirror { flex: 1; font-size: 14px; background: transparent !important; }
-        .view-box { flex: 1; overflow: auto; padding: 15px; font-size: 12px; line-height: 1.5; font-family: 'JetBrains Mono', monospace; border-bottom: 1px solid var(--border); white-space: pre; }
-        #asmOutput { color: #5fb3b3; }
-        #consoleOutput { color: #fff; background: #050505; }
-        #stdinEditor { height: 80px; background: #0a0a0a; color: var(--accent); border: none; padding: 12px; font-family: 'JetBrains Mono'; outline: none; resize: none; }
+        /* Left Column */
+        .editor-container { flex: 1.2; display: flex; flex-direction: column; border-right: 1px solid var(--border); min-width: 0; }
+
+        /* Right Column */
+        .right-panels { flex: 1; display: flex; flex-direction: column; background: #000; min-width: 0; }
+
+        .panel-label { font-size: 10px; color: #888; padding: 6px 15px; text-transform: uppercase; background: #111; border-bottom: 1px solid var(--border); font-weight: bold; display: flex; justify-content: space-between; align-items: center; user-select: none; }
+        .panel-label.clickable { cursor: pointer; }
+        .panel-label.clickable:hover { color: #fff; background: #181818; }
+        .toggle-icon { font-size: 10px; transition: transform 0.2s ease; }
+        .collapsed .toggle-icon { transform: rotate(-90deg); }
+
+        .CodeMirror { flex: 1; font-size: 14px; background: transparent !important; height: auto; }
+        .view-box { overflow: auto; padding: 15px; font-size: 12px; line-height: 1.5; font-family: 'JetBrains Mono', monospace; white-space: pre; box-sizing: border-box; }
+
+        #asmOutput { flex: 1; color: #5fb3b3; border-bottom: 1px solid var(--border); }
+
+        /* Side-by-Side Console Section */
+        .console-container { display: flex; height: 180px; border-top: 1px solid var(--border); transition: height 0.2s ease; }
+        .console-container.hidden { height: 0; overflow: hidden; border-top: none; }
+
+        .console-column { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+        .console-column:first-child { border-right: 1px solid var(--border); }
+
+        #consoleOutput { color: #fff; background: #050505; flex: 1; }
+        #consoleError { color: #ff5555; background: #050505; flex: 1; }
+        #consoleError.error { background: #120000; }
+
+        /* stdin Panel */
+        .stdin-container { display: flex; flex-direction: column; border-top: 1px solid var(--border); }
+        #stdinEditor { height: 80px; background: #0a0a0a; color: var(--accent); border: none; padding: 12px; font-family: 'JetBrains Mono', monospace; outline: none; resize: none; transition: height 0.2s ease, padding 0.2s ease; }
+        #stdinEditor.hidden { height: 0; padding: 0 12px; overflow: hidden; }
 
         /* Modal Settings */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 100; display: none; align-items: center; justify-content: center; }
@@ -99,17 +123,39 @@
 </div>
 
 <div class="main">
+    <!-- Left Side: Source Code & Standard Input -->
     <div class="editor-container">
         <div class="panel-label">Source Code (.ny)</div>
         <textarea id="codeEditor"></textarea>
+
+        <div class="stdin-container">
+            <div class="panel-label clickable" onclick="toggleSection('stdinEditor', this)">
+                <span>Standard Input (stdin)</span>
+                <i class="fas fa-chevron-down toggle-icon"></i>
+            </div>
+            <textarea id="stdinEditor" spellcheck="false" placeholder="Enter program input here..."></textarea>
+        </div>
     </div>
+
+    <!-- Right Side: Assembly & Output Consoles -->
     <div class="right-panels">
         <div class="panel-label">Generated Assembly (.asm)</div>
         <div id="asmOutput" class="view-box">; Assembly will appear here...</div>
-        <div class="panel-label">Console Output</div>
-        <div id="consoleOutput" class="view-box">Ready.</div>
-        <div class="panel-label">Standard Input (stdin)</div>
-        <textarea id="stdinEditor" spellcheck="false" placeholder="Enter program input here..."></textarea>
+
+        <div class="panel-label clickable" onclick="toggleSection('consoleContainer', this)">
+            <span>Console Output & Errors</span>
+            <i class="fas fa-chevron-down toggle-icon"></i>
+        </div>
+        <div id="consoleContainer" class="console-container">
+            <div class="console-column">
+                <div class="panel-label" style="background:#0a0a0a;">stdout</div>
+                <div id="consoleOutput" class="view-box">Ready.</div>
+            </div>
+            <div class="console-column">
+                <div class="panel-label" style="background:#0a0a0a;">stderr</div>
+                <div id="consoleError" class="view-box">Ready.</div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -133,11 +179,18 @@
         modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
     }
 
+    function toggleSection(elementId, labelEl) {
+        const target = document.getElementById(elementId);
+        target.classList.toggle('hidden');
+        labelEl.classList.toggle('collapsed');
+    }
+
     function loadSample(name) { editor.setValue(SAMPLES[name]); }
     loadSample("Default");
 
     async function runCompile() {
         const consoleOut = document.getElementById('consoleOutput');
+        const consoleErr = document.getElementById('consoleError');
         const asmOut = document.getElementById('asmOutput');
 
         const settings = {
@@ -149,7 +202,8 @@
         };
 
         consoleOut.innerText = "Compiling & Running...";
-        consoleOut.classList.remove('error');
+        consoleErr.innerText = "Ready.";
+        consoleErr.classList.remove('error');
 
         try {
             const response = await fetch('http://localhost:8000/compile', {
@@ -164,15 +218,15 @@
 
             const data = await response.json();
             if (data.stderr && data.stderr.trim() !== "") {
-                consoleOut.innerText = data.stderr;
-                consoleOut.classList.add('error');
-            } else {
-                consoleOut.innerText = data.stdout || "Success: Exit code " + data.exit_code;
+                consoleErr.innerText = data.stderr;
+                consoleErr.classList.add('error');
             }
+            consoleOut.innerText = data.stdout || "Success: Exit code " + data.exit_code;
             asmOut.innerText = data.asm || "; No assembly generated.";
         } catch (err) {
             consoleOut.innerText = "Error: Could not connect to backend.";
-            consoleOut.classList.add('error');
+            consoleErr.innerText = err.toString();
+            consoleErr.classList.add('error');
         }
     }
 </script>

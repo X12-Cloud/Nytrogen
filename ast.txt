@@ -1,46 +1,22 @@
  PROGRAM_ROOT
-   NAMESPACE_DEF: std
-     CONST_DECL: in
-       INT_LITERAL: (0)
-     CONST_DECL: out
-       INT_LITERAL: (1)
-     CONST_DECL: err
-       INT_LITERAL: (2)
-     FUNCTION_DEF: println
-     FUNCTION_DEF: puts
-     FUNCTION_DEF: putchar
-     FUNCTION_DEF: readln
-     FUNCTION_DEF: getchar
-     FUNCTION_DEF: err
-     FUNCTION_DEF: malloc
-     FUNCTION_DEF: free
-   FUNCTION_DEF: main
-     VAR_DECL
-       INT_LITERAL: (10)
-       INT_LITERAL: (20)
+   FUNCTION_DEF: factorial
+     IF_STATEMENT
        BINARY_OP: 
-         VAR_REF: (x)
-         VAR_REF: (y)
-     VAR_DECL
-       STR_LITERAL: (hello)
-     VAR_DECL
-       BOOL_LITERAL: (true)
-     VAR_DECL
-       CHAR_LITERAL: (109)
+         VAR_REF: (n)
+         INT_LITERAL: (0)
+       RETURN_STMT:
+         INT_LITERAL: (1)
+     RETURN_STMT:
+       BINARY_OP: 
+         VAR_REF: (n)
+         FUNC_CALL: factorial
+           BINARY_OP: 
+             VAR_REF: (n)
+             INT_LITERAL: (1)
+   FUNCTION_DEF: main
      PRINT_STMT
-       VAR_REF: (z)
-       STR_LITERAL: ( )
-       VAR_REF: (a)
-       STR_LITERAL: ( )
-       VAR_REF: (b)
-       STR_LITERAL: ( )
-       VAR_REF: (c)
-     VAR_DECL
-       STR_LITERAL: (ERROR)
-     PRINT_STMT
-       VAR_REF: (err)
-     SCOPE_RESOLUTION: std::
-       FUNC_CALL: println
-         STR_LITERAL: (hello from println)
+       STR_LITERAL: (Factorial of 5 (120): )
+       FUNC_CALL: factorial
+         INT_LITERAL: (5)
      RETURN_STMT:
        INT_LITERAL: (0)

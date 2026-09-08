@@ -7,8 +7,12 @@
 - Register allocator with stack spilling to further stablise the compiler.
 - Integrated qlib into the compiler with its new types and expressions.
 - Unified the standard library in `runtime/`.
-- The compiler now relies mainly on the stdlib for most functions which makes it much more portable.
-- Format expressions (e.g. `format(x = {}, y = {} :x:y)`). only syntax analysis for now tho.
+- The compiler now relies mainly on the stdlib for most functions which makes it much more portable (and looks better with the namespaces).
+- Format expressions (e.g. `format(x = {}, y = {} : x : y)`).
+- Printing to specific file descriptor (e.g. `print "Hello" to 1;`);
+
+### Fixed:
+- Fixed error where registers would get overwritten when a function calls itself.
 
 ## 0.1315
 ### Added:
