@@ -5,6 +5,12 @@
 fs::path FileHandler::resolvePath(const std::string& target_path, const fs::path& current_file,
                                   bool is_stdlib) {
     if (is_stdlib) {
+        const char* env_path = std::getenv("NYTRO_STDLIB_PATH");
+        if (env_path) {
+            fs::path env_std = fs::path(env_path) / target_path;
+            if (fs::exists(env_std)) return fs::absolute(env_std);
+        }
+
         fs::path local_std = fs::current_path() / "runtime/headers" / target_path;
         if (fs::exists(local_std)) {
             return fs::absolute(local_std);
