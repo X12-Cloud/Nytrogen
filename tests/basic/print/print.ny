@@ -7,7 +7,7 @@ int main() {
     char c = 'm';
     print z, " ", a, " ", b, " ", c; // 30 hello true m
     string err = "ERROR";
-    print err : 2;
+    print err to std::err;
     std::println("hello from println");
     return 0;
 }

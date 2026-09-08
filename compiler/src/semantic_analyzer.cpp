@@ -601,6 +601,10 @@ void SemanticAnalyzer::visit(FormatExpressionNode* node) {
 }
 
 void SemanticAnalyzer::visit(PrintStatementNode* node) {
+    if (node->outstream) {
+        visit(node->outstream.get());
+    }
+
     for (const auto& expr : node->expressions) {
         expr->resolved_type = std::move(visitExpression(expr.get()));
         if (!expr->resolved_type) {
@@ -1001,7 +1005,8 @@ void SemanticAnalyzer::visit(ConstantDeclarationNode* node) {
         node->initial_value->node_type != ASTNode::NodeType::BOOLEAN_LITERAL_EXPRESSION &&
         node->initial_value->node_type != ASTNode::NodeType::CHARACTER_LITERAL_EXPRESSION &&
         node->initial_value->node_type != ASTNode::NodeType::FLOAT_LITERAL_EXPRESSION &&
-        node->initial_value->node_type != ASTNode::NodeType::DOUBLE_LITERAL_EXPRESSION) {
+        node->initial_value->node_type != ASTNode::NodeType::DOUBLE_LITERAL_EXPRESSION &&
+        node->initial_value->node_type != ASTNode::NodeType::COMPLEX_LITERAL_EXPRESSION) {
         Logger::report_error("Semantic Error", "Constant initializer must be a literal value.",
                              node->line);
     }
@@ -1039,6 +1044,12 @@ void SemanticAnalyzer::visit(ConstantDeclarationNode* node) {
             value_clone = std::make_unique<DoubleLiteralExpressionNode>(
                 static_cast<DoubleLiteralExpressionNode*>(node->initial_value.get())->value);
             break;
+        case ASTNode::NodeType::COMPLEX_LITERAL_EXPRESSION: {
+            auto* complex_node = static_cast<ComplexLiteralExpressionNode*>(node->initial_value.get());
+            value_clone = std::make_unique<ComplexLiteralExpressionNode>(
+                complex_node->real, complex_node->imaginary);
+            break;
+        }
         default:
             // Should not happen due to the check above
             break;

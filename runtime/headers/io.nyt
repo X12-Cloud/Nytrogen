@@ -1,13 +1,12 @@
 #ifndef IO_NYT
 #define IO_NYT
 
+namespace std {
 
 // Constants
-const int cin = 0;
-const int cout = 1;
-const int cerr = 2;
-
-namespace std {
+const int in = 0;
+const int out = 1;
+const int err = 2;
 
 // Output
 extern int println(string x);

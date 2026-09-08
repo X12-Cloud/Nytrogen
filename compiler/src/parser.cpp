@@ -246,7 +246,7 @@ std::unique_ptr<PrintStatementNode> Parser::parsePrintStatement() {
     }
 
     std::unique_ptr<ASTNode> stream_expr = nullptr;
-    if (peek().type == Token::COLON) {
+    if (peek().type == Token::KEYWORD_TO) {
         consume();
         stream_expr = parseExpression();
     } else {
@@ -802,6 +802,10 @@ std::unique_ptr<NamespaceDefinition> Parser::parseNamespaceDefinition() {
             name_to_register = f->name;
         } else if (auto* s = dynamic_cast<StructDefinitionNode*>(member_node.get())) {
             name_to_register = s->name;
+        } else if (auto* c = dynamic_cast<ConstantDeclarationNode*>(member_node.get())) {
+            name_to_register = c->name;
+        } else if (auto* q = dynamic_cast<QubitDefinitionNode*>(member_node.get())) {
+            name_to_register = q->qubit_name;
         }
 
         if (!name_to_register.empty()) {
