@@ -58,6 +58,7 @@ struct ASTNode {
         QUBIT_DEFINITION = 31,
         GATE_APPLICATION_OPERATION_EXPRESSION = 32,
         FORMAT_EXPRESSION = 33,
+        LONG_LITERAL_EXPRESSION = 34,
     };
 
     NodeType node_type;
@@ -277,6 +278,27 @@ struct ComplexLiteralExpressionNode : public LiteralExpressionNode {
     [[nodiscard]] auto getValueAsString() const -> std::string override {
         std::string sign = (imaginary >= 0) ? "+" : "";
         return std::to_string(real) + sign + std::to_string(imaginary) + "i";
+    }
+};
+
+// Node representing long literals (e.g., 420)
+struct LongLiteralExpressionNode : public LiteralExpressionNode {
+    long long value;
+
+    [[nodiscard]] auto type_name() const -> std::string override {
+        return "LONG_LITERAL:";
+    }
+    [[nodiscard]] auto get_value() const -> std::string override {
+        return getValueAsString();
+    }
+    [[nodiscard]] auto is_constant() const -> bool override {
+        return true;
+    }
+
+    LongLiteralExpressionNode(long val, int line = -1, int column = -1)
+        : LiteralExpressionNode(NodeType::LONG_LITERAL_EXPRESSION, line, column), value(val) {}
+    [[nodiscard]] auto getValueAsString() const -> std::string override {
+        return std::to_string(value);
     }
 };
 

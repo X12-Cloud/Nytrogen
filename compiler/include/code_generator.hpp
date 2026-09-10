@@ -84,6 +84,7 @@ class CodeGenerator {
     void visit(ArrayAccessNode* node);
     void visit(StructDefinitionNode* node);
     void visit(IntegerLiteralExpressionNode* node);
+    void visit(LongLiteralExpressionNode* node);
     void visit(StringLiteralExpressionNode* node);
     void visit(BooleanLiteralExpressionNode* node);
     void visit(CharacterLiteralExpressionNode* node);

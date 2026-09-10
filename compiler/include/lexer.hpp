@@ -44,6 +44,7 @@
     /* Identifiers and Literals */                                                  \
     X(IDENTIFIER, "ID")                                                             \
     X(INTEGER_LITERAL, "INT_LIT")                                                   \
+    X(LONG_LITERAL, "LONG_LIT")                                                     \
     X(STRING_LITERAL, "STR_LIT")                                                    \
     X(CHARACTER_LITERAL, "CHAR_LIT")                                                \
     X(FLOAT_LITERAL, "FLOAT_LIT")                                                   \

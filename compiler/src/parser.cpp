@@ -66,6 +66,7 @@ void Parser::synchronize() {
         }
         switch (peek().type) {
             case Token::KEYWORD_INT:
+            case Token::KEYWORD_LONG:
             case Token::KEYWORD_FLOAT:
             case Token::KEYWORD_DOUBLE:
             case Token::KEYWORD_CHAR:
@@ -109,6 +110,13 @@ std::unique_ptr<IntegerLiteralExpressionNode> Parser::parseIntegerLiteralExpress
     expect(Token::INTEGER_LITERAL, "Expected an integer literal.");
     int value = std::stoi(int_token.value);
     return std::make_unique<IntegerLiteralExpressionNode>(value, int_token.line, int_token.column);
+}
+
+std::unique_ptr<LongLiteralExpressionNode> Parser::parseLongLiteralExpression() {
+    const Token& long_token = peek();
+    expect(Token::LONG_LITERAL, "Expected a long literal.");
+    long long value = std::stoll(long_token.value);
+    return std::make_unique<LongLiteralExpressionNode>(value, long_token.line, long_token.column);
 }
 
 std::unique_ptr<StringLiteralExpressionNode> Parser::parseStringLiteralExpression() {
@@ -402,8 +410,8 @@ std::unique_ptr<TypeNode> Parser::parseType() {
         type_token.type == Token::KEYWORD_FLOAT || type_token.type == Token::KEYWORD_DOUBLE ||
         type_token.type == Token::KEYWORD_BOOL || type_token.type == Token::KEYWORD_CHAR ||
         type_token.type == Token::KEYWORD_VOID || type_token.type == Token::KEYWORD_COMPLEX ||
-        type_token.type == Token::KEYWORD_MATRIX ||
-        type_token.type == Token::KEYWORD_QUBIT) {
+        type_token.type == Token::KEYWORD_MATRIX || type_token.type == Token::KEYWORD_QUBIT ||
+        type_token.type == Token::KEYWORD_LONG) {
         consume();
         type = std::make_unique<PrimitiveTypeNode>(type_token.type);
     } else if (type_token.type == Token::KEYWORD_AUTO) {
@@ -414,7 +422,7 @@ std::unique_ptr<TypeNode> Parser::parseType() {
         type = std::make_unique<StructTypeNode>(type_token.value);
     } else {
         throw std::runtime_error(
-            "Expected 'int', 'string', 'bool', 'char', or a defined struct name for type.");
+            "Expected 'int', 'string', 'bool', 'char', 'long',  or a defined struct name for type.");
     }
 
     while (peek().type == Token::STAR) {
@@ -499,6 +507,8 @@ std::unique_ptr<ASTNode> Parser::parseFactor() {
                                                        current_token.line, current_token.column);
     } else if (current_token.type == Token::INTEGER_LITERAL) {
         node = parseIntegerLiteralExpression();
+    } else if (current_token.type == Token::LONG_LITERAL) {
+        node = parseLongLiteralExpression();
     } else if (current_token.type == Token::FLOAT_LITERAL) {
         node = parseFloatLiteralExpression();
     } else if (current_token.type == Token::DOUBLE_LITERAL) {
@@ -909,6 +919,7 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
         case Token::KEYWORD_RETURN:
             return parseReturnStatement();
         case Token::KEYWORD_INT:
+        case Token::KEYWORD_LONG:
         case Token::KEYWORD_STRING:
         case Token::KEYWORD_BOOL:
         case Token::KEYWORD_CHAR:
@@ -995,7 +1006,15 @@ std::unique_ptr<FunctionDefinitionNode> Parser::parseFunctionDefinition() {
         is_extern_func = true;
     }
 
-    auto return_type = parseType();
+    std::unique_ptr<TypeNode> return_type = nullptr;
+
+    bool has_trailing_return = false;
+    if (peek().type == Token::KEYWORD_AUTO) {
+        consume();
+        has_trailing_return = true;
+    } else {
+        return_type = parseType();
+    }
 
     const Token& function_name_token = peek();
     expect(Token::IDENTIFIER, "Expected function name.");
@@ -1007,9 +1026,19 @@ std::unique_ptr<FunctionDefinitionNode> Parser::parseFunctionDefinition() {
 
     func_def_node->parameters = parseParameters();
 
+    if (has_trailing_return) {
+        if (peek().type == Token::ARROW) {
+            consume();
+            func_def_node->return_type = parseType();
+        } else {
+            throw std::runtime_error("Parser Error: Expected '->' trailing return type after function parameters at line " + 
+                                     std::to_string(function_name_token.line));
+        }
+    }
+
     if (is_extern_func) {
         expect(Token::SEMICOLON, "Expected ';' after extern function declaration.");
-    } if (peek().type == Token::LBRACE) {
+    } else if (peek().type == Token::LBRACE) {
         expect(Token::LBRACE, "Expected '{' to begin function body.");
 
         while (peek().type != Token::RBRACE && peek().type != Token::END_OF_FILE) {

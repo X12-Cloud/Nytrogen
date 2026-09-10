@@ -19,7 +19,8 @@ int SemanticAnalyzer::getTypeSize(const TypeNode* type) {
                 case Token::KEYWORD_FLOAT:
                     return 4;
                 case Token::KEYWORD_DOUBLE:
-                    return 8;              // 8 bytes for double (qword)
+                case Token::KEYWORD_LONG:
+                    return 8;              // 8 bytes for double and long (qword)
                 case Token::KEYWORD_BOOL:  // 1 byte for bool and char
                 case Token::KEYWORD_CHAR:
                     return 1;
@@ -271,6 +272,11 @@ void SemanticAnalyzer::visit(ASTNode* node) {
         case ASTNode::NodeType::INTEGER_LITERAL_EXPRESSION: {
             auto* lit = static_cast<IntegerLiteralExpressionNode*>(node);
             lit->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_INT);
+            break;
+        }
+        case ASTNode::NodeType::LONG_LITERAL_EXPRESSION: {
+            auto* lit = static_cast<LongLiteralExpressionNode*>(node);
+            lit->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_LONG);
             break;
         }
         case ASTNode::NodeType::STRING_LITERAL_EXPRESSION:
@@ -762,8 +768,8 @@ void SemanticAnalyzer::visit(FunctionCallNode* node) {
     if (node->function_name == "__builtin_sqrt" || node->function_name == "__builtin_abs" ||
         node->function_name == "__builtin_round") {
         if (node->arguments.size() != 1) {
-            Logger::report_error("Semantic Error", "__builtin_sqrt/abs/round expect only 1 argument.",
-                                 node->line);
+            if (node->arguments.size() < 1) Logger::report_error("Semantic Error", node->function_name + " expects at least 1 argument.", node->line);
+            else Logger::report_error("Semantic Error", node->function_name + " expects only 1 argument.", node->line);
         }
 
         std::unique_ptr<TypeNode> arg_type = visitExpression(node->arguments[0].get());
@@ -1001,6 +1007,7 @@ void SemanticAnalyzer::visit(ConstantDeclarationNode* node) {
 
     // Ensure the initializer is a literal
     if (node->initial_value->node_type != ASTNode::NodeType::INTEGER_LITERAL_EXPRESSION &&
+        node->initial_value->node_type != ASTNode::NodeType::LONG_LITERAL_EXPRESSION &&
         node->initial_value->node_type != ASTNode::NodeType::STRING_LITERAL_EXPRESSION &&
         node->initial_value->node_type != ASTNode::NodeType::BOOLEAN_LITERAL_EXPRESSION &&
         node->initial_value->node_type != ASTNode::NodeType::CHARACTER_LITERAL_EXPRESSION &&
@@ -1023,6 +1030,10 @@ void SemanticAnalyzer::visit(ConstantDeclarationNode* node) {
         case ASTNode::NodeType::INTEGER_LITERAL_EXPRESSION:
             value_clone = std::make_unique<IntegerLiteralExpressionNode>(
                 static_cast<IntegerLiteralExpressionNode*>(node->initial_value.get())->value);
+            break;
+        case ASTNode::NodeType::LONG_LITERAL_EXPRESSION:
+            value_clone = std::make_unique<LongLiteralExpressionNode>(
+                static_cast<LongLiteralExpressionNode*>(node->initial_value.get())->value);
             break;
         case ASTNode::NodeType::STRING_LITERAL_EXPRESSION:
             value_clone = std::make_unique<StringLiteralExpressionNode>(
@@ -1107,6 +1118,11 @@ std::unique_ptr<TypeNode> SemanticAnalyzer::visitExpression(ASTNode* expr) {
         case ASTNode::NodeType::INTEGER_LITERAL_EXPRESSION: {
             result_type =
                 visitIntegerLiteralExpression(static_cast<IntegerLiteralExpressionNode*>(expr));
+            break;
+        }
+        case ASTNode::NodeType::LONG_LITERAL_EXPRESSION: {
+            result_type =
+                visitLongLiteralExpression(static_cast<LongLiteralExpressionNode*>(expr));
             break;
         }
         case ASTNode::NodeType::STRING_LITERAL_EXPRESSION: {
@@ -1273,6 +1289,12 @@ std::unique_ptr<TypeNode> SemanticAnalyzer::visitIntegerLiteralExpression(
     return node->resolved_type->clone();
 }
 
+std::unique_ptr<TypeNode> SemanticAnalyzer::visitLongLiteralExpression(
+    LongLiteralExpressionNode* node) {
+    node->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_LONG);
+    return node->resolved_type->clone();
+}
+
 std::unique_ptr<TypeNode> SemanticAnalyzer::visitStringLiteralExpression(
     StringLiteralExpressionNode* node) {
     node->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_STRING);
@@ -1319,6 +1341,8 @@ std::string SemanticAnalyzer::typeToString(const TypeNode* type) {
             switch (p->primitive_type) {
                 case Token::KEYWORD_INT:
                     return "int";
+                case Token::KEYWORD_LONG:
+                    return "long";
                 case Token::KEYWORD_FLOAT:
                     return "float";
                 case Token::KEYWORD_DOUBLE:

@@ -43,7 +43,9 @@ void InstructionSet::load_adv(int size, const TypeNode* type, const std::string&
         if (size == 1)
             emit("movsx", dest_vreg, "byte " + addr);
         else if (size == 4)
-            emit("movsxd", dest_vreg, "dword " + addr);  // FIX HERE
+            emit("movsxd", dest_vreg, "dword " + addr);
+        else if (size == 8)
+            emit("mov", dest_vreg, "qword " + addr);
         else
             emit("mov", dest_vreg, addr);
     }

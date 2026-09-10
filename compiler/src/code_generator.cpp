@@ -65,8 +65,6 @@ void CodeGenerator::generate(const std::string& output_filename, bool is_entry_p
     constants.push_back({"align", "8"});
 
     emitter.section(".text");
-    emitter.extern_sym("stdout");
-    emitter.extern_sym("stderr");
 
     if (is_entry_point) {
         emitter.global("_start");
@@ -93,11 +91,11 @@ void CodeGenerator::generate(const std::string& output_filename, bool is_entry_p
         emitter.emit("lea", "rdi", "[rel _N_qlib_state]");
         emitter.call_external("setup");
 
-        for (const auto& stmt : program_ast->statements) {
+        /* for (const auto& stmt : program_ast->statements) {
             if (stmt->node_type == ASTNode::NodeType::VARIABLE_DECLARATION) {
                 visit(stmt.get());
             }
-        }
+        } */
 
         emitter.emit("call", "main");
         emitter.emit("mov", "rdi", "rax");
@@ -121,21 +119,23 @@ void CodeGenerator::generate(const std::string& output_filename, bool is_entry_p
     emitter.section(".data");
     std::unordered_set<std::string> emitted_data_labels;
 
-    emitter.emit("global _N_qlib_state");
-    constants.push_back({"align", "64"});
-    constants.push_back({"_N_qlib_state", "times 8192", "db 0"});
-
     constants.push_back({"align", "32"});
     for (const auto& c : constants) {
         if (c.label == "align") {
             emitter.emit("align", c.type);
             continue;
         }
+        if (c.label == "_N_qlib_state") continue;
         if (emitted_data_labels.find(c.label) == emitted_data_labels.end()) {
             emitter.emit_data_entry(c.label, c.type, c.value);
             emitted_data_labels.insert(c.label);
         }
     }
+
+    emitter.section(".bss");
+    emitter.emit("global _N_qlib_state");
+    emitter.emit("align", "64");
+    emitter.emit_data_entry("_N_qlib_state", "resb", "8192");
 
     allocator.allocate_registers(emitter.instructions);
     emitter.flush_to_file();
@@ -205,6 +205,9 @@ void CodeGenerator::visit(ASTNode* node) {
             break;
         case ASTNode::NodeType::INTEGER_LITERAL_EXPRESSION:
             visit(dynamic_cast<IntegerLiteralExpressionNode*>(node));
+            break;
+        case ASTNode::NodeType::LONG_LITERAL_EXPRESSION:
+            visit(dynamic_cast<LongLiteralExpressionNode*>(node));
             break;
         case ASTNode::NodeType::STRING_LITERAL_EXPRESSION:
             visit(dynamic_cast<StringLiteralExpressionNode*>(node));
@@ -299,7 +302,7 @@ void CodeGenerator::visit(FunctionDefinitionNode* node) {
     if (local_var_space <= 0) {
         local_var_space = 128;
     }
-    int aligned_space = (local_var_space + 128 + 15) & ~15;
+    int aligned_space = (local_var_space + 256 + 15) & ~15;
     emitter.emit("sub", "rsp", std::to_string(aligned_space));
     emitter.current_stack_depth += aligned_space;
 
@@ -422,7 +425,10 @@ void CodeGenerator::visit(VariableDeclarationNode* node) {
                     std::string instr = is_complex_type ? "vmovupd" : (is_fp ? (size == 4 ? "vmovss" : "vmovsd") : "mov");
                     emitter.emit(instr, vreg, src);
                 }
-                emitter.emit_adv(size, node->type.get(), "rbp", symbol->offset, vreg);
+                std::string size_prefix = (size == 4) ? "dword " : (size == 8 ? "qword " : "byte ");
+                if (is_complex_type) size_prefix = "oword ";
+                std::string instr = is_complex_type ? "vmovupd" : (is_fp ? (size == 4 ? "vmovss" : "vmovsd") : "mov");
+                emitter.emit(instr, size_prefix + "[rel " + symbol->mangled_name + "]", vreg);
             }
         } else {
             // local variable (stack)
@@ -492,17 +498,21 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
 
     int size = getTypeSize(node->resolved_type.get());
 
-    if (symbol->is_global) {
+    if (symbol->is_global || symbol->type == Symbol::SymbolType::CONSTANT) {
+        std::string target_name = symbol->mangled_name;
+
         if (is_lvalue || is_complex_layout) {
-            emitter.emit("lea", vreg, "[rel " + symbol->mangled_name + "]");
+            emitter.emit("lea", vreg, "[rel " + target_name + "]");
             last_expr_is_address = true;
         } else {
-            std::string prefix = emitter.get_size_prefix(size);
-            std::string instr = (size == 1) ? "movsx" : (size == 4 ? "movsxd" : "mov");
-            if (isFloatingPoint(node->resolved_type.get()))
-                instr = (size == 4 ? "vmovss" : "vmovsd");
-
-            emitter.emit(instr, vreg, prefix + " [rel " + symbol->mangled_name + "]");
+            if (isFloatingPoint(node->resolved_type.get())) {
+                std::string instr = (size == 4) ? "vmovss" : "vmovsd";
+                emitter.emit(instr, vreg, "[rel " + target_name + "]");
+            } else {
+                std::string prefix = emitter.get_size_prefix(size);
+                std::string instr = (size == 1) ? "movsx" : (size == 4 ? "movsxd" : "mov");
+                emitter.emit(instr, vreg, prefix + " [rel " + target_name + "]");
+            }
             last_expr_is_address = false;
         }
     } else {
@@ -616,9 +626,12 @@ void CodeGenerator::visit(BinaryOperationExpressionNode* node) {
             }
             default: throw std::runtime_error("Complex op not implemented");
         }
+        int scratch_offset = symbolTable.current_scope->currentOffset - 64;
+        std::string scratch_mem = "[rbp + " + std::to_string(scratch_offset) + "]";
+
         std::string addr_vreg = new_vreg();
-        emitter.emit("vmovupd", "oword [rbp - 128]", result_vreg);
-        emitter.emit("lea", addr_vreg, "[rbp - 128]");
+        emitter.emit("vmovupd", "oword [rbp + " + std::to_string(scratch_offset) + "]", result_vreg);
+        emitter.emit("lea", addr_vreg, "[rbp + " + std::to_string(scratch_offset) + "]");
 
         last_expr_vreg = addr_vreg;
         last_expr_is_address = true;
@@ -760,11 +773,13 @@ void CodeGenerator::visit(FormatExpressionNode* node) {
 }
 
 void CodeGenerator::visit(PrintStatementNode* node) {
+    // 1. Visit the stream expression (e.g., std::out or std::cerr)
     visit(node->outstream.get());
     std::string stream_fd_vreg = last_expr_vreg;
 
-    std::string saved_stream = new_vreg();
-    emitter.emit("mov", saved_stream, stream_fd_vreg);
+    // 2. Safely push the stream FD onto the hardware stack so it's 100% safe from local variables
+    emitter.emit("push", stream_fd_vreg);
+    emitter.current_stack_depth += 8;
 
     for (size_t i = 0; i < node->expressions.size(); ++i) {
         visit(node->expressions[i].get());
@@ -772,12 +787,20 @@ void CodeGenerator::visit(PrintStatementNode* node) {
         auto expr_type = node->expressions[i]->resolved_type;
         int size = getTypeSize(expr_type.get());
 
+        // 3. Load the stream into a fresh virtual register directly from the top of the stack
+        std::string current_stream = new_vreg();
+        emitter.emit("mov", current_stream, "qword [rsp]");
+
         if (i == node->expressions.size() - 1) {
-            emitter.emit_print(size, expr_type, last_expr_vreg, saved_stream);
+            emitter.emit_print(size, expr_type, last_expr_vreg, current_stream);
         } else {
-            emitter.emit_print_raw(size, expr_type, last_expr_vreg, saved_stream);
+            emitter.emit_print_raw(size, expr_type, last_expr_vreg, current_stream);
         }
     }
+
+    // 4. Clean up the stack slot we used for the stream
+    emitter.emit("add", "rsp", "8");
+    emitter.current_stack_depth -= 8;
 }
 
 void CodeGenerator::visit(ReturnStatementNode* node) {
@@ -1104,6 +1127,13 @@ void CodeGenerator::visit(IntegerLiteralExpressionNode* node) {
     last_expr_is_address = false;
 }
 
+void CodeGenerator::visit(LongLiteralExpressionNode* node) {
+    std::string vreg = new_vreg();
+    emitter.emit("movabs", vreg, std::to_string(node->value));
+    last_expr_vreg = vreg;
+    last_expr_is_address = false;
+}
+
 void CodeGenerator::visit(FloatLiteralExpressionNode* node) {
     std::string val_str = std::to_string(node->value);
     if (constants_map.find(val_str) == constants_map.end()) {
@@ -1213,6 +1243,7 @@ auto CodeGenerator::getTypeSize(const TypeNode* type) -> int {
                 case Token::KEYWORD_FLOAT:
                     return 4;
                 case Token::KEYWORD_DOUBLE:
+                case Token::KEYWORD_LONG:
                     return 8;
                 case Token::KEYWORD_COMPLEX: return 16;
                 case Token::KEYWORD_MATRIX:  return 64;

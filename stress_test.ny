@@ -1,3 +1,5 @@
+#include <io.nyt>
+
 enum Status {
     OFF,
     ON,
@@ -9,10 +11,10 @@ struct Point {
     int y;
 };
 
-float PI = 3.14159f;
+const float PI = 3.14159f;
 
 int calculate_score(int a, int b) {
-    print "DEBUG calculate_score: a=", a, ", b=", b;
+    print format("DEBUG calculate_score: a={}, b={}" : a : b);
     if (a > b) {
         return (a * 2) + (b / 2); // 1499 * 2 + 20 / 2
     }
@@ -48,7 +50,7 @@ int main() {
     p.y = 20;
     print "- DEBUG -";
     print "p.x | p.y";
-    print p.x, "  |  ", p.y, "\n";
+    print format("{}  |  {}" : p.x : p.y);
 
     int current_status = ON;
     int total = 0;
@@ -83,17 +85,14 @@ int main() {
                 print "status: pass (not 3008)";
             }
         } else {
-            print "status: fail";
+            print "status: fail" to std::err;
             if (final_result == 0) {
-                print "reason: final score = 0";
+                print "reason: final score = 0" to std::err;
             } else {
-                print "reason: final score < 1000";
+                print "reason: final score < 1000" to std::err;
             }
         }
     }
-
-    // TODO:
-    //print format("x = {}, y = {}" :x:y);
 
     return 0;
 }

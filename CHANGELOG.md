@@ -9,7 +9,8 @@
 - Unified the standard library in `runtime/`.
 - The compiler now relies mainly on the stdlib for most functions which makes it much more portable (and looks better with the namespaces).
 - Format expressions (e.g. `format(x = {}, y = {} : x : y)`).
-- Printing to specific file descriptor (e.g. `print "Hello" to 1;`);
+- Printing to specific file descriptor (e.g. `print "Hello" to 1;`).
+- Added long literals which are 64-bit signed integers.
 
 ### Fixed:
 - Fixed error where registers would get overwritten when a function calls itself.

@@ -126,7 +126,7 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
                 scanNumber(value);
 
                 // Suffixes (f, d)
-                if (currentPos < sourceCode.length() && (sourceCode[currentPos] == 'f' || sourceCode[currentPos] == 'd')) {
+                if (currentPos < sourceCode.length() && (sourceCode[currentPos] == 'f' || sourceCode[currentPos] == 'd' || sourceCode[currentPos] == 'l')) {
                     value += sourceCode[currentPos++];
                     column++;
                 }
@@ -155,7 +155,8 @@ std::vector<Token> tokenize(const std::string& sourceCode) {
                     if (value.back() == 'f') tokens.push_back({Token::FLOAT_LITERAL, value, line, startColumn});
                     else tokens.push_back({Token::DOUBLE_LITERAL, value, line, startColumn});
                 } else {
-                    tokens.push_back({Token::INTEGER_LITERAL, value, line, startColumn});
+                    if (value.back() == 'l') tokens.push_back({Token::LONG_LITERAL, value, line, startColumn});
+                    else tokens.push_back({Token::INTEGER_LITERAL, value, line, startColumn});
                 }
                 continue;
             }

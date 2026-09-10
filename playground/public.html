@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Nytrogen Playground</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/dracula.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root { --bg: #0d0d0d; --panel: #161616; --text: #d4d4d4; --accent: #85ff00; --border: #2d2d2d; --header-h: 50px; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+        header { height: var(--header-h); padding: 0 20px; background: var(--panel); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); box-sizing: border-box; }
+        .brand { font-weight: 800; font-size: 14px; }
+        .brand span { color: var(--accent); }
+        .actions { display: flex; align-items: center; gap: 12px; }
+
+        .run-btn { background: var(--accent); color: #000; border: none; padding: 6px 16px; font-weight: bold; font-size: 12px; cursor: pointer; border-radius: 4px; display: flex; align-items: center; gap: 8px; }
+        .icon-btn { background: #252525; color: #fff; border: 1px solid var(--border); padding: 6px 10px; border-radius: 4px; cursor: pointer; text-decoration: none; display: flex; align-items: center; justify-content: center; }
+        .icon-btn:hover { border-color: var(--accent); }
+
+        .main { display: flex; flex: 1; overflow: hidden; }
+
+        /* Left Column */
+        .editor-container { flex: 1.2; display: flex; flex-direction: column; border-right: 1px solid var(--border); min-width: 0; }
+
+        /* Right Column */
+        .right-panels { flex: 1; display: flex; flex-direction: column; background: #000; min-width: 0; }
+
+        .panel-label { font-size: 10px; color: #888; padding: 6px 15px; text-transform: uppercase; background: #111; border-bottom: 1px solid var(--border); font-weight: bold; display: flex; justify-content: space-between; align-items: center; user-select: none; }
+        .panel-label.clickable { cursor: pointer; }
+        .panel-label.clickable:hover { color: #fff; background: #181818; }
+        .toggle-icon { font-size: 10px; transition: transform 0.2s ease; }
+        .collapsed .toggle-icon { transform: rotate(-90deg); }
+
+        .CodeMirror { flex: 1; font-size: 14px; background: transparent !important; height: auto; }
+        .view-box { overflow: auto; padding: 15px; font-size: 12px; line-height: 1.5; font-family: 'JetBrains Mono', monospace; white-space: pre; box-sizing: border-box; }
+
+        #asmOutput { flex: 1; color: #5fb3b3; border-bottom: 1px solid var(--border); }
+
+        /* Side-by-Side Console Section */
+        .console-container { display: flex; height: 180px; border-top: 1px solid var(--border); transition: height 0.2s ease; }
+        .console-container.hidden { height: 0; overflow: hidden; border-top: none; }
+
+        .console-column { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+        .console-column:first-child { border-right: 1px solid var(--border); }
+
+        #consoleOutput { color: #fff; background: #050505; flex: 1; }
+        #consoleError { color: #ff5555; background: #050505; flex: 1; }
+        #consoleError.error { background: #120000; }
+
+        /* stdin Panel */
+        .stdin-container { display: flex; flex-direction: column; border-top: 1px solid var(--border); }
+        #stdinEditor { height: 80px; background: #0a0a0a; color: var(--accent); border: none; padding: 12px; font-family: 'JetBrains Mono', monospace; outline: none; resize: none; transition: height 0.2s ease, padding 0.2s ease; }
+        #stdinEditor.hidden { height: 0; padding: 0 12px; overflow: hidden; }
+
+        /* Modal Settings */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 100; display: none; align-items: center; justify-content: center; }
+        .modal { background: var(--panel); border: 1px solid var(--border); width: 350px; padding: 25px; border-radius: 8px; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-title { font-weight: bold; color: var(--accent); font-size: 14px; }
+        .setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-size: 13px; }
+        .setting-row input[type="checkbox"] { accent-color: var(--accent); width: 18px; height: 18px; cursor: pointer; }
+        .setting-row select { background: #252525; color: #fff; border: 1px solid var(--border); padding: 4px; border-radius: 4px; outline: none; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="brand">NYTROGEN <span>PLAYGROUND</span></div>
+    <div class="actions">
+        <select id="sampleSelect" onchange="loadSample(this.value)">
+            <option value="Default">Default</option>
+            <option value="Math Logic">Math Logic</option>
+            <option value="Standard IO">Standard IO</option>
+            <option value="For Loop">For Loop</option>
+        </select>
+        <button class="icon-btn" onclick="toggleSettings()" title="Settings"><i class="fas fa-cog"></i></button>
+        <button class="run-btn" onclick="runCompile()"><i class="fas fa-play"></i> RUN</button>
+        <a href="https://github.com/X12-Cloud/Nytrogen" target="_blank" class="icon-btn"><i class="fab fa-github"></i></a>
+    </div>
+</header>
+
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target === this) toggleSettings()">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="modal-title">COMPILER SETTINGS</div>
+            <i class="fas fa-times" style="cursor:pointer" onclick="toggleSettings()"></i>
+        </div>
+        <div class="setting-row">
+            <span>Verbose Output</span>
+            <input type="checkbox" id="set-verbose">
+        </div>
+        <div class="setting-row">
+            <span>Debug Mode</span>
+            <input type="checkbox" id="set-debug" checked>
+        </div>
+        <div class="setting-row">
+            <span>Clean Build</span>
+            <input type="checkbox" id="set-clean" checked>
+        </div>
+        <div class="setting-row">
+            <span>Assembler</span>
+            <select id="set-assembler">
+                <option value="nasm">NASM</option>
+                <option value="yasm">YASM</option>
+                <option value="fasm">FASM</option>
+            </select>
+        </div>
+        <div class="setting-row">
+            <span>Optimization (Coming Soon)</span>
+            <select id="set-opt">
+                <option value="O0" selected>None (O0)</option>
+                <option value="O1">Basic (O1)</option>
+                <option value="O2">Fast (O2)</option>
+                <option value="O3">Extreme (O3)</option>
+            </select>
+        </div>
+        <button class="run-btn" style="width:100%; justify-content:center; margin-top:10px" onclick="toggleSettings()">SAVE SETTINGS</button>
+    </div>
+</div>
+
+<div class="main">
+    <!-- Left Side: Source Code & Standard Input -->
+    <div class="editor-container">
+        <div class="panel-label">Source Code (.ny)</div>
+        <textarea id="codeEditor"></textarea>
+
+        <div class="stdin-container">
+            <div class="panel-label clickable" onclick="toggleSection('stdinEditor', this)">
+                <span>Standard Input (stdin)</span>
+                <i class="fas fa-chevron-down toggle-icon"></i>
+            </div>
+            <textarea id="stdinEditor" spellcheck="false" placeholder="Enter program input here..."></textarea>
+        </div>
+    </div>
+
+    <!-- Right Side: Assembly & Output Consoles -->
+    <div class="right-panels">
+        <div class="panel-label">Generated Assembly (.asm)</div>
+        <div id="asmOutput" class="view-box">; Assembly will appear here...</div>
+
+        <div class="panel-label clickable" onclick="toggleSection('consoleContainer', this)">
+            <span>Console Output & Errors</span>
+            <i class="fas fa-chevron-down toggle-icon"></i>
+        </div>
+        <div id="consoleContainer" class="console-container">
+            <div class="console-column">
+                <div class="panel-label" style="background:#0a0a0a;">stdout</div>
+                <div id="consoleOutput" class="view-box">Ready.</div>
+            </div>
+            <div class="console-column">
+                <div class="panel-label" style="background:#0a0a0a;">stderr</div>
+                <div id="consoleError" class="view-box">Ready.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/clike/clike.min.js"></script>
+
+<script>
+    const SAMPLES = {
+        "Default": `int main() {\n    print "Hello Nytrogen!";\n    return 0;\n}`,
+        "Math Logic": `int main() {\n    int x = 10;\n    int y = 20;\n    int result = x * y + 5;\n    print result;\n    return 0;\n}`,
+        "Standard IO": `#include <io.nyt>\n\nint main() {\n    print "Enter something: ";\n    string ln = std::readln();\n    print ln;\n    return 0;\n}`,
+        "For Loop": `int main() {\n    for (int i = 0; i < 5; i = i+1) {\n        print i;\n    }\n    return 0;\n}`
+    };
+
+    const editor = CodeMirror.fromTextArea(document.getElementById("codeEditor"), {
+        mode: "text/x-c++src", theme: "dracula", lineNumbers: true, matchBrackets: true, indentUnit: 4, tabSize: 4, lineWrapping: true
+    });
+
+    function toggleSettings() {
+        const modal = document.getElementById('modalOverlay');
+        modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
+    }
+
+    function toggleSection(elementId, labelEl) {
+        const target = document.getElementById(elementId);
+        target.classList.toggle('hidden');
+        labelEl.classList.toggle('collapsed');
+    }
+
+    function loadSample(name) { editor.setValue(SAMPLES[name]); }
+    loadSample("Default");
+
+    async function runCompile() {
+        const consoleOut = document.getElementById('consoleOutput');
+        const consoleErr = document.getElementById('consoleError');
+        const asmOut = document.getElementById('asmOutput');
+
+        const settings = {
+            verbose: document.getElementById('set-verbose').checked,
+            debug: document.getElementById('set-debug').checked,
+            clean: document.getElementById('set-clean').checked,
+            assembler: document.getElementById('set-assembler').value,
+            opt: document.getElementById('set-opt').value
+        };
+
+        consoleOut.innerText = "Compiling & Running...";
+        consoleErr.innerText = "Ready.";
+        consoleErr.classList.remove('error');
+
+        try {
+            const response = await fetch('https://rare-foxes-stick.loca.lt/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    code: editor.getValue(),
+                    stdin: document.getElementById('stdinEditor').value,
+                    settings: settings 
+                })
+            });
+
+            const data = await response.json();
+            if (data.stderr && data.stderr.trim() !== "") {
+                consoleErr.innerText = data.stderr;
+                consoleErr.classList.add('error');
+            }
+            consoleOut.innerText = data.stdout || "Success: Exit code " + data.exit_code;
+            asmOut.innerText = data.asm || "; No assembly generated.";
+        } catch (err) {
+            consoleOut.innerText = "Error: Could not connect to backend.";
+            consoleErr.innerText = err.toString();
+            consoleErr.classList.add('error');
+        }
+    }
+</script>
+</body>
+</html>

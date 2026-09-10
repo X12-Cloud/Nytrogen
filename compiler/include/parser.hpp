@@ -77,6 +77,7 @@ class Parser {
     std::unique_ptr<CharacterLiteralExpressionNode> parseCharacterLiteralExpression();
     std::unique_ptr<FunctionDefinitionNode> parseFunctionDefinition();
     std::unique_ptr<ComplexLiteralExpressionNode> parseComplexLiteralExpression();
+    std::unique_ptr<LongLiteralExpressionNode> parseLongLiteralExpression();
 };
 
 #endif  // NYTROGEN_PARSER_HPP

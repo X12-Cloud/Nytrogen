@@ -67,6 +67,7 @@ class SemanticAnalyzer {
     // Expression visitors (return the type of the expression)
     std::unique_ptr<TypeNode> visitExpression(ASTNode* expr);
     std::unique_ptr<TypeNode> visitIntegerLiteralExpression(IntegerLiteralExpressionNode* node);
+    std::unique_ptr<TypeNode> visitLongLiteralExpression(LongLiteralExpressionNode* node);
     std::unique_ptr<TypeNode> visitStringLiteralExpression(StringLiteralExpressionNode* node);
     std::unique_ptr<TypeNode> visitBooleanLiteralExpression(BooleanLiteralExpressionNode* node);
     std::unique_ptr<TypeNode> visitCharacterLiteralExpression(CharacterLiteralExpressionNode* node);
