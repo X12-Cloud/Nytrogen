@@ -1,108 +1,107 @@
+
+
 # Getting Started with Nytrogen
 
-This guide will walk you through the process of setting up the Nytrogen compiler on your local machine, building it from the source, and running your first Nytrogen program.
+This guide will walk you through the process of installing or building the Nytrogen compiler on your local machine, and running your first Nytrogen program.
 
-## Prerequisites
 
-Before you begin, ensure you have the following installed on your system:
+> [!NOTE]
+> Nytrogen has only been thoroughly tested on Arch Linux so far. If you encounter issues on other distributions, please open an issue on GitHub!
 
-*   **A C++ Compiler:** You'll need a modern C++ compiler that supports C++17. The most common choice is `g++`, which is part of the GCC (GNU Compiler Collection).
-*   **CMake:** CMake is used to automate the build process. You'll need version 3.10 or higher.
-*   **Git:** Git is required to clone the project repository.
+## Installation on Arch Linux (AUR)
 
-You can typically install these tools using your system's package manager. For example, on a Debian-based Linux distribution (like Ubuntu), you can run:
+If you are on Arch Linux (the platform Nytrogen was proudly built on!), you can install it instantly via the AUR using your favorite helper:
+
+```bash
+yay -S nytrogen-git
+```
+
+Then verify the installation:
+
+```bash
+nytro -v
+```
+
+Once installed via the AUR, the `nytro` compiler command is globally available in your terminal path.
+
+---
+
+## Building from Source
+
+If you want to build Nytrogen manually from the source code, ensure you have the following prerequisites installed:
+
+- **A C++ Compiler:** A modern compiler supporting C++17 (`g++` or `clang`).
+- **CMake:** Version 3.10 or higher.
+- **Git:** Required to clone the repository.
+
+### Quick Install on Arch Linux:
+
+```bash
+sudo pacman -S base-devel gcc cmake git
+```
+
+### Quick Install on Debian/Ubuntu:
 
 ```bash
 sudo apt-get update
 sudo apt-get install build-essential cmake git
 ```
 
-And on an arch based distribution (Nytrogen was fully made on arch btw), you can run:
+### Build Steps:
 
-```bash
-sudo pacman -Syyu # or -Syu (skippable)
-sudo pacman -S base-devel gcc cmake git
-```
+1. **Clone the repository:**
+   
+   ```bash
+   git clone https://github.com/X12-Cloud/Nytrogen.git Nytrogen
+   cd Nytrogen
+   ```
 
-## Building the Compiler
+2. **Build using the helper script (Recommended):**
+   
+   ```bash
+   ./run.sh -cbuild
+   ```
+   
+   *(This automatically configures CMake, builds the compiler, and packages the standard library).*
 
-The Nytrogen compiler can be built using CMake or the provided helper scripts.
+3. **Or build manually with CMake:**
+   
+   ```bash
+   cmake -B build
+   cmake --build build -j$(nproc)
+   ```
 
-### Using the Build Script (Recommended)
-
-The easiest way to build the compiler is to use the `run.sh` script located in the root of the project:
-
-```bash
-./run.sh -clean # or -build (both would be the same for the first build)
-```
-
-This script will create a `build` directory, run CMake to configure the project, and then compile the source code. The final executable (Nytro) will be placed in the `build/bin` directory.
-
-### Manual Build with CMake
-
-If you prefer to build the project manually, follow these steps:
-
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/X12-Cloud/Nytrogen.git Nytrogen
-    cd Nytrogen
-    ```
-
-2.  **Run CMake:**
-    ```bash
-    cmake -B build
-    cmake --build build -j$(nproc)
-    ```
-
-This will generate the `Nytro` executable in the `build/bin` directory.
-
-## Running the Compiler
-
-Once the compiler is built, you can use it to execute Nytrogen source files (`.ny`).
-
-### Using the Run Script
-
-The `run.sh` script provides a convenient way to compile and run a Nytrogen file. Simply pass the path to your source file as an argument:
-
-```bash
-./run.sh <source_file.ny>
-```
-
-For example, to run the `stress_test.ny` file included in the project:
-
-```bash
-./run.sh test.nyt
-```
-
-### Manual Execution
-
-You can also run the compiler executable directly from the `build/bin` directory:
-
-```bash
-./build/bin/nytro <source_file.nyt>
-```
+---
 
 ## Your First Nytrogen Program: "Hello, World!"
 
 Let's create a simple "Hello, World!" program in Nytrogen.
 
-1.  **Create a new file** named `hello.nyt`:
-    ```nytrogen
-    int main() {
-        print "Hello, World!";
-        return 0;
-    }
-    ```
+1. **Create a new file** named `hello.ny`:
+   
+   ```nytrogen
+   int main() {
+       print "Hello, World!";
+       return 0;
+   }
+   ```
 
-2.  **Run the program** using the compiler:
-    ```bash
-    ./run.sh hello.nyt
-    ```
+2. **Run the program** using either the helper script or your compiled binary:
+   
+   ```bash
+   ./run.sh hello.ny
+   ```
+   
+   *Or if installed globally via AUR:*
+   
+   ```bash
+   nytro hello.ny
+   ```
 
 You should see the following output in your terminal:
 
-```
+```text
 Hello, World!
 ```
 
-Congratulations! You have successfully built and run your first Nytrogen program. You are now ready to explore the language features in more detail.
+Congratulations! You have successfully set up Nytrogen and run your first program. You are now ready to head over to the [Language Grammar Specification](./spec.md) to explore variables, complex numbers, and quantum types.

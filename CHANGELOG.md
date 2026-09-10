@@ -11,6 +11,8 @@
 - Format expressions (e.g. `format(x = {}, y = {} : x : y)`).
 - Printing to specific file descriptor (e.g. `print "Hello" to 1;`).
 - Added long literals which are 64-bit signed integers.
+- Trailing return types: `auto x() -> int {};`.
+- Changed qubit decl syntax to: `qubit q(a: 0, b: 1);`.
 
 ### Fixed:
 - Fixed error where registers would get overwritten when a function calls itself.

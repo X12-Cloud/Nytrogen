@@ -754,22 +754,24 @@ std::unique_ptr<QubitDefinitionNode> Parser::parseQubitDefinitionNode() {
     auto qubit_node = std::make_unique<QubitDefinitionNode>
         (qubit_index, qubit_name.value, start_token.line, start_token.column);
 
-    if (match(Token::LBRACE)) {
-        // Parse Alpha
-        if (peek().value != "alpha") throw std::runtime_error("Expected 'alpha' key in qubit definition.");
+    if (match(Token::LPAREN)) {
+        if (peek().type != Token::IDENTIFIER || peek().value != "a") {
+            throw std::runtime_error("Expected 'a' parameter in qubit definition.");
+        }
         consume();
-        expect(Token::COLON, "Expected ':' after 'alpha'.");
-        qubit_node->alpha = parseComplexLiteralExpression();
+        expect(Token::COLON, "Expected ':' after 'a'.");
+        qubit_node->alpha = parseExpression();
 
-        expect(Token::COMMA, "Expected ',' between alpha and beta.");
+        expect(Token::COMMA, "Expected ',' between qubit parameters.");
 
-        // Parse Beta
-        if (peek().value != "beta") throw std::runtime_error("Expected 'beta' key in qubit definition.");
+        if (peek().type != Token::IDENTIFIER || peek().value != "b") {
+            throw std::runtime_error("Expected 'b' parameter in qubit definition.");
+        }
         consume();
-        expect(Token::COLON, "Expected ':' after 'beta'.");
-        qubit_node->beta = parseComplexLiteralExpression();
+        expect(Token::COLON, "Expected ':' after 'b'.");
+        qubit_node->beta = parseExpression();
 
-        expect(Token::RBRACE, "Expected '}' to close qubit definition.");
+        expect(Token::RPAREN, "Expected ')' to close qubit definition.");
         qubit_node->has_custom_amplitudes = true;
     }
 

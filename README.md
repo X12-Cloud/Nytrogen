@@ -8,58 +8,96 @@
 
 <p align="center">
   <img src="https://img.shields.io/github/stars/X12-Cloud/Nytrogen?style=for-the-badge" alt="GitHub stars" />
-  <img src="https://img.shields.io/github/contributors/X12-Cloud/Nytrogen?style=for-the-badge" alt="Contributors" />
+  <img src="https://img.shields.io/github/forks/X12-Cloud/Nytrogen?style=for-the-badge" alt="GitHub forks" />
+  <img src="https://img.shields.io/github/repo-size/X12-Cloud/Nytrogen?style=for-the-badge" alt="Repository Size" />
+  <img src="https://img.shields.io/github/last-commit/X12-Cloud/Nytrogen?style=for-the-badge" alt="Last Commit" />
   <img src="https://img.shields.io/github/license/X12-Cloud/Nytrogen?style=for-the-badge" alt="License" />
 </p>
 
-# Nytrogen Compiler
+# Nytrogen Programming Language & Toolchain
 
-**Nytrogen** is a powerful, statically-typed, compiled programming language designed for performance and reliability. This repository contains the official Nytrogen compiler, which translates Nytrogen source code into highly optimized machine code.
+**Nytrogen** is a powerful, statically-typed, compiled systems programming language designed for performance, control, and reliability. Beyond standard general-purpose computing, Nytrogen features **native first-class quantum computing integration** (`qlib`), letting you simulate qubits, apply matrices, and handle quantum states right out of the box.
 
-This project is intended for developers who need a language that is both expressive and close to the metal. Nytrogen is suitable for a wide range of applications, from systems programming to high-performance computing.
+---
 
-## About Nytrogen
+## ⚛️ What Makes Nytrogen Different?
 
-* **Purpose:** A programming language focused on performance and control.
-* **Language:** A modern, C-style procedural language with advanced features.
-* **Status:** Under active development.
+While Nytrogen is built as a fast, close-to-the-metal general-purpose compiler (translating directly to optimized x86-64 assembly via NASM), it stands out by blending systems programming with **quantum simulation primitives**:
 
-## Features
+    int main() {
+        // Define a qubit natively with custom complex amplitudes
+        qubit q(a: 1, b: 0);
+        // Or without the amplitudes: "qubit q;" and it will be [1, 0] automatically
+    
+        // Apply quantum operations natively using arrow syntax
+        h -> q; 
+        
+        print q; // Inspect qubit state
+        return 0;
+    }
 
-The Nytrogen language supports a variety of essential and advanced programming features:
-For a complete list of features and syntax, please refer to the [Language Grammar](./docs/grammar.md) document.
+---
+
+## 🚀 Key Features
+
+- **Blazing Fast Native Compilation:** Complete modular toolchain (`nytro` driver -> `nytro-pre` preprocessor -> `nytro-c` compiler core) emitting raw x86-64 machine code with register allocation and stack spilling.
+- **Quantum-Ready (`qlib`):** Built-in primitives for `qubit`, `matrix`, and `complex` numbers to execute quantum algorithms natively.
+- **Modern Syntax Sugar:** Trailing return types (`auto add(int a, int b) -> int`), auto-type deduction, and type-safe string formatting (`format("x = {}" : x)`).
+- **C/C++ Interoperability:** Seamless Foreign Function Interface (FFI) using `extern` declarations to pull in standard binaries like `malloc`.
+- **Modular Scoping:** Full support for `namespace` blocks and custom `struct` definitions.
+
+For a complete breakdown of language syntax, check out the **[Language Grammar & Spec](./docs/grammar.md)**.
+
+---
 
 ## Getting Started
 
-```bash
-# Build the compiler
-./run.sh -clean # -build would also work if it was the first time building
+### Installation on Arch Linux (AUR)
 
-# Run a Nytrogen source file
-./run.sh <your_file.ny>
+```bash
+yay -S nytrogen-git
 ```
 
-For more detailed instructions, please see the **[Getting Started Guide](./docs/getting_started.md)**.
+### Building from Source
 
-## Documentation
+```bash
+# Build the toolchain
+./run.sh -cbuild
 
-* **[Getting Started](./docs/getting_started.md)**
-* **[Language Grammar](./docs/grammer.md)**
-* **[Compiler Architecture](./docs/architecture.md)**
+# Run a Nytrogen source file
+./run.sh test.ny
+```
 
-## Project Structure
+For more detailed setup steps, check out the **[Getting Started Guide](./docs/getting_started.md)**.
 
-* `compiler/`: The compiler written in C++.
-* `Preprocessor/`: The preprocessor.
-* `driver/`: The driver that calls all the other components. 
-* `docs/`: Project documentation.
-* `tests/`: Sample Nytrogen programs for testing.
-* `run.sh`: A script to compile and run Nytrogen programs.
+---
 
-## Contributing
+## 📚 Documentation
 
-Contributions are highly encouraged! If you would like to contribute, please feel free to open an issue or submit a pull request.
+- **[Getting Started Guide](./docs/getting_started.md)**
+- **[Language Grammar & Spec](./docs/grammar.md)**
+- **[Compiler Architecture & Pipeline](./docs/architecture.md)**
 
-## License
+---
+
+## 🗂️ Project Structure
+
+- `compiler/`: The core compiler (`nytro-c`) written in C++ (Lexer, Parser, Semantic Analyzer, Code Generator).
+- `Preprocessor/`: The preprocessor (`nytro-pre`) handling macro expansions and `#include` headers.
+- `driver/`: The compiler driver (`nytro`) coordinating the entire build pipeline.
+- `runtime/`: The standard library runtime (`libstdny`) and core headers (`io.nyt`, `math.nyt`, etc.).
+- `docs/`: In-depth project documentation and architecture breakdowns.
+- `tests/`: Comprehensive test suite for types, math, control flow, and quantum simulations.
+- `run.sh`: Helper script to compile and execute Nytrogen programs.
+
+---
+
+## 🤝 Contributing
+
+Contributions are heavily encouraged! If you want to expand the compiler, optimize the backend register allocator, or improve `qlib`, feel free to open an issue or submit a pull request.
+
+---
+
+## 📄 License
 
 This project is licensed under the GNU GPL v3.0 License. See the [LICENSE](./LICENSE) file for details.

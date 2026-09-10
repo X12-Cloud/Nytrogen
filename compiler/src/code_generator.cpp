@@ -91,12 +91,6 @@ void CodeGenerator::generate(const std::string& output_filename, bool is_entry_p
         emitter.emit("lea", "rdi", "[rel _N_qlib_state]");
         emitter.call_external("setup");
 
-        /* for (const auto& stmt : program_ast->statements) {
-            if (stmt->node_type == ASTNode::NodeType::VARIABLE_DECLARATION) {
-                visit(stmt.get());
-            }
-        } */
-
         emitter.emit("call", "main");
         emitter.emit("mov", "rdi", "rax");
         emitter.call_external("ny_exit");
@@ -919,9 +913,11 @@ void CodeGenerator::visit(QubitDefinitionNode* node) {
 
     if (node->has_custom_amplitudes) {
         visit(node->alpha.get());
-        emitter.emit("vmovupd", "[" + addr_vreg + " + 0]", last_expr_vreg);
+        emitter.emit("vcvtsi2sd", "xmm0", last_expr_vreg); 
+        emitter.emit("vmovsd", "[" + addr_vreg + " + 0]", "xmm0");
         visit(node->beta.get());
-        emitter.emit("vmovupd", "[" + addr_vreg + " + 16]", last_expr_vreg);
+        emitter.emit("vcvtsi2sd", "xmm0", last_expr_vreg);
+        emitter.emit("vmovsd", "[" + addr_vreg + " + 16]", "xmm0");
     } else {
         emitter.emit("mov", "rdi", addr_vreg);
         emitter.call_external("q_init");

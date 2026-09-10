@@ -1,73 +1,79 @@
 # Nytrogen Compiler Architecture
 
-This document provides a high-level overview of the Nytrogen compiler's internal architecture. Understanding this architecture is helpful for contributing to the project or for learning about compiler design.
+This document provides a high-level overview of Nytrogen's complete toolchain pipeline and internal architecture. 
+The Nytrogen compiler is not just a single binary; it is a modular toolchain consisting of a configuration driver, a preprocessor, a semantic compiler core, a standard library runtime (`libstdny`), and quantum simulation extensions (`qlib`). 
 
-The Nytrogen compiler follows a traditional multi-stage pipeline, where the source code is transformed through a series of phases until executable code is generated. Each phase has a distinct responsibility:
+## Full Toolchain Pipeline
 
+```mermaid
+graph TD
+    %% Define Node Styles
+    classDef main fill:#1e1e2e,stroke:#89b4fa,stroke-width:2px,color:#cdd6f4,font-weight:bold;
+    classDef side fill:#11111b,stroke:#6c7086,stroke-width:1px,color:#a6adc8,font-style:italic;
+
+    A[Nytrogen Source .ny] --> B[Driver nytro]
+    B --> C[Preprocessor nytro-pre]
+    C --> D[Compiler Core nytro-c]
+    D --> E[Assembler & Linker]
+    E --> F[Final Executable]
+
+    %% Descriptions on the side
+    B -.-> B_desc[Reads config & coordinates build]
+    C -.-> C_desc[Handles macros & #include headers]
+    D -.-> D_desc[Transforms code through 4 internal stages]
+    E -.-> E_desc[Links object files with libstdny.a]
+
+    %% Apply Styles
+    class A,B,C,D,E,F main;
+    class B_desc,C_desc,D_desc,E_desc side;
 ```
-[Nytrogen Source Code] -> [Lexer] -> [Parser] -> [Semantic Analyzer] -> [Code Generator] -> [Executable Code]
-```
 
-## 1. Lexical Analysis (Lexer)
+---
 
-`Note: The preprocessor runs first except if explicitly configured not to`
+## 1. The Driver (`nytro` / `driver/`)
 
-*   **Component:** `Lexer`
-*   **Source Files:** `src/lexer.cpp`, `include/lexer.hpp`
-
-**Responsibility:** The lexer is the first phase of the compiler. It reads the raw Nytrogen source code as a stream of characters and converts it into a sequence of tokens. Each token represents a single atomic unit of the language, such as a keyword (`if`, `while`), an identifier (`my_variable`), a number (`123`), or an operator (`+`, `=`).
-
-**Example:**
-
-The code `int x = 10;` would be converted into the following token stream:
-
-`[KEYWORD:int]`, `[IDENTIFIER:x]`, `[OPERATOR:=]`, `[INTEGER:10]`, `[PUNCTUATION:;]`
-
-This token stream is then passed to the parser for the next stage.
-
-## 2. Syntax Analysis (Parser)
-
-*   **Component:** `Parser`
-*   **Source Files:** `src/parser.cpp`, `include/parser.hpp`
-
-**Responsibility:** The parser takes the stream of tokens from the lexer and verifies that it conforms to the grammatical rules of the Nytrogen language (as defined in `docs/grammer.md`). As it analyzes the tokens, the parser builds an **Abstract Syntax Tree (AST)**.
-
-The AST is a tree-like data structure that represents the syntactic structure of the source code in a hierarchical way. It captures the essential relationships between different parts of the code, making it easier for subsequent phases to analyze.
-
-## 3. Semantic Analysis
-
-*   **Component:** `SemanticAnalyzer`
-*   **Source Files:** `src/semantic_analyzer.cpp`, `include/semantic_analyzer.hpp`
-
-**Responsibility:** The semantic analyzer takes the AST from the parser and checks it for semantic errors. This involves ensuring that the code is not just syntactically correct, but also meaningful.
-
-Key tasks performed by the semantic analyzer include:
-
-*   **Type Checking:** Verifying that operations are performed on compatible data types (e.g., you can't add a string to an integer).
-*   **Variable Declaration:** Ensuring that every variable is declared before it is used.
-*   **Scope Checking:** Resolving which variable or function is being referred to, based on the current scope.
-*   **Function Calls:** Checking that functions are called with the correct number and types of arguments.
-
-The semantic analyzer annotates the AST with type information and other details, which are then used by the code generator.
-
-## 4. Code Generation
-
-*   **Component:** `CodeGenerator`
-*   **Source Files:** `src/code_generator.cpp`, `include/code_generator.hpp`
-
-**Responsibility:** The final phase of the compiler is the code generator. It takes the semantically verified AST and translates it into low-level code. In the case of the Nytrogen compiler, this would typically be assembly code or machine code for a specific target architecture.
-
-The code generator traverses the AST and emits the corresponding instructions for each node. This process involves:
-
-*   **Instruction Selection:** Choosing the appropriate machine instructions for each operation.
-*   **Register Allocation:** Deciding which variables to store in CPU registers for faster access.
-*   **Memory Management:** Generating code to allocate and deallocate memory for variables and data structures.
-
-## Name mangling
-*   **Structure** the structure for name mangling is pretty much standard such as:
-- _N <namespace_length> <namespace_name> <var_length> <var_name> for normal variables.
-- _Z <scope_info> <name> <param_types> for functions.
-
-## Conclusion
-
-This modular architecture makes the Nytrogen compiler easier to develop, test, and maintain. Each phase can be worked on independently, as long as it adheres to the expected inputs and outputs. This separation of concerns is a fundamental principle in modern compiler design.
+- **Source Files:** `driver/src/driver.cpp`, `driver/src/config_loader.cpp`
+  - **Responsibility:** Acts as the primary entry point interface for users. It parses flags (`-verbose`, `-debug`, `-entry`), processes project settings, and orchestrates the preprocessor, compiler core, NASM assembler, and system linker (`ld`) sequentially. 
+    
+    ## 2. The Preprocessor (`nytro-pre` / `Preprocessor/`)
+  - **Source Files:** `Preprocessor/src/main.cpp`, `Preprocessor/src/file_handler.cpp`, `Preprocessor/src/macro_handler.cpp`
+  - **Responsibility:** Runs prior to compilation syntax checks. It recursively resolves header inclusions (e.g., `#include <io.nyt>`) from the `runtime/headers/` directory and handles custom macro replacements, outputting a consolidated preprocessed source (`.pre.nyt`). 
+    
+    ## 3. The Compiler Core (`nytro-c` / `compiler/`)
+    
+    Once preprocessed, the clean source code enters the core compiler pipeline: 
+    
+    ### A. Lexical Analysis (Lexer)
+  - **Source Files:** `compiler/src/lexer.cpp`, `compiler/include/lexer.hpp`
+  - **Responsibility:** Converts the character stream into discrete tokens (keywords, literals, identifiers, and symbols). 
+    
+    ### B. Syntax Analysis (Parser)
+  - **Source Files:** `compiler/src/parser.cpp`, `compiler/include/parser.hpp`
+  - **Responsibility:** Validates grammar rules and constructs the hierarchical **Abstract Syntax Tree (AST)**. 
+    
+    ### C. Semantic Analysis
+  - **Source Files:** `compiler/src/semantic_analyzer.cpp`, `compiler/include/semantic_analyzer.hpp`
+  - **Responsibility:** Enforces type safety, manages symbol scopes, checks function argument lengths, resolves namespaces, and annotates the AST. 
+    
+    ### D. Code Generation & Register Allocation
+  - **Source Files:** `compiler/src/code_generator.cpp`, `compiler/src/register_allocator.cpp`, `compiler/src/instruction_set/`
+  - **Responsibility:** Translates the validated AST into x86-64 assembly. It utilizes a custom register allocator with stack-spilling mechanics, handling scalar XMM instructions for floats/doubles, vector instructions for complex numbers, and low-level stack layout frames. 
+  
+  --- 
+  
+  ## 4. Runtime & Standard Library (`runtime/libstdny/`)
+  
+  - **Source Files:** `runtime/libstdny/core/`, `runtime/libstdny/qlib/`
+  - **Responsibility:** Built as a static archive (`libstdny.a`), providing core system integrations, formatting (`ny_format`), input/output routines, and quantum simulation backends (`qlib`) that handle state amplitudes and gate matrices (`q_apply_matrix`). 
+  
+  --- 
+  
+  ## Name Mangling Specification
+  
+  To support namespaces, function overloading, and safe linkage, Nytrogen uses a standardized mangling schema:
+  
+  - **Variables:** `_N <namespace_length> <namespace_name> <var_length> <var_name>` 
+    
+    ## Conclusion
+    
+    This separation of concerns—splitting configuration control, text preprocessing, AST compilation, and standard runtime execution—makes the Nytrogen toolchain clean, extensible, and maintainable.

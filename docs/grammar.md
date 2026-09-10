@@ -1,209 +1,106 @@
-# Nytrogen Language Grammar
-
-This document provides a detailed specification of the Nytrogen programming language grammar. It is intended for developers who want to write Nytrogen programs or contribute to the compiler itself.
-
-## Program Structure
-
-A Nytrogen program consists of a series of declarations, which can be either struct definitions or function definitions. The program's execution begins at the `main` function.
-
-```
-Program ::= (StructDefinition | FunctionDefinition)*
-```
-
-## Comments
-
-Comments are used to add explanatory notes to the code and are ignored by the compiler. Nytrogen supports single-line comments starting with `//`.
-
-```nytrogen
-// This is a single-line comment.
-int x = 10; // This comment is at the end of a line.
-```
-
-## Data Types
-
-Nytrogen supports a range of fundamental data types:
-
-*   `int`: A 32-bit signed integer.
-*   `string`: A sequence of characters enclosed in double quotes.
-*   `bool`: A boolean value, which can be `true` or `false`.
-*   `char`: A single character enclosed in single quotes.
-
-### Pointers
-
-You can create a pointer to a variable by using the `*` symbol:
-
-```nytrogen
-int* ptr; // Declares a pointer to an integer.
-```
-
-### Arrays
-
-Arrays are fixed-size collections of elements of the same type:
-
-```nytrogen
-int numbers[10]; // Declares an array of 10 integers.
-```
-
-## Variables
-
-Variables are used to store and manipulate data. They must be declared with a specific type before they can be used.
-
-### Declaration
-
-A variable declaration specifies the type and name of the variable.
-
-```nytrogen
-// Declaring variables of different types
-int count;
-bool is_active;
-string message;
-```
-
-### Initialization
-
-You can initialize a variable at the time of declaration:
-
-```nytrogen
-int score = 100;
-bool is_finished = false;
-string name = "Nytrogen";
-```
-
-### Assignment
-
-After a variable has been declared, you can assign it a new value:
-
-```nytrogen
-score = 150;
-is_finished = true;
-```
-
-## Structs
-
-Structs allow you to create complex data types by grouping together variables of different types.
-
-### Definition
-
-Here is how you define a struct:
-
-```nytrogen
-struct Point {
-    int x;
-    int y;
-};
-```
-
-### Usage
-
-Once a struct is defined, you can declare variables of that type:
-
-```nytrogen
-Point p1;
-p1.x = 10;
-p1.y = 20;
-```
-
-## Functions
-
-Functions are blocks of code that can be defined and called to perform a specific task.
-
-### Definition
-
-A function definition includes a return type, a name, a list of parameters, and a body.
-
-```nytrogen
-// A function that adds two integers
-int add(int a, int b) {
-    return a + b;
-}
-
-// A function that does not return a value
-void print_message(string msg) {
-    print msg;
-}
-```
-
-### The `main` Function
-
-The `main` function is the entry point of every Nytrogen program. It is where the execution of the program begins.
-
-*   **Return Type:** The `main` function must have a return type of `int`.
-*   **Parameters:** It takes no parameters.
-
-```nytrogen
-int main() {
-    // Your program's code goes here
-    print "Hello from main!";
-    return 0; // A return value of 0 indicates success
-}
-```
-
-## Control Flow
-
-Nytrogen provides several control flow statements to manage the execution path of your program.
-
-### `if-else` Statement
-
-The `if-else` statement allows you to execute different blocks of code based on a condition.
-
-```nytrogen
-int x = 10;
-if (x > 0) {
-    print "Positive";
-} else {
-    print "Not positive";
-}
-```
-
-### `while` Loop
-
-The `while` loop repeatedly executes a block of code as long as a condition is true.
-
-```nytrogen
-int i = 0;
-while (i < 5) {
-    print i;
-    i = i + 1;
-}
-```
-
-### `for` Loop
-
-The `for` loop is ideal for iterating a specific number of times.
-
-```nytrogen
-for (int i = 0; i < 5; i = i + 1) {
-    print i;
-}
-```
-
-## Extern 
-Makes for very good C (possibly C++) compatibility.
-
-```nytrogen
-extern malloc(int size);
-// inside a function or sth
-int heap = malloc(20);
-```
-
-## Expressions
-
-Expressions are combinations of values, variables, and operators that are evaluated to produce a new value.
-
-*   **Arithmetic:** `+`, `-`, `*`, `/`
-*   **Comparison:** `==`, `!=`, `<`, `>`, `<=`, `>=`
-*   **Logical:** `!` (NOT)
-
-## Built-in Functions
-
-Nytrogen provides a `print` function for displaying output.
-
-### `print`
-
-The `print` function can output the value of any expression.
-
-```nytrogen
-print "Hello, Nytrogen!";
-int version = 0.1;
-print version;
+# Nytrogen Language EBNF Grammar Specification
+
+This document provides the formal EBNF Grammar Specification for the Nytrogen programming language.
+
+## Lexical Elements & Notation Conventions
+
+- `::=` : Defined as
+- `|` : Alternative (OR)
+- `*` : Zero or more repetitions
+- `?` : Optional (zero or one)
+
+```ebnf
+Program             ::= ( StructDefinition | FunctionDefinition | NamespaceDefinition | ExternDeclaration )*
+
+(* --- Lexical Elements --- *)
+Identifier          ::= [a-zA-Z_] [a-zA-Z0-9_]*
+IntegerLiteral      ::= [0-9]+
+LongLiteral         ::= [0-9]+ "l"
+FloatLiteral        ::= [0-9]+ "." [0-9]+ "f"
+DoubleLiteral       ::= [0-9]+ "." [0-9]+
+StringLiteral       ::= "\"" [^"\n]* "\""
+CharLiteral         ::= "'" . "'"
+
+(* --- Types --- *)
+Type                ::= PrimitiveType | PointerType | ArrayType | StructType
+PrimitiveType       ::= "int" | "long" | "float" | "double" | "string" | "bool" | "char" | "void" | "complex" | "qubit" | "matrix"
+PointerType         ::= Type "*"
+ArrayType           ::= Type "[" Expression? "]"
+StructType          ::= Identifier
+
+(* --- Structs & Namespaces --- *)
+StructDefinition    ::= "struct" Identifier "{" StructMember* "}" ";"
+StructMember        ::= Type Identifier ";"
+NamespaceDefinition ::= "namespace" Identifier "{" ( StructDefinition | FunctionDefinition | VariableDeclaration )* "}"
+
+(* --- Functions & FFI --- *)
+FunctionDefinition  ::= ( Type | "auto" ) Identifier "(" ParameterList? ")" ( "->" Type )? Block
+ExternDeclaration   ::= "extern" Identifier "(" ParameterList? ")" ";"
+ParameterList       ::= Parameter ( "," Parameter )*
+Parameter           ::= Type Identifier
+
+(* --- Declarations & Statements --- *)
+Statement           ::= VariableDeclaration
+                      | QubitDefinition
+                      | VariableAssignment
+                      | IfStatement
+                      | WhileStatement
+                      | ForStatement
+                      | SwitchStatement
+                      | ReturnStatement
+                      | PrintStatement
+                      | AsmStatement
+                      | Block
+                      | Expression ";"
+
+VariableDeclaration ::= Type VariableDeclarator ( "," VariableDeclarator )* ";"
+VariableDeclarator  ::= Identifier ( "[" Expression "]" )? ( "=" Expression )?
+QubitDefinition     ::= "qubit" Identifier ( "(" "a" ":" Expression "," "b" ":" Expression ")" )? ";"
+VariableAssignment  ::= Accessor "=" Expression ";"
+
+Block               ::= "{" Statement* "}"
+
+IfStatement         ::= "if" "(" Expression ")" Statement ( "else" Statement )?
+WhileStatement      ::= "while" "(" Expression ")" Statement
+ForStatement        ::= "for" "(" ( VariableDeclaration | Expression )? ";" Expression? ";" Expression? ")" Statement
+SwitchStatement     ::= "switch" "(" Expression ")" "{" SwitchCase* SwitchDefault? "}"
+SwitchCase          ::= "case" Expression ":" Statement*
+SwitchDefault       ::= "default" ":" Statement*
+
+ReturnStatement     ::= "return" Expression? ";"
+AsmStatement        ::= "asm" ( "({ ... })" | "{" Statement* "}" ) ";"
+
+(* --- Built-ins & IO --- *)
+PrintStatement      ::= "print" Expression ( "," Expression )* ( "to" Expression )? ";"
+FormatExpression    ::= "format" "(" Expression ( ":" Expression )* ")"
+
+(* --- Expressions & Operators --- *)
+Expression          ::= AssignmentExpr
+AssignmentExpr      ::= LogicalOrExpr ( "=" AssignmentExpr )?
+LogicalOrExpr       ::= LogicalAndExpr ( "||" LogicalAndExpr )*
+LogicalAndExpr      ::= EqualityExpr ( "&&" EqualityExpr )*
+EqualityExpr        ::= RelationalExpr ( ( "==" | "!=" ) RelationalExpr )*
+RelationalExpr      ::= AdditiveExpr ( ( "<" | ">" | "<=" | ">=" ) AdditiveExpr )*
+AdditiveExpr        ::= MultiplicativeExpr ( ( "+" | "-" ) MultiplicativeExpr )*
+MultiplicativeExpr  ::= UnaryExpr ( ( "*" | "/" ) UnaryExpr )*
+UnaryExpr           ::= ( "!" | "-" | "*" | "&" | TypeCast ) UnaryExpr | PostfixExpr
+TypeCast            ::= "(" Type ")"
+PostfixExpr         ::= PrimaryExpr ( "[" Expression "]" | "." Identifier | "(" ArgumentList? ")" | "->" Expression )*
+
+PrimaryExpr         ::= Identifier
+                      | IntegerLiteral
+                      | LongLiteral
+                      | FloatLiteral
+                      | DoubleLiteral
+                      | StringLiteral
+                      | CharLiteral
+                      | BooleanLiteral
+                      | ComplexLiteral
+                      | FormatExpression
+                      | "(" Expression ")"
+
+BooleanLiteral      ::= "true" | "false"
+ComplexLiteral      ::= FloatLiteral "i" | IntegerLiteral "i" | IntegerLiteral
+Accessor            ::= Identifier ( "[" Expression "]" | "." Identifier )*
+ArgumentList        ::= Expression ( "," Expression )*
 ```
