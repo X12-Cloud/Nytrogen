@@ -30,4 +30,9 @@ add_subdirectory(driver)
 install(TARGETS nytro-c DESTINATION bin)
 install(TARGETS nytro-pre DESTINATION bin)
 install(TARGETS nytro DESTINATION bin) # driver
-install(DIRECTORY std/stdny/ DESTINATION share/nytrogen/stdlib)
+
+# Install standard library headers to match FileHandler paths (/usr/include/libstdny)
+install(DIRECTORY runtime/headers/ DESTINATION include/libstdny)
+
+# Install the pre-built standard library archive to /usr/lib
+install(FILES runtime/libstdny/out/libstdny.a DESTINATION lib)
