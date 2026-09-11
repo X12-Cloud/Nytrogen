@@ -35,4 +35,4 @@ install(TARGETS nytro DESTINATION bin) # driver
 install(DIRECTORY runtime/headers/ DESTINATION include/libstdny)
 
 # Install the pre-built standard library archive to /usr/lib
-install(FILES runtime/libstdny/out/libstdny.a DESTINATION lib)
+install(FILES runtime/libstdny/libstdny.a DESTINATION lib)
