@@ -1,47 +1,139 @@
  PROGRAM_ROOT
+   NAMESPACE_DEF: std
+     CONST_DECL: in
+       INT_LITERAL: (0)
+     CONST_DECL: out
+       INT_LITERAL: (1)
+     CONST_DECL: err
+       INT_LITERAL: (2)
+     FUNCTION_DEF: println
+     FUNCTION_DEF: puts
+     FUNCTION_DEF: putchar
+     FUNCTION_DEF: readln
+     FUNCTION_DEF: getchar
+     FUNCTION_DEF: err
+     FUNCTION_DEF: malloc
+     FUNCTION_DEF: free
+   ENUM: Status
+   CONST_DECL: PI
+     FLOAT_LITERAL: (3.141590)
+   FUNCTION_DEF: calculate_score
+     PRINT_STMT
+       FORMAT_EXPR: { a b }
+     IF_STATEMENT
+       BINARY_OP: 
+         VAR_REF: (a)
+         VAR_REF: (b)
+       RETURN_STMT:
+         BINARY_OP: 
+           BINARY_OP: 
+             VAR_REF: (a)
+             INT_LITERAL: (2)
+           BINARY_OP: 
+             VAR_REF: (b)
+             INT_LITERAL: (2)
+     RETURN_STMT:
+       BINARY_OP: 
+         VAR_REF: (a)
+         VAR_REF: (b)
    FUNCTION_DEF: main
+     PRINT_STMT
+       STR_LITERAL: (Hello)
+       STR_LITERAL: (\n)
      VAR_DECL
-       COMPLEX_LITERAL: (1.000000+2.000000i)
      VAR_DECL
-       COMPLEX_LITERAL: (3.000000+4.000000i)
+     ASTNode
+     ASTNode
+     ASTNode
+     ASTNode
+     ASTNode
+     ASTNode
+     PRINT_STMT
+       STR_LITERAL: (nested index access (300): )
+       ARRAY_ACCESS
+         VAR_REF: (data)
+         ARRAY_ACCESS
+           VAR_REF: (map)
+           INT_LITERAL: (0)
+     ASTNode
+     PRINT_STMT
+       STR_LITERAL: (nested assignment result (999): )
+       ARRAY_ACCESS
+         VAR_REF: (data)
+         INT_LITERAL: (0)
+       STR_LITERAL: (\n)
+     VAR_DECL
+     ASTNode
+     ASTNode
+     PRINT_STMT
+       STR_LITERAL: (- DEBUG -)
+     PRINT_STMT
+       STR_LITERAL: (p.x | p.y)
+     PRINT_STMT
+       FORMAT_EXPR: {   }
+     VAR_DECL
+       VAR_REF: (ON)
+     VAR_DECL
+       INT_LITERAL: (0)
+     VAR_DECL
+       INT_LITERAL: (0)
+     ASTNode
+     PRINT_STMT
+       STR_LITERAL: (processing index...)
+     PRINT_STMT
+       STR_LITERAL: (DEBUG total before calculate_score(): )
+       VAR_REF: (total)
+     VAR_DECL
+       FLOAT_LITERAL: (5.000000)
      VAR_DECL
        BINARY_OP: 
-         VAR_REF: (a)
-         VAR_REF: (b)
+         VAR_REF: (radius)
+         VAR_REF: (radius)
      VAR_DECL
        BINARY_OP: 
-         VAR_REF: (a)
-         VAR_REF: (b)
+         VAR_REF: (PI)
+         VAR_REF: (radiusp2)
+     PRINT_STMT
+       STR_LITERAL: (circle area: )
+       VAR_REF: (area)
+       STR_LITERAL: (\n)
      VAR_DECL
-       DOUBLE_LITERAL: (0.707106)
-     VAR_DECL
-       BINARY_OP: 
-         ASTNode
-         COMPLEX_LITERAL: (0.000000+0.000000i)
-     PRINT_STMT
-       STR_LITERAL: (Complex Add (4+6i): )
-       VAR_REF: (c)
-     PRINT_STMT
-       STR_LITERAL: (Complex Sub (-2-2i): )
-       VAR_REF: (d)
-     PRINT_STMT
-       STR_LITERAL: (State: )
-       VAR_REF: (h_state)
+       FUNC_CALL: calculate_score
+         VAR_REF: (total)
+         MEMBER_ACCESS: y
      IF_STATEMENT
        BINARY_OP: 
-         VAR_REF: (c)
-         COMPLEX_LITERAL: (4.000000+6.000000i)
+         VAR_REF: (final_result)
+         INT_LITERAL: (0)
        PRINT_STMT
-         STR_LITERAL: (Failsafe: Complex math incorrect!)
-       RETURN_STMT:
-         INT_LITERAL: (1)
+         STR_LITERAL: (final score (3008): )
+         VAR_REF: (final_result)
      IF_STATEMENT
        BINARY_OP: 
-         VAR_REF: (d)
-         COMPLEX_LITERAL: (-2.000000-2.000000i)
-       PRINT_STMT
-         STR_LITERAL: (Failsafe: Complex subtraction incorrect!)
-       RETURN_STMT:
-         INT_LITERAL: (1)
+         VAR_REF: (current_status)
+         VAR_REF: (ON)
+       IF_STATEMENT
+         BINARY_OP: 
+           VAR_REF: (final_result)
+           INT_LITERAL: (1000)
+         IF_STATEMENT
+           BINARY_OP: 
+             VAR_REF: (final_result)
+             INT_LITERAL: (3008)
+           PRINT_STMT
+             STR_LITERAL: (status: pass (3008))
+           PRINT_STMT
+             STR_LITERAL: (status: pass (not 3008))
+         PRINT_STMT
+           STR_LITERAL: (status: fail)
+         IF_STATEMENT
+           BINARY_OP: 
+             VAR_REF: (final_result)
+             INT_LITERAL: (0)
+           PRINT_STMT
+             STR_LITERAL: (reason: final score = 0)
+           PRINT_STMT
+             STR_LITERAL: (reason: final score < 1000)
      RETURN_STMT:
        INT_LITERAL: (0)
+   STRUCT_DEF: Point { x y }

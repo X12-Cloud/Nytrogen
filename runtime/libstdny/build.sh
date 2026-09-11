@@ -25,6 +25,7 @@ cp "$BASE_DIR/qlib/out/"*.o "$OUT_DIR/"
 echo "Creating archive libstdny.a..."
 cd "$OUT_DIR"
 ar rcs libstdny.a *.o
+cp libstdny.a $BASE_DIR/libstdny.a
 
 # Handle Installation
 if [[ "$1" == "-install" ]]; then

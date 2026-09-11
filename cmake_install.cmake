@@ -103,7 +103,11 @@ if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/nytrogen/stdlib" TYPE DIRECTORY FILES "/home/x12/dev/Nytrogen/std/stdny/")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include/libstdny" TYPE DIRECTORY FILES "/home/x12/dev/Nytrogen/runtime/headers/")
+endif()
+
+if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE FILE FILES "/home/x12/dev/Nytrogen/runtime/libstdny/out/libstdny.a")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
