@@ -1,7 +1,7 @@
 #include <iostream>
 #include <iomanip>
 #include <string>
-#include <cmath> // Added for cos/sin
+#include <cmath>
 
 extern "C" {
     void q_init(void* target);
@@ -11,11 +11,17 @@ extern "C" {
     void q_s(size_t offset);
     void q_t(size_t offset);
     void q_rz(size_t offset, double cos_val, double sin_val);
+    void q_apply_matrix(void* matrix, size_t offset);
     void setup(void* base);
+    const char* qubit_to_str(size_t offset);
 }
 
 const int MAX = 256;
 alignas(32) double state_vector[MAX * 4] = {0}; 
+
+inline void sync_r15(void* base) {
+    asm volatile("mov %0, %%r15" : : "r"(base) : "r15");
+}
 
 void print_q(int q_idx) {
     if (q_idx < 0 || q_idx >= MAX) return;
@@ -37,7 +43,7 @@ int main() {
     std::string cmd, target;
 
     std::cout << "QLib Virtual Machine Loaded (" << MAX << " Qubits)\n";
-    std::cout << "Commands: init, h, x, z, s, t, rz <deg>, exit\n";
+    std::cout << "Commands: init, h, x, z, s, t, rz <deg>, tostr, exit\n";
 
     while (true) {
         std::cout << "qlib emu> ";
@@ -48,6 +54,8 @@ int main() {
         try {
             int idx = parse_idx(target);
             size_t off = idx * 32;
+
+            sync_r15(&state_vector[0]);
 
             if (cmd == "init") {
                 q_init(&state_vector[idx * 4]); 
@@ -67,6 +75,9 @@ int main() {
                     double rad = deg * M_PI / 180.0;
                     q_rz(off, cos(rad), sin(rad));
                 }
+            } else if (cmd == "tostr") {
+                std::cout << qubit_to_str(off) << "\n";
+                continue;
             } else {
                 std::cout << "Unknown command\n";
                 continue;

@@ -835,63 +835,88 @@ void SemanticAnalyzer::visit(FunctionCallNode* node) {
 }
 
 void SemanticAnalyzer::visit(MemberAccessNode* node) {
-    if (debug_mode) {
-        std::cout << "Debug: Entering visit for node: " << node << std::endl;
-    }
+    if (debug_mode) std::cout << "Debug: Entering visit for node: " << node << std::endl;
+    bool is_qubit = false;
+
     std::unique_ptr<TypeNode> base_type = visitExpression(node->struct_expr.get());
 
+    if (base_type->category == TypeNode::TypeCategory::PRIMITIVE) {
+        if (base_type->typeName() == "qubit") is_qubit = true;
+    }
+
     if (base_type->category != TypeNode::TypeCategory::STRUCT) {
-        Logger::report_error("Semantic Error",
+        if (!is_qubit) Logger::report_error("Semantic Error",
                              "Member access operator '.' used on non-struct type.", node->line);
     }
 
-    const StructTypeNode* struct_type = static_cast<const StructTypeNode*>(base_type.get());
+    if (is_qubit) {
+        if (node->member_name == "alpha" || node->member_name == "beta") {
+            node->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_COMPLEX);
 
-    if (!symbolTable.isStructDefined(struct_type->struct_name)) {
-        Logger::report_error("Semantic Error",
-                             "Undefined struct '" + struct_type->struct_name + "'.", node->line);
-    }
-
-    const auto& definitions = symbolTable.getStructDefinitions();
-    auto it = definitions.find(struct_type->struct_name);
-    if (it == definitions.end()) {
-        Logger::report_error("Semantic Error", "Struct not found in registry during access",
-                             node->line);
-    }
-    auto* struct_def = it->second;
-
-    if (debug_mode) {
-        std::cout << "Debug: Struct '" << struct_type->struct_name << "' has "
-                  << struct_def->members.size() << " members in the registry." << std::endl;
-    }
-    bool member_found = false;
-
-    for (const auto& member : struct_def->members) {
-        if (strcmp(member.name.c_str(), node->member_name.c_str()) == 0) {
-            member_found = true;
-
-            // Check visibility
-            if (member.visibility == StructMember::Visibility::PRIVATE) {
-                // A more complex check would be needed for friend classes or member functions
-                Logger::report_error("Semantic Error",
-                                     "Cannot access private member '" + node->member_name +
-                                         "' of struct '" + struct_type->struct_name + "'.",
-                                     node->line);
-            }
-
-            node->resolved_symbol =
-                new Symbol(Symbol::SymbolType::STRUCT_MEMBER, member.name, member.type->clone(),
-                           member.offset, getTypeSize(member.type.get()), member.visibility);
-            node->resolved_type = member.type->clone();
+            node->resolved_symbol = new Symbol(
+                Symbol::SymbolType::VARIABLE, 
+                node->member_name, 
+                node->resolved_type->clone(), 
+                0,
+                getTypeSize(node->resolved_type.get()), 
+                StructMember::Visibility::PUBLIC
+            );
             return;
         }
-    }
 
-    if (!member_found) {
         Logger::report_error("Semantic Error",
-                             "Struct '" + struct_type->struct_name + "' has no member named '" +
-                                 node->member_name + "'.",
-                             node->line);
+                             "Qubit type has no member named '" + node->member_name +
+                             "'. Valid members are 'alpha' and 'beta'.", node->line);
+        return;
+    } else {
+        const StructTypeNode* struct_type = static_cast<const StructTypeNode*>(base_type.get());
+
+        if (!symbolTable.isStructDefined(struct_type->struct_name)) {
+            Logger::report_error("Semantic Error",
+                                 "Undefined struct '" + struct_type->struct_name + "'.", node->line);
+        }
+
+        const auto& definitions = symbolTable.getStructDefinitions();
+        auto it = definitions.find(struct_type->struct_name);
+        if (it == definitions.end()) {
+            Logger::report_error("Semantic Error", "Struct not found in registry during access",
+                                 node->line);
+        }
+        auto* struct_def = it->second;
+
+        if (debug_mode) {
+            std::cout << "Debug: Struct '" << struct_type->struct_name << "' has "
+                      << struct_def->members.size() << " members in the registry." << std::endl;
+        }
+        bool member_found = false;
+
+        for (const auto& member : struct_def->members) {
+            if (strcmp(member.name.c_str(), node->member_name.c_str()) == 0) {
+                member_found = true;
+
+                // Check visibility
+                if (member.visibility == StructMember::Visibility::PRIVATE) {
+                    // A more complex check would be needed for friend classes or member functions
+                    Logger::report_error("Semantic Error",
+                                         "Cannot access private member '" + node->member_name +
+                                             "' of struct '" + struct_type->struct_name + "'.",
+                                         node->line);
+                }
+
+                node->resolved_symbol =
+                    new Symbol(Symbol::SymbolType::STRUCT_MEMBER, member.name, member.type->clone(),
+                               member.offset, getTypeSize(member.type.get()), member.visibility);
+                node->resolved_type = member.type->clone();
+                return;
+            }
+        }
+
+        if (!member_found) {
+            Logger::report_error("Semantic Error",
+                                 "Struct '" + struct_type->struct_name + "' has no member named '" +
+                                     node->member_name + "'.",
+                                 node->line);
+        }
     }
 }
 

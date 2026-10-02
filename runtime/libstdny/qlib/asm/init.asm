@@ -10,7 +10,7 @@ section .text
 q_init:
     vxorpd ymm0, ymm0, ymm0
     vmovapd ymm0, [rel QINIT_AMP]
-    vmovupd [rdi], ymm0 
+    vmovupd [rdi], ymm0
     ret
 
 ; usage:

@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "config_loader.hpp"
+#include <utils.hpp>
 
 namespace fs = std::filesystem;
 
@@ -250,6 +251,8 @@ int main(int argc, char* argv[]) {
     if (WIFEXITED(status)) {
         std::cout << "\nExit Code: " << WEXITSTATUS(status) << std::endl;
     }
+
+    clean_q_file("/tmp/qlib_state.txt");
 
     return 0;
 }

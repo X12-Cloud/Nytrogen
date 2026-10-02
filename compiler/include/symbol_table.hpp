@@ -27,7 +27,7 @@ struct Symbol {
         VARIABLE,
         FUNCTION,
         STRUCT_DEFINITION,
-        STRUCT_MEMBER,  // For members within a struct definition
+        STRUCT_MEMBER,
         CONSTANT,
         ENUM_TYPE,
         ENUM_MEMBER,

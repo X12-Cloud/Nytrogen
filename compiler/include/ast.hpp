@@ -350,7 +350,7 @@ struct FormatExpressionNode : public ASTNode {
 
 // Base class for type representations
 struct TypeNode {
-    enum class TypeCategory { PRIMITIVE, POINTER, ARRAY, STRUCT };
+    enum class TypeCategory { PRIMITIVE, POINTER, ARRAY, STRUCT, QUBIT };
     TypeCategory category;
     TypeNode(TypeCategory cat) : category(cat) {}
     virtual ~TypeNode() = default;
@@ -376,12 +376,24 @@ struct PrimitiveTypeNode : public TypeNode {
                 return "bool";
             case Token::KEYWORD_COMPLEX:
                 return "complex";
+            case Token::KEYWORD_QUBIT:
+                return "qubit";
             default:
                 return "unknown_primitive";
         }
     }
     [[nodiscard]] auto clone() const -> std::unique_ptr<TypeNode> override {
         return std::make_unique<PrimitiveTypeNode>(primitive_type);
+    }
+};
+
+struct QubitTypeNode : public PrimitiveTypeNode {
+    QubitTypeNode() : PrimitiveTypeNode(Token::KEYWORD_QUBIT) {
+        this->category = TypeCategory::QUBIT;
+    }
+
+    [[nodiscard]] auto clone() const -> std::unique_ptr<TypeNode> override {
+        return std::make_unique<QubitTypeNode>();
     }
 };
 

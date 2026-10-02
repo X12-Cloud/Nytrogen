@@ -920,7 +920,7 @@ void CodeGenerator::visit(QubitDefinitionNode* node) {
         emitter.emit("vmovsd", "[" + addr_vreg + " + 16]", "xmm0");
     } else {
         emitter.emit("mov", "rdi", addr_vreg);
-        emitter.call_external("q_init");
+        emitter.call_external("qubit_init");
     }
 }
 
@@ -1022,9 +1022,24 @@ void CodeGenerator::visit(MemberAccessNode* node) {
     std::string member_addr_vreg = new_vreg();
     Symbol* member_symbol = node->resolved_symbol;
 
+    int offset = 0;
+
+    bool is_qubit = (node->struct_expr->resolved_type->category == TypeNode::TypeCategory::QUBIT) || 
+                     (node->struct_expr->resolved_type->typeName() == "qubit");
+
+    if (is_qubit) {
+        if (node->member_name == "alpha") {
+            offset = 0;
+        } else if (node->member_name == "beta") {
+            offset = 16;
+        }
+    } else if (member_symbol != nullptr) {
+        offset = member_symbol->offset;
+    }
+
     emitter.emit("mov", member_addr_vreg, base_addr_vreg);
-    if ((member_symbol != nullptr) && member_symbol->offset != 0) {
-        emitter.emit("add", member_addr_vreg, std::to_string(member_symbol->offset));
+    if (offset != 0) {
+        emitter.emit("add", member_addr_vreg, std::to_string(offset));
     }
 
     if (is_lvalue) {

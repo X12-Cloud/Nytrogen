@@ -5,7 +5,7 @@
 #include <stdlib.h>
 
 // Standard io
-int println(const char* x) {
+int printline(const char* x) {
     printf("%s\n", x);
     return 0;
 }

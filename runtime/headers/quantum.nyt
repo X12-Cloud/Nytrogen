@@ -1,0 +1,32 @@
+#ifndef QUANTUM_NYT
+#define QUANTUM_NYT
+
+#include <fs.nyt>
+#include <io.nyt>
+
+namespace qu {
+
+extern char* dedupe_q_str(char* input);
+
+int print_state() {
+    string raw = fs::read_all("/tmp/qlib_state.txt");
+    char* clean_ptr = dedupe_q_str(raw);
+
+    print (string)clean_ptr;
+
+    std::free(clean_ptr);
+    return 0;
+}
+
+string get_state() {
+    string raw = fs::read_all("/tmp/qlib_state.txt");
+    char* clean_ptr = dedupe_q_str(raw);
+
+    return (string)clean_ptr;
+
+    std::free(clean_ptr);
+}
+
+} // namespace qu
+
+#endif

@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bloch Sphere Visualiser</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- OrbitControls -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- KaTeX CSS & JS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    },
+                    colors: {
+                        desmos: {
+                            blue: '#2d70b3',
+                            red: '#c74440',
+                            green: '#388c46',
+                            purple: '#6042a6',
+                            orange: '#fa7e1e',
+                            gray: '#f1f5f9',
+                            dark: '#1e293b',
+                            border: '#cbd5e1',
+                            bg: '#f8fafc'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #f8fafc;
+            color: #0f172a;
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Math Grid Background */
+        .math-grid-bg {
+            background-color: #f1f5f9;
+            background-image: 
+                linear-gradient(to right, rgba(203, 213, 225, 0.4) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(203, 213, 225, 0.4) 1px, transparent 1px),
+                linear-gradient(to right, rgba(148, 163, 184, 0.5) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(148, 163, 184, 0.5) 1px, transparent 1px);
+            background-size: 20px 20px, 20px 20px, 100px 100px, 100px 100px;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            outline: none;
+        }
+
+        .desmos-card {
+            border-left: 4px solid #cbd5e1;
+            transition: all 0.15s ease-in-out;
+        }
+
+        .desmos-card.active {
+            border-left-color: #2d70b3;
+            background-color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+        }
+
+        .pole-label {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            font-weight: 700;
+            font-size: 11px;
+            pointer-events: none;
+            padding: 2px 5px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #cbd5e1;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            font-family: 'Fira Code', monospace;
+            white-space: nowrap;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f8fafc;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col overflow-hidden bg-slate-50 select-none">
+
+    <header class="h-12 bg-white border-b border-slate-200 px-4 flex items-center justify-between shrink-0 z-20 shadow-sm">
+        <div class="flex items-center space-x-3">
+            <div class="flex items-center space-x-2 font-bold text-lg text-slate-800 tracking-tight">
+                <span class="w-7 h-7 rounded bg-desmos-blue text-white flex items-center justify-center text-sm font-serif italic shadow-sm">d</span>
+                <span>Bloch Sphere Visualiser</span>
+            </div>
+            <span class="text-xs text-slate-400 font-mono border-l border-slate-200 pl-3 hidden sm:inline">Desmos Math Edition</span>
+        </div>
+
+        <!-- Action Bar -->
+        <div class="flex items-center space-x-2">
+            <label class="flex items-center gap-1.5 text-xs text-slate-600 bg-slate-100 hover:bg-slate-200/70 px-2.5 py-1 rounded border border-slate-200 cursor-pointer font-medium transition-colors">
+                <input type="checkbox" id="autoPollToggle" class="rounded text-desmos-blue focus:ring-0">
+                <span>Auto-Poll File</span>
+            </label>
+            <button id="openDataModalBtn" class="px-3 py-1 bg-desmos-blue hover:bg-blue-700 text-white rounded text-xs font-medium flex items-center gap-1.5 shadow-sm transition-colors">
+                <i class="fa-solid fa-folder-open"></i> Load Data / File
+            </button>
+            <button id="resetCamBtn" class="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded text-xs font-medium flex items-center gap-1 shadow-sm transition-colors" title="Reset Camera View">
+                <i class="fa-solid fa-crosshairs text-slate-500"></i>
+            </button>
+        </div>
+    </header>
+
+    <div class="flex-1 flex overflow-hidden">
+
+        <!-- Left Sidebar -->
+        <aside class="w-80 md:w-96 h-full bg-slate-50 border-r border-slate-200 flex flex-col shrink-0 z-10 shadow-sm">
+
+            <!-- Sidebar Header / Qubit Selector Bar -->
+            <div class="p-3 border-b border-slate-200 bg-white flex items-center justify-between">
+                <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                    <i class="fa-solid fa-list-ol text-desmos-blue"></i> Qubit State Expressions
+                </span>
+                <span id="qubitCountBadge" class="text-[11px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200">
+                    0 Qubits
+                </span>
+            </div>
+
+            <!-- Qubit Math Cards Scrollable Container -->
+            <div id="qubitCardList" class="flex-1 overflow-y-auto p-2 space-y-2">
+                <!-- Expression Cards dynamically populated here -->
+            </div>
+
+            <!-- Selected Qubit Inspector -->
+            <div class="p-3 bg-white border-t border-slate-200 space-y-3 font-mono text-xs shadow-inner">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <span class="font-sans font-bold text-slate-700 text-xs uppercase tracking-wide">Selected State Metrics</span>
+                    <span id="selectedQubitBadge" class="bg-desmos-blue text-white px-2 py-0.5 rounded font-bold text-[11px]">Q0</span>
+                </div>
+
+                <!-- Equation Math Display -->
+                <div id="mathStateFormula" class="bg-slate-50 p-2.5 rounded border border-slate-200 text-center font-serif text-sm overflow-x-auto min-h-[42px] flex items-center justify-center">
+                    <!-- KaTeX formula rendered here -->
+                </div>
+
+                <!-- Coordinates Grid -->
+                <div class="grid grid-cols-3 gap-1.5 text-center text-[11px]">
+                    <div class="bg-rose-50/70 border border-rose-200 rounded p-1.5">
+                        <span class="text-desmos-red font-bold block">x</span>
+                        <span id="mValX" class="font-bold text-slate-800">0.0000</span>
+                    </div>
+                    <div class="bg-emerald-50/70 border border-emerald-200 rounded p-1.5">
+                        <span class="text-desmos-green font-bold block">y</span>
+                        <span id="mValY" class="font-bold text-slate-800">0.0000</span>
+                    </div>
+                    <div class="bg-blue-50/70 border border-blue-200 rounded p-1.5">
+                        <span class="text-desmos-blue font-bold block">z</span>
+                        <span id="mValZ" class="font-bold text-slate-800">0.0000</span>
+                    </div>
+                </div>
+
+                <!-- Probabilities & Angles -->
+                <div class="grid grid-cols-2 gap-2 text-[11px] font-sans">
+                    <div class="bg-slate-50 p-2 rounded border border-slate-200 space-y-1">
+                        <div class="flex justify-between text-slate-600">
+                            <span>P(|0⟩):</span>
+                            <strong id="mProb0" class="text-slate-800 font-mono">100.0%</strong>
+                        </div>
+                        <div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                            <div id="mProb0Bar" class="bg-desmos-blue h-1.5 rounded-full" style="width: 100%"></div>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 p-2 rounded border border-slate-200 space-y-1">
+                        <div class="flex justify-between text-slate-600">
+                            <span>P(|1⟩):</span>
+                            <strong id="mProb1" class="text-slate-800 font-mono">0.0%</strong>
+                        </div>
+                        <div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                            <div id="mProb1Bar" class="bg-desmos-purple h-1.5 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Angles θ and φ -->
+                <div class="flex justify-between text-[11px] text-slate-600 pt-1 border-t border-slate-100 font-sans">
+                    <span>Polar Angle (θ): <strong class="font-mono text-slate-800" id="mAngleTheta">0.0°</strong></span>
+                    <span>Azimuth (φ): <strong class="font-mono text-slate-800" id="mAnglePhi">0.0°</strong></span>
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- Right Main View -->
+        <main class="flex-1 h-full relative math-grid-bg overflow-hidden">
+
+            <!-- Three.js Canvas Container -->
+            <div id="canvasContainer" class="w-full h-full cursor-grab active:cursor-grabbing relative">
+                <!-- HTML 2D Label Overlays dynamically mapped to 3D poles -->
+                <div id="poleLabelsContainer" class="absolute inset-0 pointer-events-none"></div>
+            </div>
+
+            <!-- Floating Graph Legend -->
+            <div class="absolute top-4 right-4 bg-white/95 backdrop-blur border border-slate-200 rounded-lg p-3 shadow-md text-xs font-sans space-y-2 pointer-events-none w-52">
+                <div class="font-bold text-slate-800 border-b border-slate-100 pb-1 flex items-center justify-between">
+                    <span>Axes & Reference</span>
+                    <span class="text-[10px] font-mono text-slate-400">Radius = 1.0</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="flex items-center gap-1.5">
+                        <span class="w-3 h-1 bg-desmos-red rounded-full"></span>
+                        <strong class="text-slate-700">X Axis</strong>
+                    </span>
+                    <span class="font-serif text-slate-500">|+⟩ / |-⟩</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="flex items-center gap-1.5">
+                        <span class="w-3 h-1 bg-desmos-green rounded-full"></span>
+                        <strong class="text-slate-700">Y Axis</strong>
+                    </span>
+                    <span class="font-serif text-slate-500">|+i⟩ / |-i⟩</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="flex items-center gap-1.5">
+                        <span class="w-3 h-1 bg-desmos-blue rounded-full"></span>
+                        <strong class="text-slate-700">Z Axis</strong>
+                    </span>
+                    <span class="font-serif text-slate-500">|0⟩ / |1⟩</span>
+                </div>
+            </div>
+
+            <!-- Active Qubit Label Badge -->
+            <div class="absolute bottom-4 left-4 bg-white/95 backdrop-blur border border-slate-200 rounded-lg px-3.5 py-2 shadow-md pointer-events-none flex items-center gap-3">
+                <div class="w-3 h-3 rounded-full bg-desmos-blue animate-pulse"></div>
+                <div>
+                    <div class="text-[10px] text-slate-400 font-mono uppercase">Plotting State Vector</div>
+                    <div id="activeQubitLabel" class="text-sm font-bold text-slate-800 font-mono">Qubit 0</div>
+                </div>
+            </div>
+
+        </main>
+
+    </div>
+
+    <div id="dataModal" class="hidden fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-30 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
+
+            <div class="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-file-code text-desmos-blue"></i>
+                    <h3 class="font-bold text-sm text-slate-800">qlib_state.txt Reader & Data Input</h3>
+                </div>
+                <button id="closeModalBtn" class="text-slate-400 hover:text-slate-600 text-sm p-1">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-5 space-y-4 overflow-y-auto flex-1">
+
+                <!-- Drag and Drop File Picker Area -->
+                <div id="dropZone" class="border-2 border-dashed border-slate-300 hover:border-desmos-blue bg-slate-50 hover:bg-slate-100/50 rounded-xl p-5 text-center cursor-pointer transition-colors">
+                    <input type="file" id="fileInput" class="hidden" accept=".txt,.log,.dat">
+                    <i class="fa-solid fa-cloud-arrow-up text-2xl text-slate-400 mb-2"></i>
+                    <p class="text-xs font-semibold text-slate-700">Select file or drop qlib_state.txt here</p>
+                    <p class="text-[11px] text-slate-400 font-mono mt-1">Direct client-side file reading</p>
+                </div>
+
+                <!-- Text Area Input -->
+                <div class="space-y-1.5">
+                    <div class="flex items-center justify-between text-xs">
+                        <label class="font-medium text-slate-700">Direct qlib Data Input</label>
+                        <button id="loadSampleBtn" class="text-xs text-desmos-blue hover:underline font-medium">Reset Sample Data</button>
+                    </div>
+                    <textarea id="rawTextInput" rows="6" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs font-mono text-slate-800 focus:outline-none focus:border-desmos-blue transition-colors resize-none" placeholder="0:a+0.707107+0.000000i|b-0.707107+0.000000i [x:-1.0000, y:0.0000, z:0.0000]"></textarea>
+                </div>
+
+            </div>
+
+            <div class="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+                <span id="fileNameDisplay" class="text-xs font-mono text-slate-500 truncate max-w-xs">No file loaded</span>
+                <button id="applyDataBtn" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors flex items-center gap-2">
+                    <i class="fa-solid fa-check"></i> Parse & Plot States
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="hidden fixed bottom-6 right-6 bg-slate-900 text-white px-4 py-2.5 rounded-lg text-xs font-mono shadow-xl flex items-center gap-2 z-50">
+        <i class="fa-solid fa-circle-check text-emerald-400"></i>
+        <span id="toastMsg">State updated</span>
+    </div>
+
+    <script>
+        // Three.js State Variables
+        let scene, camera, renderer, controls;
+        let vectorArrow, vectorTipMesh, projLineZ, projLineXY, projPlanePointMesh;
+        let targetVector = new THREE.Vector3(0, 0, 1);
+        let currentVector = new THREE.Vector3(0, 0, 1);
+
+        // Qubit Data Store
+        let parsedQubits = {};
+        let activeQubitId = "0";
+        let localFileHandle = null;
+        let pollInterval = null;
+
+        // Pole Markers Array
+        const poleLabels = [
+            { id: 'p_z_pos', text: '|0⟩', pos: new THREE.Vector3(0, 0, 1.25) },
+            { id: 'p_z_neg', text: '|1⟩', pos: new THREE.Vector3(0, 0, -1.25) },
+            { id: 'p_x_pos', text: '|+⟩', pos: new THREE.Vector3(1.25, 0, 0) },
+            { id: 'p_x_neg', text: '|-⟩', pos: new THREE.Vector3(-1.25, 0, 0) },
+            { id: 'p_y_pos', text: '|+i⟩', pos: new THREE.Vector3(0, 1.25, 0) },
+            { id: 'p_y_neg', text: '|-i⟩', pos: new THREE.Vector3(0, -1.25, 0) }
+        ];
+
+        // Sample qlib_state.txt contents
+        const defaultSampleState = `0:a+0.707107+0.000000i|b-0.707107+0.000000i [x:-1.0000, y:0.0000, z:0.0000]
+1:a+0.000000+0.000000i|b+1.000000+0.000000i [x:0.0000, y:0.0000, z:-1.0000]
+2:a+0.707107+0.000000i|b+0.000000+0.707107i [x:0.0000, y:1.0000, z:0.0000]
+3:a+0.866025+0.000000i|b+0.500000+0.000000i [x:0.8660, y:0.0000, z:0.5000]`;
+
+        // Initial setup on window load
+        window.onload = function() {
+            initThreeJS();
+            setupDOMEvents();
+            setupPoleLabels();
+            parseAndLoadStateText(defaultSampleState);
+            animate();
+        };
+
+        function initThreeJS() {
+            const container = document.getElementById('canvasContainer');
+
+            // Scene
+            scene = new THREE.Scene();
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 0.1, 100);
+            camera.position.set(3.2, 2.5, 3.8);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            // Orbit Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.rotateSpeed = 0.8;
+            controls.minDistance = 2.0;
+            controls.maxDistance = 10.0;
+
+            // Ambient Light
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+            scene.add(ambientLight);
+
+            // Directional Light
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 8, 5);
+            scene.add(dirLight);
+
+            // --- BLOCH SPHERE --- //
+
+            // Sphere Shell
+            const sphereGeo = new THREE.SphereGeometry(1.0, 32, 32);
+            const sphereMat = new THREE.MeshPhongMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.25,
+                shininess: 90,
+                side: THREE.DoubleSide
+            });
+            const sphereMesh = new THREE.Mesh(sphereGeo, sphereMat);
+            scene.add(sphereMesh);
+
+            // Latitude and Longitude Grid Lines
+            const wireGeo = new THREE.WireframeGeometry(new THREE.SphereGeometry(1.0, 16, 12));
+            const wireMat = new THREE.LineBasicMaterial({
+                color: 0x94a3b8,
+                transparent: true,
+                opacity: 0.35,
+                linewidth: 1
+            });
+            const wireframe = new THREE.LineSegments(wireGeo, wireMat);
+            scene.add(wireframe);
+
+            // Equator Ring Line
+            const equatorGeo = new THREE.BufferGeometry();
+            const equatorPts = [];
+            for (let i = 0; i <= 64; i++) {
+                const theta = (i / 64) * Math.PI * 2;
+                equatorPts.push(new THREE.Vector3(Math.cos(theta), Math.sin(theta), 0));
+            }
+            equatorGeo.setFromPoints(equatorPts);
+            const equatorMat = new THREE.LineBasicMaterial({ color: 0x64748b, transparent: true, opacity: 0.5 });
+            scene.add(new THREE.Line(equatorGeo, equatorMat));
+
+            // Bold Coordinate Axes Line Segments (X=Red, Y=Green, Z=Blue)
+            createAxisLine(new THREE.Vector3(-1.3, 0, 0), new THREE.Vector3(1.3, 0, 0), 0xc74440); // X Axis
+            createAxisLine(new THREE.Vector3(0, -1.3, 0), new THREE.Vector3(0, 1.3, 0), 0x388c46); // Y Axis
+            createAxisLine(new THREE.Vector3(0, 0, -1.3), new THREE.Vector3(0, 0, 1.3), 0x2d70b3); // Z Axis
+
+            // Active State Vector Arrow
+            const dir = new THREE.Vector3(0, 0, 1);
+            const origin = new THREE.Vector3(0, 0, 0);
+            vectorArrow = new THREE.ArrowHelper(dir, origin, 1.0, 0x1e293b, 0.18, 0.08);
+            scene.add(vectorArrow);
+
+            // Vector Glow Tip
+            const tipGeo = new THREE.SphereGeometry(0.05, 16, 16);
+            const tipMat = new THREE.MeshStandardMaterial({ color: 0x2d70b3, roughness: 0.2, metalness: 0.8 });
+            vectorTipMesh = new THREE.Mesh(tipGeo, tipMat);
+            scene.add(vectorTipMesh);
+
+            // Projections onto Z Axis and XY Plane
+            const projMat = new THREE.LineDashedMaterial({
+                color: 0x64748b,
+                dashSize: 0.05,
+                gapSize: 0.03
+            });
+
+            // Proj Line to Z
+            const lineZGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
+            projLineZ = new THREE.Line(lineZGeo, projMat);
+            projLineZ.computeLineDistances();
+            scene.add(projLineZ);
+
+            // Proj Line to XY plane
+            const lineXYGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
+            projLineXY = new THREE.Line(lineXYGeo, projMat);
+            projLineXY.computeLineDistances();
+            scene.add(projLineXY);
+
+            // Point on XY Plane
+            const ptGeo = new THREE.SphereGeometry(0.025, 12, 12);
+            const ptMat = new THREE.MeshBasicMaterial({ color: 0x94a3b8 });
+            projPlanePointMesh = new THREE.Mesh(ptGeo, ptMat);
+            scene.add(projPlanePointMesh);
+
+            // Handle Resize
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function createAxisLine(p1, p2, colorHex) {
+            const geo = new THREE.BufferGeometry().setFromPoints([p1, p2]);
+            const mat = new THREE.LineBasicMaterial({ color: colorHex, linewidth: 2 });
+            const line = new THREE.Line(geo, mat);
+            scene.add(line);
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('canvasContainer');
+            if (!container) return;
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function setupPoleLabels() {
+            const container = document.getElementById('poleLabelsContainer');
+            container.innerHTML = '';
+
+            poleLabels.forEach(p => {
+                const el = document.createElement('div');
+                el.id = p.id;
+                el.className = 'pole-label';
+                el.innerText = p.text;
+                container.appendChild(el);
+            });
+        }
+
+        function updatePoleLabelPositions() {
+            poleLabels.forEach(p => {
+                const el = document.getElementById(p.id);
+                if (!el) return;
+
+                // Project 3D coordinate to 2D Screen Space
+                const vec = p.pos.clone();
+                vec.project(camera);
+
+                const container = document.getElementById('canvasContainer');
+                const x = (vec.x * 0.5 + 0.5) * container.clientWidth;
+                const y = (-(vec.y * 0.5) + 0.5) * container.clientHeight;
+
+                // Check if pole is behind camera
+                if (vec.z > 1) {
+                    el.style.display = 'none';
+                } else {
+                    el.style.display = 'block';
+                    el.style.left = `${x}px`;
+                    el.style.top = `${y}px`;
+                }
+            });
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Smooth vector lerp transition
+            currentVector.lerp(targetVector, 0.12);
+
+            // Update Arrow Helper
+            const dir = currentVector.clone().normalize();
+            const len = currentVector.length();
+            vectorArrow.setDirection(dir);
+            vectorArrow.setLength(len, 0.18, 0.08);
+
+            // Update Tip Mesh
+            vectorTipMesh.position.copy(currentVector);
+
+            // Update Projection Lines
+            const ptZ = new THREE.Vector3(0, 0, currentVector.z);
+            const ptXY = new THREE.Vector3(currentVector.x, currentVector.y, 0);
+
+            projLineZ.geometry.setFromPoints([currentVector, ptZ]);
+            projLineZ.computeLineDistances();
+
+            projLineXY.geometry.setFromPoints([currentVector, ptXY]);
+            projLineXY.computeLineDistances();
+
+            projPlanePointMesh.position.copy(ptXY);
+
+            // Orbit controls & Pole Labels
+            controls.update();
+            updatePoleLabelPositions();
+
+            renderer.render(scene, camera);
+        }
+
+        function parseAndLoadStateText(text) {
+            const lines = text.split('\n');
+            const newQubits = {};
+
+            lines.forEach(line => {
+                line = line.trim();
+                if (!line) return;
+
+                // Format: 0:a+0.707107+0.000000i|b-0.707107+0.000000i [x:-1.0000, y:0.0000, z:0.0000]
+                const match = line.match(/^(\d+):a([+-]\d+\.\d+)([+-]\d+\.\d+)i\|b([+-]\d+\.\d+)([+-]\d+\.\d+)i\s*\[x:([+-]?\d+\.\d+),\s*y:([+-]?\d+\.\d+),\s*z:([+-]?\d+\.\d+)\]/);
+
+                if (match) {
+                    const id = match[1];
+                    const a_real = parseFloat(match[2]);
+                    const a_imag = parseFloat(match[3]);
+                    const b_real = parseFloat(match[4]);
+                    const b_imag = parseFloat(match[5]);
+                    const x = parseFloat(match[6]);
+                    const y = parseFloat(match[7]);
+                    const z = parseFloat(match[8]);
+
+                    newQubits[id] = { id, a_real, a_imag, b_real, b_imag, x, y, z };
+                }
+            });
+
+            if (Object.keys(newQubits).length > 0) {
+                parsedQubits = newQubits;
+                if (!parsedQubits[activeQubitId]) {
+                    activeQubitId = Object.keys(parsedQubits)[0];
+                }
+                renderQubitSidebarCards();
+                selectQubit(activeQubitId);
+                showToast(`Parsed ${Object.keys(parsedQubits).length} qubit state(s)`);
+            } else {
+                showToast('Failed to parse qlib format!');
+            }
+        }
+
+        function renderQubitSidebarCards() {
+            const container = document.getElementById('qubitCardList');
+            const countBadge = document.getElementById('qubitCountBadge');
+            container.innerHTML = '';
+
+            const keys = Object.keys(parsedQubits);
+            countBadge.innerText = `${keys.length} Qubit${keys.length > 1 ? 's' : ''}`;
+
+            keys.forEach(id => {
+                const q = parsedQubits[id];
+                const isActive = id === activeQubitId;
+
+                const card = document.createElement('div');
+                card.className = `desmos-card p-3 rounded-r-lg bg-slate-100/80 hover:bg-white cursor-pointer transition-all border-y border-r border-slate-200 ${isActive ? 'active' : ''}`;
+                card.onclick = () => selectQubit(id);
+
+                card.innerHTML = `
+                    <div class="flex items-center justify-between mb-1.5">
+                        <div class="flex items-center gap-2">
+                            <span class="w-5 h-5 rounded-full bg-desmos-blue text-white flex items-center justify-center font-mono text-[10px] font-bold">Q${id}</span>
+                            <span class="font-bold text-xs text-slate-800">Qubit ${id}</span>
+                        </div>
+                        <span class="text-[10px] font-mono text-slate-400">r = 1.0</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-1 text-[10px] font-mono text-slate-600 bg-slate-50/80 p-1.5 rounded border border-slate-200">
+                        <div>x: <strong class="text-slate-800">${q.x.toFixed(2)}</strong></div>
+                        <div>y: <strong class="text-slate-800">${q.y.toFixed(2)}</strong></div>
+                        <div>z: <strong class="text-slate-800">${q.z.toFixed(2)}</strong></div>
+                    </div>
+                `;
+
+                container.appendChild(card);
+            });
+        }
+
+        function selectQubit(id) {
+            activeQubitId = id;
+            const q = parsedQubits[id];
+            if (!q) return;
+
+            // Target Vector in Three.js Coordinates (Standard: x, y, z)
+            targetVector.set(q.x, q.y, q.z);
+
+            // Update Label Badges
+            document.getElementById('activeQubitLabel').innerText = `Qubit ${id}`;
+            document.getElementById('selectedQubitBadge').innerText = `Q${id}`;
+
+            // Update Metrics Display
+            document.getElementById('mValX').innerText = q.x.toFixed(4);
+            document.getElementById('mValY').innerText = q.y.toFixed(4);
+            document.getElementById('mValZ').innerText = q.z.toFixed(4);
+
+            // Calculate Probabilities: P(|0>) = |a|^2, P(|1>) = |b|^2
+            const prob0 = q.a_real * q.a_real + q.a_imag * q.a_imag;
+            const prob1 = q.b_real * q.b_real + q.b_imag * q.b_imag;
+
+            const p0Perc = (prob0 * 100).toFixed(1);
+            const p1Perc = (prob1 * 100).toFixed(1);
+
+            document.getElementById('mProb0').innerText = `${p0Perc}%`;
+            document.getElementById('mProb1').innerText = `${p1Perc}%`;
+            document.getElementById('mProb0Bar').style.width = `${p0Perc}%`;
+            document.getElementById('mProb1Bar').style.width = `${p1Perc}%`;
+
+            // Calculate Spherical Angles theta and phi
+            // z = cos(theta) => theta = acos(z)
+            const thetaRad = Math.acos(Math.max(-1, Math.min(1, q.z)));
+            const thetaDeg = (thetaRad * (180 / Math.PI)).toFixed(1);
+
+            // phi = atan2(y, x)
+            let phiRad = Math.atan2(q.y, q.x);
+            if (phiRad < 0) phiRad += 2 * Math.PI;
+            const phiDeg = (phiRad * (180 / Math.PI)).toFixed(1);
+
+            document.getElementById('mAngleTheta').innerText = `${thetaDeg}°`;
+            document.getElementById('mAnglePhi').innerText = `${phiDeg}°`;
+
+            // Render KaTeX Math State String: |ψ⟩ = a|0⟩ + b|1⟩
+            renderKaTeXFormula(q);
+
+            // Update Card Highlights
+            renderQubitSidebarCards();
+        }
+
+        function renderKaTeXFormula(q) {
+            const formatComplex = (r, i) => {
+                if (Math.abs(i) < 0.0001) return `${r.toFixed(3)}`;
+                const sign = i >= 0 ? '+' : '';
+                return `(${r.toFixed(3)}${sign}${i.toFixed(3)}i)`;
+            };
+
+            const strA = formatComplex(q.a_real, q.a_imag);
+            const strB = formatComplex(q.b_real, q.b_imag);
+
+            const latex = `|\\psi_{${q.id}}\\rangle = ${strA}|0\\rangle + ${strB}|1\\rangle`;
+
+            const target = document.getElementById('mathStateFormula');
+            try {
+                katex.render(latex, target, { throwOnError: false });
+            } catch (e) {
+                target.innerText = latex;
+            }
+        }
+
+        function setupDOMEvents() {
+            // Camera Reset Button
+            document.getElementById('resetCamBtn').onclick = () => {
+                camera.position.set(3.2, 2.5, 3.8);
+                controls.target.set(0, 0, 0);
+            };
+
+            // Modal Toggles
+            const dataModal = document.getElementById('dataModal');
+            document.getElementById('openDataModalBtn').onclick = () => {
+                document.getElementById('rawTextInput').value = defaultSampleState;
+                dataModal.classList.remove('hidden');
+            };
+
+            document.getElementById('closeModalBtn').onclick = () => {
+                dataModal.classList.add('hidden');
+            };
+
+            // Sample Reset
+            document.getElementById('loadSampleBtn').onclick = () => {
+                document.getElementById('rawTextInput').value = defaultSampleState;
+            };
+
+            // Apply Raw Text
+            document.getElementById('applyDataBtn').onclick = () => {
+                const txt = document.getElementById('rawTextInput').value;
+                parseAndLoadStateText(txt);
+                dataModal.classList.add('hidden');
+            };
+
+            // Drag and Drop File Input
+            const dropZone = document.getElementById('dropZone');
+            const fileInput = document.getElementById('fileInput');
+
+            dropZone.onclick = () => fileInput.click();
+
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('border-desmos-blue', 'bg-blue-50/50');
+            });
+
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('border-desmos-blue', 'bg-blue-50/50');
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('border-desmos-blue', 'bg-blue-50/50');
+                if (e.dataTransfer.files.length > 0) {
+                    handleFileSelect(e.dataTransfer.files[0]);
+                }
+            });
+
+            fileInput.onchange = (e) => {
+                if (e.target.files.length > 0) {
+                    handleFileSelect(e.target.files[0]);
+                }
+            };
+
+            // Auto polling check
+            document.getElementById('autoPollToggle').onchange = (e) => {
+                if (e.target.checked) {
+                    if (!localFileHandle) {
+                        showToast('Select a file first to poll');
+                        e.target.checked = false;
+                        return;
+                    }
+                    pollInterval = setInterval(readLocalFile, 1000);
+                    showToast('Started auto-polling local file');
+                } else {
+                    if (pollInterval) clearInterval(pollInterval);
+                    showToast('Stopped auto-polling');
+                }
+            };
+        }
+
+        function handleFileSelect(file) {
+            localFileHandle = file;
+            document.getElementById('fileNameDisplay').innerText = file.name;
+            readLocalFile();
+        }
+
+        function readLocalFile() {
+            if (!localFileHandle) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const text = e.target.result;
+                document.getElementById('rawTextInput').value = text;
+                parseAndLoadStateText(text);
+            };
+            reader.readAsText(localFileHandle);
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = msg;
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

@@ -12,6 +12,7 @@ section .data
 
 section .text
     global q_h, q_x, q_z, q_s, q_t, q_rz, q_apply_matrix
+    extern print_q_file ; c++ function
 
 q_h:
     vmovupd ymm0, [r15 + rdi]
@@ -23,18 +24,24 @@ q_h:
     vmulpd  ymm3, ymm3, ymm4
     vblendpd ymm0, ymm2, ymm3, 12
     vmovupd [r15 + rdi], ymm0
+
+    call q_log_hook
     ret
 
 q_x:
     vmovupd ymm0, [r15 + rdi]
     vperm2f128 ymm1, ymm0, ymm0, 1
     vmovupd [r15 + rdi], ymm1
+
+    call q_log_hook
     ret
 
 q_z:
     vmovupd ymm0, [r15 + rdi]
     vmulpd  ymm0, ymm0, [rel Z_MASK]
-    vmovupd [r15 + rdi], ymm0 
+    vmovupd [r15 + rdi], ymm0
+
+    call q_log_hook
     ret
 
 q_s:
@@ -59,6 +66,8 @@ q_rz:
     vaddsubpd xmm2, xmm2, xmm3
     vinsertf128 ymm0, ymm0, xmm2, 1
     vmovupd [r15 + rdi], ymm0
+
+    call q_log_hook
     ret
 
 q_apply_matrix:
@@ -75,3 +84,17 @@ q_apply_matrix:
 
     ;vmovupd [r15 + rsi], ymm_result
     ;ret
+
+q_log_hook:
+    push rdi
+    push r15
+    sub rsp, 32
+    vmovdqu [rsp], ymm0
+
+    call print_q_file
+
+    vmovdqu ymm0, [rsp]
+    add rsp, 32
+    pop r15
+    pop rdi
+    ret

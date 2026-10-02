@@ -11,7 +11,7 @@ int factorial(int n) {
     if (n <= 1) {
         return 1;
     }
-    return n * factorial(n - 1); // i do not think recursive functions work yet.
+    return n * factorial(n - 1);
 }
 
 bool is_valid(int val, int mode) {
