@@ -8,19 +8,41 @@ namespace constants {
     double PI = 3.141592653589793d;
 } // namespace constants
 
-double sqrt(double x) {
-    return __builtin_sqrt(x);
-}
-double abs(double x) {
-    return __builtin_abs(x);
-}
-double round(double x) {
-    return __builtin_round(x);
-}
+double sqrt(double x) { return __builtin_sqrt(x); }
+double abs(double x) { return __builtin_abs(x); }
+double round(double x) { return __builtin_round(x); }
+
+double cbrt(double x);
+double pow(double base, double exp);
+double hypot(double x, double y);
+
+double exp(double x);
+double log(double x);
+double log10(double x);
+double expm1(double x);
+double log1p(double x);
 
 double sin(double x);
 double cos(double x);
 double tan(double x);
+
+double asin(double x);
+double acos(double x);
+double atan(double x);
+double atan2(double y, double x);
+
+double sinh(double x);
+double cosh(double x);
+double tanh(double x);
+
+double asinh(double x);
+double acosh(double x);
+double atanh(double x);
+
+double floor(double x);
+double ceil(double x);
+double fmod(double x, double y);
+double copysign(double x, double y);
 
 } // namespace math
 

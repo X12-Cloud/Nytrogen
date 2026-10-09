@@ -59,6 +59,7 @@ struct ASTNode {
         GATE_APPLICATION_OPERATION_EXPRESSION = 32,
         FORMAT_EXPRESSION = 33,
         LONG_LITERAL_EXPRESSION = 34,
+        MATRIX_DEFINITION = 35
     };
 
     NodeType node_type;
@@ -350,7 +351,7 @@ struct FormatExpressionNode : public ASTNode {
 
 // Base class for type representations
 struct TypeNode {
-    enum class TypeCategory { PRIMITIVE, POINTER, ARRAY, STRUCT, QUBIT };
+    enum class TypeCategory { PRIMITIVE, POINTER, ARRAY, STRUCT, QUBIT, MATRIX };
     TypeCategory category;
     TypeNode(TypeCategory cat) : category(cat) {}
     virtual ~TypeNode() = default;
@@ -378,6 +379,8 @@ struct PrimitiveTypeNode : public TypeNode {
                 return "complex";
             case Token::KEYWORD_QUBIT:
                 return "qubit";
+            case Token::KEYWORD_MATRIX:
+                return "matrix";
             default:
                 return "unknown_primitive";
         }
@@ -394,6 +397,16 @@ struct QubitTypeNode : public PrimitiveTypeNode {
 
     [[nodiscard]] auto clone() const -> std::unique_ptr<TypeNode> override {
         return std::make_unique<QubitTypeNode>();
+    }
+};
+
+struct MatrixTypeNode : public PrimitiveTypeNode {
+    MatrixTypeNode() : PrimitiveTypeNode(Token::KEYWORD_MATRIX) {
+        this->category = TypeCategory::MATRIX;
+    }
+
+    [[nodiscard]] auto clone() const -> std::unique_ptr<TypeNode> override {
+        return std::make_unique<MatrixTypeNode>();
     }
 };
 
@@ -534,6 +547,33 @@ struct QubitDefinitionNode : public ASTNode {
         : ASTNode(NodeType::QUBIT_DEFINITION, line, column), 
           qubit_index(index), 
           qubit_name(std::move(name)) {}
+};
+
+struct MatrixDefinitionNode : public ASTNode {
+    std::string name;
+    size_t rows{0};
+    size_t cols{0};
+    std::vector<std::unique_ptr<ASTNode>> elements;
+
+    [[nodiscard]] auto type_name() const -> std::string override {
+        return "MATRIX_DEF: " + name + " (" + std::to_string(rows) + "x" + std::to_string(cols) + ")";
+    }
+
+    [[nodiscard]] auto get_children() const -> std::vector<ASTNode*> override {
+        std::vector<ASTNode*> children;
+        children.reserve(elements.size());
+        for (const auto& m : elements) {
+            if (m) children.push_back(m.get());
+        }
+        return children;
+    }
+
+    MatrixDefinitionNode(std::string n, size_t r, size_t c, 
+                         std::vector<std::unique_ptr<ASTNode>> ms, 
+                         int line = -1, int column = -1)
+        : ASTNode(NodeType::MATRIX_DEFINITION, line, column), 
+          name(std::move(n)), rows(r), cols(c), 
+          elements(std::move(ms)) {}
 };
 
 struct NamespaceMember {

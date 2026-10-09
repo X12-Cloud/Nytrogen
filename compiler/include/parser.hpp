@@ -57,6 +57,7 @@ class Parser {
     std::unique_ptr<SwitchStatementNode> parseSwitchStatement();
     std::unique_ptr<NamespaceDefinition> parseNamespaceDefinition();
     std::unique_ptr<QubitDefinitionNode> parseQubitDefinitionNode();
+    std::unique_ptr<MatrixDefinitionNode> parseMatrixDefinitionNode();
 
     // Expression parsing methods (now hierarchical for precedence)
     std::unique_ptr<ASTNode> parseExpression();            // Handles + and - (lowest precedence)

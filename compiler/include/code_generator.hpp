@@ -99,6 +99,7 @@ class CodeGenerator {
     void visit(GateAppOperationExpressionNode* node);
     void visit(ComplexLiteralExpressionNode* node);
     void visit(FormatExpressionNode* node);
+    void visit(MatrixDefinitionNode* node);
 
     auto getTypeSize(const TypeNode* type) -> int;
     auto isComplex(const TypeNode* type) -> bool;

@@ -94,6 +94,18 @@ void InstructionSet::emit_print_internal(int size, const std::shared_ptr<TypeNod
         return;
     }
 
+    // Matrices
+    if (prim && prim->primitive_type == Token::KEYWORD_MATRIX) {
+        int rows = 2;
+        int cols = 2;
+        emit("lea", "rdi", src_vreg);
+        emit("mov", "rsi", std::to_string(rows));
+        emit("mov", "rdx", std::to_string(cols));
+        call_external("ny_print_matrix");
+        return;
+
+    } 
+
     // Complex literals
     if (prim && prim->primitive_type == Token::KEYWORD_COMPLEX) {
         emit("mov", "rax", src_vreg);

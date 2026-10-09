@@ -779,6 +779,64 @@ std::unique_ptr<QubitDefinitionNode> Parser::parseQubitDefinitionNode() {
     return qubit_node;
 }
 
+std::unique_ptr<MatrixDefinitionNode> Parser::parseMatrixDefinitionNode() {
+    const Token& start_token = peek();
+
+    expect(Token::KEYWORD_MATRIX, "Expected 'matrix' keyword");
+    const Token& name = peek();
+    expect(Token::IDENTIFIER, "Expected matrix name");
+    expect(Token::EQ, "Expected '=' after matrix name");
+
+    std::vector<std::unique_ptr<ASTNode>> elements;
+    size_t row_count = 0;
+    size_t expected_cols = 0;
+
+    while (match(Token::LBRACKET)) {
+        size_t current_row_cols = 0;
+
+        while (peek().type != Token::RBRACKET) {
+            elements.push_back(parseExpression());
+            current_row_cols++;
+
+            if (!match(Token::COMMA)) {
+                break;
+            }
+        }
+
+        expect(Token::RBRACKET, "Expected ']' at end of matrix row");
+        row_count++;
+
+        if (row_count == 1) {
+            expected_cols = current_row_cols;
+        } else if (current_row_cols != expected_cols) {
+            Logger::report_error("Parser Error", "Matrix dimension mismatch: row " + std::to_string(row_count) + 
+                  " has " + std::to_string(current_row_cols) + 
+                  " elements, expected " + std::to_string(expected_cols));
+        }
+
+        // Check if another row follows
+        if (match(Token::COMMA)) {
+            if (peek().type != Token::LBRACKET) {
+                Logger::report_error("Parser Error", "Expected '[' after row comma separator");
+            }
+        } else {
+            break;
+        }
+    }
+
+    expect(Token::SEMICOLON, "Expected ';' after matrix definition");
+
+    auto mat_node = std::make_unique<MatrixDefinitionNode>(
+        name.value, 
+        row_count, 
+        expected_cols, 
+        std::move(elements), 
+        start_token.line, 
+        start_token.column
+    );
+    return mat_node;
+}
+
 std::unique_ptr<NamespaceDefinition> Parser::parseNamespaceDefinition() {
     const Token& start_token = peek();
     expect(Token::KEYWORD_NAMESPACE, "Expected 'namespace' keyword.");
@@ -928,7 +986,6 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
         case Token::KEYWORD_FLOAT:
         case Token::KEYWORD_DOUBLE:
         case Token::KEYWORD_COMPLEX:
-        case Token::KEYWORD_MATRIX:
         case Token::KEYWORD_AUTO: {
             if (peek(1).type == Token::IDENTIFIER && peek(2).type == Token::LPAREN) {
                 return parseFunctionDefinition();
@@ -970,6 +1027,8 @@ std::unique_ptr<ASTNode> Parser::parseStatement() {
             return parseStructDefinition();
         case Token::KEYWORD_QUBIT:
             return parseQubitDefinitionNode();
+        case Token::KEYWORD_MATRIX:
+            return parseMatrixDefinitionNode();
         default:
             Logger::report_error("Parser Error", "Unexpected token in statement: '" + peek().value +
                                                      "' at line " + std::to_string(peek().line) +

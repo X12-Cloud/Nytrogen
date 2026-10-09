@@ -239,6 +239,9 @@ void CodeGenerator::visit(ASTNode* node) {
         case ASTNode::NodeType::FORMAT_EXPRESSION:
             visit(dynamic_cast<FormatExpressionNode*>(node));
             break;
+        case ASTNode::NodeType::MATRIX_DEFINITION:
+            visit(dynamic_cast<MatrixDefinitionNode*>(node));
+            break;
         default:
             throw std::runtime_error("Code Generation Error: Unknown AST node type.");
     }
@@ -683,17 +686,28 @@ void CodeGenerator::visit(GateAppOperationExpressionNode* node) {
     visit(node->qubit.get());
     std::string qubit_offset_vreg = last_expr_vreg;
 
-    if (node->gate->node_type == ASTNode::NodeType::VARIABLE_REFERENCE) {
-        auto* gate_ref = static_cast<VariableReferenceNode*>(node->gate.get());
-        std::string name = gate_ref->name;
+    if (auto* gate_ref = dynamic_cast<VariableReferenceNode*>(node->gate.get())) {
+        std::string gate_name = gate_ref->name;
 
         static std::unordered_map<std::string, std::string> optimized_gates = {
             {"h", "q_h"}, {"x", "q_x"}, {"z", "q_z"}, {"s", "q_s"}, {"t", "q_t"}
         };
 
-        if (optimized_gates.count(name)) {
+        if (optimized_gates.count(gate_name)) {
             emitter.emit("mov", "rdi", qubit_offset_vreg);
-            emitter.call_external(optimized_gates[name]);
+            emitter.call_external(optimized_gates[gate_name]);
+            return;
+        }
+
+        Symbol* sym = symbolTable.lookup(gate_name);
+        if (sym && sym->dataType && sym->dataType->category == TypeNode::TypeCategory::MATRIX) {
+            std::string matrix_addr_vreg = new_vreg();
+            std::string mem_loc = "[rbp + " + std::to_string(sym->offset) + "]";
+            emitter.emit("lea", matrix_addr_vreg, mem_loc);
+
+            emitter.emit("mov", "rdi", matrix_addr_vreg);
+            emitter.emit("mov", "rsi", qubit_offset_vreg);
+            emitter.call_external("q_apply_matrix");
             return;
         }
     }
@@ -703,6 +717,7 @@ void CodeGenerator::visit(GateAppOperationExpressionNode* node) {
 
     emitter.emit("mov", "rdi", matrix_addr_vreg);
     emitter.emit("mov", "rsi", qubit_offset_vreg);
+    emitter.call_external("q_apply_matrix");
     emitter.emit("call", "q_apply_matrix");
 }
 
@@ -767,21 +782,37 @@ void CodeGenerator::visit(FormatExpressionNode* node) {
 }
 
 void CodeGenerator::visit(PrintStatementNode* node) {
-    // 1. Visit the stream expression (e.g., std::out or std::cerr)
     visit(node->outstream.get());
     std::string stream_fd_vreg = last_expr_vreg;
 
-    // 2. Safely push the stream FD onto the hardware stack so it's 100% safe from local variables
     emitter.emit("push", stream_fd_vreg);
     emitter.current_stack_depth += 8;
 
     for (size_t i = 0; i < node->expressions.size(); ++i) {
-        visit(node->expressions[i].get());
-
         auto expr_type = node->expressions[i]->resolved_type;
+        auto prim = dynamic_cast<PrimitiveTypeNode*>(expr_type.get());
         int size = getTypeSize(expr_type.get());
 
-        // 3. Load the stream into a fresh virtual register directly from the top of the stack
+        if (prim && prim->primitive_type == Token::KEYWORD_MATRIX) {
+            if (auto id_node = dynamic_cast<VariableReferenceNode*>(node->expressions[i].get())) {
+                Symbol* sym = symbolTable.lookup(id_node->name);
+                if (sym) {
+                    std::string current_stream = new_vreg();
+                    emitter.emit("mov", current_stream, "qword [rsp]");
+
+                    std::string mem_loc = "[rbp + " + std::to_string(sym->offset) + "]";
+
+                    if (i == node->expressions.size() - 1) {
+                        emitter.emit_print(sym->size, expr_type, mem_loc, current_stream);
+                    } else {
+                        emitter.emit_print_raw(sym->size, expr_type, mem_loc, current_stream);
+                    }
+                    continue;
+                }
+            }
+        }
+
+        visit(node->expressions[i].get());
         std::string current_stream = new_vreg();
         emitter.emit("mov", current_stream, "qword [rsp]");
 
@@ -792,7 +823,6 @@ void CodeGenerator::visit(PrintStatementNode* node) {
         }
     }
 
-    // 4. Clean up the stack slot we used for the stream
     emitter.emit("add", "rsp", "8");
     emitter.current_stack_depth -= 8;
 }
@@ -921,6 +951,53 @@ void CodeGenerator::visit(QubitDefinitionNode* node) {
     } else {
         emitter.emit("mov", "rdi", addr_vreg);
         emitter.call_external("qubit_init");
+    }
+}
+
+void CodeGenerator::visit(MatrixDefinitionNode* node) {
+    Symbol* sym = symbolTable.lookup(node->name);
+    if (!sym) return;
+
+    size_t total_elements = node->elements.size();
+
+    for (size_t i = 0; i < total_elements; ++i) {
+        if (!node->elements[i]) continue;
+
+        visit(node->elements[i].get());
+
+        int element_offset = sym->offset + static_cast<int>(i * 16);
+        std::string target_mem = "oword [rbp + " + std::to_string(element_offset) + "]";
+        auto elem_type = node->elements[i]->resolved_type;
+
+        // Complex numbers
+        if (elem_type && elem_type->typeName() == "complex") {
+            if (!last_expr_vreg.empty() && last_expr_vreg.front() == '[') {
+                emitter.emit("vmovupd", "xmm0", last_expr_vreg);
+                emitter.emit("vmovupd", target_mem, "xmm0");
+            } else if (!last_expr_vreg.empty() && last_expr_vreg.find("xmm") == 0) {
+                emitter.emit("vmovupd", target_mem, last_expr_vreg);
+            } else {
+                emitter.emit("vmovupd", "xmm0", "[rbp - 136]");
+                emitter.emit("vmovupd", target_mem, "xmm0");
+            }
+            continue;
+        }
+
+        // Scalar real numbers
+        if (!isFloatingPoint(elem_type.get())) {
+            std::string conv_ops = "xmm0, " + last_expr_vreg;
+            emitter.emit("vcvtsi2sd", "xmm0", conv_ops);
+        } else if (!last_expr_vreg.empty() && last_expr_vreg.front() == '[') {
+            emitter.emit("vmovsd", "xmm0", last_expr_vreg);
+        } else if (!last_expr_vreg.empty() && last_expr_vreg.find("xmm") == 0) {
+            emitter.emit("vmovsd", "xmm0", last_expr_vreg);
+        }
+
+        std::string target_real = "qword [rbp + " + std::to_string(element_offset) + "]";
+        std::string target_imag = "qword [rbp + " + std::to_string(element_offset + 8) + "]";
+
+        emitter.emit("vmovsd", target_real, "xmm0");
+        emitter.emit("mov", target_imag, "0");
     }
 }
 

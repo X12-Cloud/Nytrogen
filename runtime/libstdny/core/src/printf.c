@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 // Main types
 void ny_print_int(int fd, long long val, bool raw) {
@@ -26,6 +27,31 @@ void ny_print_float_raw(int fd, double val) { dprintf(fd, "%f", val); }
 
 void ny_print_complex(int fd, double re, double im) { 
     dprintf(fd, "(%.4f + %.4fi)\n", re, im); 
+}
+
+void ny_print_matrix(const double* data, uint64_t rows, uint64_t cols) {
+    if (!data) {
+        printf("[\n  (null matrix)\n]\n");
+        return;
+    }
+
+    printf("[\n");
+    for (uint64_t i = 0; i < rows; ++i) {
+        printf("  [ ");
+        for (uint64_t j = 0; j < cols; ++j) {
+            uint64_t base_idx = (i * cols + j) * 2;
+            double real = data[base_idx];
+            double imag = data[base_idx + 1];
+
+            printf("[%.4f, %.4f]", real, imag);
+
+            if (j + 1 < cols) {
+                printf(", ");
+            }
+        }
+        printf(" ]\n");
+    }
+    printf("]\n");
 }
 
 // Dispatcher

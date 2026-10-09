@@ -301,6 +301,9 @@ void SemanticAnalyzer::visit(ASTNode* node) {
         case ASTNode::NodeType::FORMAT_EXPRESSION:
             visit(static_cast<FormatExpressionNode*>(node));
             break;
+        case ASTNode::NodeType::MATRIX_DEFINITION:
+            visit(static_cast<MatrixDefinitionNode*>(node));
+            break;
         default:
             Logger::report_error("Semantic Error",
                                  "Unknown AST node type encountered during analysis.");
@@ -961,6 +964,41 @@ void SemanticAnalyzer::visit(QubitDefinitionNode* node) {
     q_sym.is_global = is_global;
 
     symbolTable.addSymbol(std::move(q_sym));
+}
+
+void SemanticAnalyzer::visit(MatrixDefinitionNode* node) {
+    bool global_context = (symbolTable.current_scope->parent == nullptr);
+    bool is_global = (symbolTable.all_scopes.size() <= 2) || global_context;
+
+    if (symbolTable.current_scope->lookup(node->name) != nullptr) {
+        Logger::report_error("Semantic Error", "Redefinition of matrix '" + node->name + "'.", node->line);
+    }
+
+    for (auto& element : node->elements) {
+        if (element) {
+            visit(element.get());
+        }
+    }
+
+    size_t element_count = node->rows * node->cols;
+    int size_in_bytes = static_cast<int>(element_count * 8);
+
+    int stack_offset = 0;
+    if (!is_global) {
+        symbolTable.current_scope->currentOffset -= size_in_bytes;
+        stack_offset = symbolTable.current_scope->currentOffset;
+    }
+
+    Symbol mat_sym(Symbol::SymbolType::VARIABLE, node->name,
+                   std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_MATRIX),
+                   stack_offset, size_in_bytes);
+
+    std::string unique_label = Mangler::mangleVariable(namespace_stack, node->name);
+
+    mat_sym.mangled_name = unique_label;
+    mat_sym.is_global = is_global;
+
+    symbolTable.addSymbol(std::move(mat_sym));
 }
 
 void SemanticAnalyzer::visit(UnaryOpExpressionNode* node) {
