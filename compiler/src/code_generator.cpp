@@ -62,6 +62,7 @@ void CodeGenerator::generate(const std::string& output_filename, bool is_entry_p
 
     constants.push_back({"align", "16"});
     constants.push_back({"_abs_mask", "dq", "0x7FFFFFFFFFFFFFFF"});
+    constants.push_back({"_double_0", "dq", "0.000000000000000"});
     constants.push_back({"align", "8"});
 
     emitter.section(".text");
@@ -969,35 +970,35 @@ void CodeGenerator::visit(MatrixDefinitionNode* node) {
         std::string target_mem = "oword [rbp + " + std::to_string(element_offset) + "]";
         auto elem_type = node->elements[i]->resolved_type;
 
+        bool is_complex = (elem_type && (elem_type->typeName() == "complex"));
+
         // Complex numbers
-        if (elem_type && elem_type->typeName() == "complex") {
+        if (is_complex) {
             if (!last_expr_vreg.empty() && last_expr_vreg.front() == '[') {
                 emitter.emit("vmovupd", "xmm0", last_expr_vreg);
                 emitter.emit("vmovupd", target_mem, "xmm0");
-            } else if (!last_expr_vreg.empty() && last_expr_vreg.find("xmm") == 0) {
-                emitter.emit("vmovupd", target_mem, last_expr_vreg);
             } else {
-                emitter.emit("vmovupd", "xmm0", "[rbp - 136]");
-                emitter.emit("vmovupd", target_mem, "xmm0");
+                emitter.emit("vmovupd", target_mem, last_expr_vreg);
             }
             continue;
         }
 
-        // Scalar real numbers
+        // Scalar numbers
+        std::string real_reg = "xmm0";
         if (!isFloatingPoint(elem_type.get())) {
-            std::string conv_ops = "xmm0, " + last_expr_vreg;
-            emitter.emit("vcvtsi2sd", "xmm0", conv_ops);
+            emitter.emit("vcvtsi2sd", "xmm0", "xmm0, " + last_expr_vreg);
         } else if (!last_expr_vreg.empty() && last_expr_vreg.front() == '[') {
             emitter.emit("vmovsd", "xmm0", last_expr_vreg);
-        } else if (!last_expr_vreg.empty() && last_expr_vreg.find("xmm") == 0) {
-            emitter.emit("vmovsd", "xmm0", last_expr_vreg);
+        } else if (!last_expr_vreg.empty() && last_expr_vreg != "xmm0") {
+            real_reg = last_expr_vreg;
         }
 
         std::string target_real = "qword [rbp + " + std::to_string(element_offset) + "]";
         std::string target_imag = "qword [rbp + " + std::to_string(element_offset + 8) + "]";
 
-        emitter.emit("vmovsd", target_real, "xmm0");
-        emitter.emit("mov", target_imag, "0");
+        emitter.emit("vmovsd", target_real, real_reg);
+        emitter.emit("vmovsd", "xmm15", "[rel _double_0]");
+        emitter.emit("vmovsd", target_imag, "xmm15");
     }
 }
 
@@ -1090,6 +1091,35 @@ void CodeGenerator::visit(FunctionCallNode* node) {
 }
 
 void CodeGenerator::visit(MemberAccessNode* node) {
+    auto base_type = node->struct_expr->resolved_type.get();
+    bool is_qubit = (base_type->category == TypeNode::TypeCategory::QUBIT) || 
+                    (base_type->typeName() == "qubit");
+
+    if (is_qubit) {
+        bool old_lvalue = is_lvalue;
+        is_lvalue = false;
+        visit(node->struct_expr.get());
+        std::string q_offset_vreg = last_expr_vreg;
+        is_lvalue = old_lvalue;
+
+        int member_offset = (node->member_name == "beta" || node->member_name == "b") ? 16 : 0;
+
+        std::string member_addr_vreg = new_vreg();
+        emitter.emit("lea", member_addr_vreg, "[r15 + " + q_offset_vreg + "]");
+        if (member_offset != 0) {
+            emitter.emit("add", member_addr_vreg, std::to_string(member_offset));
+        }
+
+        if (is_lvalue) {
+            last_expr_vreg = "[" + member_addr_vreg + "]";
+        } else {
+            std::string val_vreg = new_vreg();
+            emitter.emit("vmovupd", val_vreg, "[" + member_addr_vreg + "]");
+            last_expr_vreg = val_vreg;
+        }
+        return;
+    }
+
     bool old_lvalue = is_lvalue;
     is_lvalue = true;
     visit(node->struct_expr.get());
@@ -1098,21 +1128,7 @@ void CodeGenerator::visit(MemberAccessNode* node) {
 
     std::string member_addr_vreg = new_vreg();
     Symbol* member_symbol = node->resolved_symbol;
-
-    int offset = 0;
-
-    bool is_qubit = (node->struct_expr->resolved_type->category == TypeNode::TypeCategory::QUBIT) || 
-                     (node->struct_expr->resolved_type->typeName() == "qubit");
-
-    if (is_qubit) {
-        if (node->member_name == "alpha") {
-            offset = 0;
-        } else if (node->member_name == "beta") {
-            offset = 16;
-        }
-    } else if (member_symbol != nullptr) {
-        offset = member_symbol->offset;
-    }
+    int offset = member_symbol ? member_symbol->offset : 0;
 
     emitter.emit("mov", member_addr_vreg, base_addr_vreg);
     if (offset != 0) {

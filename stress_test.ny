@@ -99,7 +99,6 @@ int main() {
     qubit q1;
     h -> q0;
     x -> q1;
-    //print q1.alpha;
     qu::print_state();
 
     return 0;

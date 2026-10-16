@@ -981,7 +981,7 @@ void SemanticAnalyzer::visit(MatrixDefinitionNode* node) {
     }
 
     size_t element_count = node->rows * node->cols;
-    int size_in_bytes = static_cast<int>(element_count * 8);
+    int size_in_bytes = static_cast<int>(element_count * 16);
 
     int stack_offset = 0;
     if (!is_global) {

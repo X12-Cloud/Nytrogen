@@ -108,9 +108,12 @@ void InstructionSet::emit_print_internal(int size, const std::shared_ptr<TypeNod
 
     // Complex literals
     if (prim && prim->primitive_type == Token::KEYWORD_COMPLEX) {
-        emit("mov", "rax", src_vreg);
-        emit("vmovsd", "xmm0", "[rax]");
-        emit("vmovsd", "xmm1", "[rax + 8]");
+        if (!src_vreg.empty() && src_vreg.front() == '[') {
+            emit("vmovupd", "xmm0", src_vreg);
+        } else if (src_vreg != "xmm0") {
+            emit("vmovaps", "xmm0", src_vreg);
+        }
+        emit("vunpckhpd", "xmm1", "xmm0, xmm0");
         emit("mov", "rdi", outs_vreg);
         call_external("ny_print_complex");
         return;
