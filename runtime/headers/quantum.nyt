@@ -27,6 +27,29 @@ string get_state() {
     std::free(clean_ptr);
 }
 
+// Probabilities |0>: P(0) = |alpha|^2
+double prob_zero(qubit q) {
+    return math::norm_sq(q.alpha);
+}
+
+double prob_one(qubit q) {
+    return math::norm_sq(q.beta);
+}
+
+// Gates
+void apply_gate(qubit q, matrix U) {
+    complex new_alpha = U.m00 * q.alpha + U.m01 * q.beta;
+    complex new_beta  = U.m10 * q.alpha + U.m11 * q.beta;
+    q.alpha = new_alpha;
+    q.beta  = new_beta;
+}
+
+// Inner product / overlap: <q1 | q2> = conj(alpha1)*alpha2 + conj(beta1)*beta2
+complex inner_product(qubit q1, qubit q2) {
+    return math::mul(math::conj(q1.alpha), q2.alpha) + 
+           math::mul(math::conj(q1.beta),  q2.beta);
+}
+
 } // namespace qu
 
 #endif

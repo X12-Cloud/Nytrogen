@@ -1,0 +1,162 @@
+namespace mcomplex {
+
+// ==========================================
+// Complex Scalar Operations
+// ==========================================
+
+// Complex Conjugate: (a + bi)* = a - bi
+complex conj(complex c) {
+    return c.real + (-c.imag) * 1.0i;
+}
+
+// Squared Magnitude: |c|^2 = real^2 + imag^2
+double norm_sq(complex c) {
+    return c.real * c.real + c.imag * c.imag;
+}
+
+// Explicit Complex Multiplication
+complex c_mul(complex a, complex b) {
+    return (a.real * b.real - a.imag * b.imag) + 
+           (a.real * b.imag + a.imag * b.real) * 1.0i;
+}
+
+// Complex Division: a / b
+complex c_div(complex a, complex b) {
+    double d = norm_sq(b);
+    double r = (a.real * b.real + a.imag * b.imag) / d;
+    double i = (a.imag * b.real - a.real * b.imag) / d;
+    return r + 1.0i * 1.0i;
+}
+
+// Scale Complex by Real Scalar: s * c
+complex c_scale(double s, complex c) {
+    return (s * c.real) + (s * c.imag) * 1.0i;
+}
+
+// Euler's Formula: e^(i*theta) = cos(theta) + i*sin(theta)
+complex exp_i(double cos_theta, double sin_theta) {
+    return cos_theta + sin_theta * 1.0i;
+}
+
+
+// ==========================================
+// 2x2 Matrix Operations
+// ==========================================
+
+// Matrix Multiplication (A · B)
+matrix dot(matrix A, matrix B) {
+    matrix C = [
+        A.m00 * B.m00 + A.m01 * B.m10,  A.m00 * B.m01 + A.m01 * B.m11
+    ],
+    [
+        A.m10 * B.m00 + A.m11 * B.m10,  A.m10 * B.m01 + A.m11 * B.m11
+    ];
+    return C;
+}
+
+// Matrix Addition (A + B)
+matrix mat_add(matrix A, matrix B) {
+    matrix C = [
+        A.m00 + B.m00,  A.m01 + B.m01
+    ],
+    [
+        A.m10 + B.m10,  A.m11 + B.m11
+    ];
+    return C;
+}
+
+// Matrix Subtraction (A - B)
+matrix mat_sub(matrix A, matrix B) {
+    matrix C = [
+        A.m00 - B.m00,  A.m01 - B.m01
+    ],
+    [
+        A.m10 - B.m10,  A.m11 - B.m11
+    ];
+    return C;
+}
+
+// Scale Matrix by Complex Scalar: s * A
+matrix mat_scale(complex s, matrix A) {
+    matrix C = [
+        s * A.m00,  s * A.m01
+    ],
+    [
+        s * A.m10,  s * A.m11
+    ];
+    return C;
+}
+
+// Matrix Transpose: A^T
+matrix transpose(matrix A) {
+    matrix C = [
+        A.m00,  A.m10
+    ],
+    [
+        A.m01,  A.m11
+    ];
+    return C;
+}
+
+// Conjugate Transpose / Hermitian Adjoint: A† = (A*)^T
+matrix dagger(matrix A) {
+    matrix C = [
+        conj(A.m00),  conj(A.m10)
+    ],
+    [
+        conj(A.m01),  conj(A.m11)
+    ];
+    return C;
+}
+
+// Matrix Trace: Tr(A) = A_00 + A_11
+complex trace(matrix A) {
+    return A.m00 + A.m11;
+}
+
+// Matrix Determinant: det(A) = A_00*A_11 - A_01*A_10
+complex det(matrix A) {
+    return A.m00 * A.m11 - A.m01 * A.m10;
+}
+
+
+// ==========================================
+// Constant Matrices & Quantum Operators
+// ==========================================
+
+// Identity Matrix: I
+matrix eye() {
+    matrix I = [ 1.0 + 0.0i,  0.0 + 0.0i ],
+               [ 0.0 + 0.0i,  1.0 + 0.0i ];
+    return I;
+}
+
+// Pauli-X: [ [0, 1], [1, 0] ]
+matrix pauli_x() {
+    matrix X = [ 0.0 + 0.0i,  1.0 + 0.0i ],
+               [ 1.0 + 0.0i,  0.0 + 0.0i ];
+    return X;
+}
+
+// Pauli-Y: [ [0, -i], [i, 0] ]
+matrix pauli_y() {
+    matrix Y = [ 0.0 + 0.0i,  0.0 - 1.0i ],
+               [ 0.0 + 1.0i,  0.0 + 0.0i ];
+    return Y;
+}
+
+// Pauli-Z: [ [1, 0], [0, -1] ]
+matrix pauli_z() {
+    matrix Z = [ 1.0 + 0.0i,   0.0 + 0.0i ],
+               [ 0.0 + 0.0i,  -1.0 + 0.0i ];
+    return Z;
+}
+
+// Hadamard Operator: (1 / sqrt(2)) * [ [1, 1], [1, -1] ]
+matrix hadamard() {
+    matrix H = [ 0.70710678 + 0.0i,  0.70710678 + 0.0i ],
+               [ 0.70710678 + 0.0i, -0.70710678 + 0.0i ];
+    return H;
+}
+
+} // namespace complx
