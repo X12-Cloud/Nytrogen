@@ -1,7 +1,8 @@
 int main() {
     qubit q;
     h -> q;
-    print q.alpha;
+    print "α: ", q.alpha;
+    print "β: ", q.beta;
     int m = (int)q;
     print "Quantum superposition measured: ", m;
     return 0;

@@ -483,12 +483,13 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
     }
 
     auto* prim = dynamic_cast<PrimitiveTypeNode*>(node->resolved_type.get());
-    bool is_complex_layout = (node->resolved_type->category == TypeNode::TypeCategory::STRUCT ||
-                              node->resolved_type->category == TypeNode::TypeCategory::ARRAY ||
-                              (prim && prim->primitive_type == Token::KEYWORD_COMPLEX));
+    bool is_complex = (prim && prim->primitive_type == Token::KEYWORD_COMPLEX);
+
+    bool is_aggregate = (node->resolved_type->category == TypeNode::TypeCategory::STRUCT ||
+                         node->resolved_type->category == TypeNode::TypeCategory::ARRAY);
 
     std::string vreg;
-    if (is_lvalue || is_complex_layout) {
+    if (is_lvalue || is_aggregate || is_complex) {
         vreg = new_vreg();
     } else {
         vreg = vreg_lookup(symbol);
@@ -499,9 +500,12 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
     if (symbol->is_global || symbol->type == Symbol::SymbolType::CONSTANT) {
         std::string target_name = symbol->mangled_name;
 
-        if (is_lvalue || is_complex_layout) {
+        if (is_lvalue || is_aggregate) {
             emitter.emit("lea", vreg, "[rel " + target_name + "]");
             last_expr_is_address = true;
+        } else if (is_complex) {
+            emitter.emit("vmovupd", vreg, "[rel " + target_name + "]");
+            last_expr_is_address = false;
         } else {
             if (isFloatingPoint(node->resolved_type.get())) {
                 std::string instr = (size == 4) ? "vmovss" : "vmovsd";
@@ -515,9 +519,14 @@ void CodeGenerator::visit(VariableReferenceNode* node) {
         }
     } else {
         // Local variable (stack)
-        if (is_lvalue || is_complex_layout) {
+        if (is_lvalue || is_aggregate) {
             emitter.emit_lea_stack(vreg, symbol->offset);
             last_expr_is_address = true;
+        } else if (is_complex) {
+            std::string offset_str = (symbol->offset >= 0) ? ("+ " + std::to_string(symbol->offset)) 
+                                                           : ("- " + std::to_string(-symbol->offset));
+            emitter.emit("vmovupd", vreg, "[rbp " + offset_str + "]");
+            last_expr_is_address = false;
         } else {
             emitter.load_adv(size, node->resolved_type.get(), vreg, "rbp", symbol->offset);
             last_expr_is_address = false;
@@ -1092,8 +1101,9 @@ void CodeGenerator::visit(FunctionCallNode* node) {
 
 void CodeGenerator::visit(MemberAccessNode* node) {
     auto base_type = node->struct_expr->resolved_type.get();
-    bool is_qubit = (base_type->category == TypeNode::TypeCategory::QUBIT) || 
-                    (base_type->typeName() == "qubit");
+    bool is_qubit = (base_type->category == TypeNode::TypeCategory::QUBIT) || (base_type->typeName() == "qubit");
+    bool is_complex = (base_type->typeName() == "complex");
+    bool is_matrix = (base_type->category == TypeNode::TypeCategory::MATRIX || base_type->typeName() == "matrix");
 
     if (is_qubit) {
         bool old_lvalue = is_lvalue;
@@ -1116,6 +1126,60 @@ void CodeGenerator::visit(MemberAccessNode* node) {
             std::string val_vreg = new_vreg();
             emitter.emit("vmovupd", val_vreg, "[" + member_addr_vreg + "]");
             last_expr_vreg = val_vreg;
+        }
+        return;
+    }
+    if (is_complex) {
+        bool old_lvalue = is_lvalue;
+        is_lvalue = true;
+        visit(node->struct_expr.get());
+        std::string base_addr = last_expr_vreg;
+        is_lvalue = old_lvalue;
+
+        int member_offset = (node->member_name == "imag" || node->member_name == "i" || node->member_name == "imaginary") ? 8 : 0;
+
+        std::string scalar_addr = new_vreg();
+        if (!base_addr.empty() && base_addr.front() == '[') {
+            std::string inner = base_addr.substr(1, base_addr.size() - 2);
+            emitter.emit("lea", scalar_addr, "[" + inner + " + " + std::to_string(member_offset) + "]");
+        } else {
+            emitter.emit("lea", scalar_addr, "[" + base_addr + " + " + std::to_string(member_offset) + "]");
+        }
+
+        if (is_lvalue) {
+            last_expr_vreg = "[" + scalar_addr + "]";
+        } else {
+            std::string val_vreg = new_vreg();
+            emitter.emit("vmovsd", val_vreg, "[" + scalar_addr + "]");
+            last_expr_vreg = val_vreg;
+        }
+        return;
+    }
+    if (is_matrix) {
+        bool old_lvalue = is_lvalue;
+        is_lvalue = true;
+        visit(node->struct_expr.get());
+        std::string base_addr = last_expr_vreg;
+        is_lvalue = old_lvalue;
+
+        int offset = node->resolved_symbol->offset;
+
+        std::string elem_addr = new_vreg();
+        if (!base_addr.empty() && base_addr.front() == '[') {
+            std::string inner = base_addr.substr(1, base_addr.size() - 2);
+            emitter.emit("lea", elem_addr, "[" + inner + " + " + std::to_string(offset) + "]");
+        } else {
+            emitter.emit("lea", elem_addr, "[" + base_addr + " + " + std::to_string(offset) + "]");
+        }
+
+        if (is_lvalue) {
+            last_expr_vreg = "[" + elem_addr + "]";
+            last_expr_is_address = true;
+        } else {
+            std::string val_vreg = new_vreg();
+            emitter.emit("vmovupd", val_vreg, "[" + elem_addr + "]");
+            last_expr_vreg = val_vreg;
+            last_expr_is_address = false;
         }
         return;
     }

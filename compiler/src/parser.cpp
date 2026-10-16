@@ -876,6 +876,8 @@ std::unique_ptr<NamespaceDefinition> Parser::parseNamespaceDefinition() {
             name_to_register = c->name;
         } else if (auto* q = dynamic_cast<QubitDefinitionNode*>(member_node.get())) {
             name_to_register = q->qubit_name;
+        } else if (auto* m = dynamic_cast<MatrixDefinitionNode*>(member_node.get())) {
+            name_to_register = m->name;
         }
 
         if (!name_to_register.empty()) {

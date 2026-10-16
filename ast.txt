@@ -1,15 +1,24 @@
  PROGRAM_ROOT
    FUNCTION_DEF: main
-     QUBIT_DEF: q { alpha: default, beta: default }
-     GATE_APPLICATION_OP: 
-       VAR_REF: (h)
-       VAR_REF: (q)
+     QUBIT_DEF: q0 { alpha: default, beta: default }
+     MATRIX_DEF: mat (2x2)
+       INT_LITERAL: (1)
+       INT_LITERAL: (1)
+       INT_LITERAL: (1)
+       INT_LITERAL: (0)
+     MATRIX_DEF: mat2 (2x2)
+       COMPLEX_LITERAL: (0.000000+1.000000i)
+       COMPLEX_LITERAL: (2.000000-3.000000i)
+       DOUBLE_LITERAL: (1.000000)
+       COMPLEX_LITERAL: (0.000000+0.000000i)
      PRINT_STMT
-       MEMBER_ACCESS: alpha
-     VAR_DECL
-       ASTNode
+       VAR_REF: (mat)
      PRINT_STMT
-       STR_LITERAL: (Quantum superposition measured: )
-       VAR_REF: (m)
+       VAR_REF: (mat2)
+     PRINT_STMT
+       MEMBER_ACCESS: m00
+       MEMBER_ACCESS: m01
+       MEMBER_ACCESS: m10
+       MEMBER_ACCESS: m11
      RETURN_STMT:
        INT_LITERAL: (0)

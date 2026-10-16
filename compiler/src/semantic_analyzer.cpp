@@ -839,39 +839,85 @@ void SemanticAnalyzer::visit(FunctionCallNode* node) {
 
 void SemanticAnalyzer::visit(MemberAccessNode* node) {
     if (debug_mode) std::cout << "Debug: Entering visit for node: " << node << std::endl;
-    bool is_qubit = false;
-
     std::unique_ptr<TypeNode> base_type = visitExpression(node->struct_expr.get());
 
-    if (base_type->category == TypeNode::TypeCategory::PRIMITIVE) {
-        if (base_type->typeName() == "qubit") is_qubit = true;
-    }
+    bool is_qubit   = (base_type->category == TypeNode::TypeCategory::PRIMITIVE && base_type->typeName() == "qubit");
+    bool is_complex = (base_type->category == TypeNode::TypeCategory::PRIMITIVE && base_type->typeName() == "complex");
+    bool is_matrix = (base_type->category == TypeNode::TypeCategory::PRIMITIVE && base_type->typeName() == "matrix");
 
     if (base_type->category != TypeNode::TypeCategory::STRUCT) {
-        if (!is_qubit) Logger::report_error("Semantic Error",
+        if (!is_qubit && !is_complex && !is_matrix) Logger::report_error("Semantic Error",
                              "Member access operator '.' used on non-struct type.", node->line);
     }
 
+    // Qubits
     if (is_qubit) {
-        if (node->member_name == "alpha" || node->member_name == "beta") {
+        if (node->member_name == "alpha" || node->member_name == "a" ||
+            node->member_name == "beta"  || node->member_name == "b") {
             node->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_COMPLEX);
 
             node->resolved_symbol = new Symbol(
-                Symbol::SymbolType::VARIABLE, 
-                node->member_name, 
-                node->resolved_type->clone(), 
-                0,
+                Symbol::SymbolType::VARIABLE, node->member_name, 
+                node->resolved_type->clone(), 0, 
                 getTypeSize(node->resolved_type.get()), 
-                StructMember::Visibility::PUBLIC
-            );
+                StructMember::Visibility::PUBLIC);
             return;
         }
 
         Logger::report_error("Semantic Error",
                              "Qubit type has no member named '" + node->member_name +
-                             "'. Valid members are 'alpha' and 'beta'.", node->line);
+                             "'. Valid members are 'alpha' (`a`) and 'beta' (`b`).", node->line);
         return;
-    } else {
+    } 
+    // Complex literals
+    else if (is_complex) {
+        bool is_real = (node->member_name == "real" || node->member_name == "r");
+        bool is_imag = (node->member_name == "imag" || node->member_name == "i" || node->member_name == "imaginary");
+
+        if (is_real || is_imag) {
+            node->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_DOUBLE);
+            node->resolved_symbol = new Symbol(
+                Symbol::SymbolType::VARIABLE, node->member_name,
+                node->resolved_type->clone(),
+                is_real ? 0 : 8,
+                8, StructMember::Visibility::PUBLIC
+            );
+            return;
+        }
+        Logger::report_error("Semantic Error", "Complex numbers only have members: 'real' ('r') and 'imag' ('i').", node->line);
+        return;
+    } 
+    // Matrices
+    else if (is_matrix) {
+        int offset = -1;
+        if (node->member_name == "m00" || node->member_name == "r0c0" || node->member_name == "_00") {
+            offset = 0;
+        } else if (node->member_name == "m01" || node->member_name == "r0c1" || node->member_name == "_01") {
+            offset = 16;
+        } else if (node->member_name == "m10" || node->member_name == "r1c0" || node->member_name == "_10") {
+            offset = 32;
+        } else if (node->member_name == "m11" || node->member_name == "r1c1" || node->member_name == "_11") {
+            offset = 48;
+        }
+
+        if (offset != -1) {
+            node->resolved_type = std::make_unique<PrimitiveTypeNode>(Token::KEYWORD_COMPLEX);
+            node->resolved_symbol = new Symbol(
+                Symbol::SymbolType::VARIABLE, node->member_name,
+                node->resolved_type->clone(),
+                offset,
+                16,
+                StructMember::Visibility::PUBLIC
+            );
+            return;
+        }
+        Logger::report_error("Semantic Error",
+            "Matrix type has no member named '" + node->member_name +
+            "'. Valid members are 'm00', 'm01', 'm10', 'm11'.", node->line);
+        return;
+    }
+    // Structs
+    else {
         const StructTypeNode* struct_type = static_cast<const StructTypeNode*>(base_type.get());
 
         if (!symbolTable.isStructDefined(struct_type->struct_name)) {

@@ -6,6 +6,7 @@ int main() {
                   [1.0,      0.0+0.0i];
     print mat;
     print mat2;
+    print mat2.m00, mat2.m01, mat2.m10, mat2.m11;
 
     return 0;
 }
